@@ -25,6 +25,12 @@ const quickAddClose = document.getElementById('quickAddClose');
 const todoList = document.getElementById('todoList');
 const companyList = document.getElementById('companyList');
 const countryFilter = document.getElementById('countryFilter');
+const topCity = document.getElementById('topCity');
+const topCityCount = document.getElementById('topCityCount');
+const topCountry = document.getElementById('topCountry');
+const topCountryCount = document.getElementById('topCountryCount');
+const cityCount = document.getElementById('cityCount');
+const cityBars = document.getElementById('cityBars');
 
 let entries = [];
 
@@ -71,6 +77,15 @@ function parseCountry(tag) {
   const parts = raw.split(/,|\/|;|·/).map((part) => part.trim()).filter(Boolean);
   if (!parts.length) return '';
   return parts[parts.length - 1];
+}
+
+function parseCity(tag) {
+  if (!tag) return '';
+  const raw = String(tag).trim();
+  if (!raw) return '';
+  const parts = raw.split(/,|\/|;|·/).map((part) => part.trim()).filter(Boolean);
+  if (!parts.length) return '';
+  return parts[0];
 }
 
 function renderCountryFilter() {
@@ -189,6 +204,7 @@ function renderList() {
   renderTodoList();
   renderCompanyList();
   renderCountryFilter();
+  renderDashboard();
 
   if (!filtered.length) {
     const empty = document.createElement('div');
@@ -208,6 +224,7 @@ function renderList() {
     const safeStatus = escapeHtml(entry.status || '');
     const websiteUrl = normalizeUrl(entry.website || '');
     const websiteLabel = escapeHtml(entry.website || '');
+    const fitScore = Number(entry.fit_score ?? entry.fitScore ?? 0) || 0;
 
     row.innerHTML = `
       <div class="cell">
@@ -223,6 +240,7 @@ function renderList() {
         </select>
       </div>
       <div class="cell">${safeTag ? `<span class="tag-pill">${safeTag}</span>` : '-'}</div>
+      <div class="cell"><span class="fit-pill">${fitScore || '-'}</span></div>
       <div class="cell">
         ${websiteUrl ? `<a class="link" href="${websiteUrl}" target="_blank" rel="noreferrer">${websiteLabel}</a>` : '-'}
       </div>
@@ -238,6 +256,46 @@ function renderList() {
   });
 }
 
+function countBy(list, getter) {
+  const map = new Map();
+  list.forEach((item) => {
+    const key = getter(item);
+    if (!key) return;
+    map.set(key, (map.get(key) || 0) + 1);
+  });
+  return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+}
+
+function renderDashboard() {
+  const cityCounts = countBy(entries, (e) => parseCity(e.tag));
+  const countryCounts = countBy(entries, (e) => parseCountry(e.tag));
+
+  if (topCity) {
+    topCity.textContent = cityCounts[0]?.[0] || '-';
+  }
+  if (topCityCount) {
+    topCityCount.textContent = cityCounts[0] ? `${cityCounts[0][1]} entries` : '0 entries';
+  }
+  if (topCountry) {
+    topCountry.textContent = countryCounts[0]?.[0] || '-';
+  }
+  if (topCountryCount) {
+    topCountryCount.textContent = countryCounts[0] ? `${countryCounts[0][1]} entries` : '0 entries';
+  }
+  if (cityCount) {
+    cityCount.textContent = String(cityCounts.length);
+  }
+
+  if (!cityBars) return;
+  cityBars.innerHTML = '';
+  const max = cityCounts[0]?.[1] || 1;
+  cityCounts.slice(0, 6).forEach(([city, count]) => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `<div>${city}</div><div>${count}</div><div class=\"bar-track\"><div class=\"bar-fill\" style=\"width:${Math.round((count / max) * 100)}%\"></div></div>`;
+    cityBars.appendChild(row);
+  });
+}
 function renderCompanyList() {
   if (!companyList) return;
   const names = Array.from(

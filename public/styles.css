@@ -271,7 +271,7 @@ button.small {
 
 .table-row {
   display: grid;
-  grid-template-columns: 1.3fr 0.8fr 0.7fr 1.1fr 1.6fr 0.9fr;
+  grid-template-columns: 1.3fr 0.8fr 0.7fr 0.4fr 1.1fr 1.6fr 0.9fr;
   gap: 12px;
   align-items: center;
   padding: 10px 14px;
@@ -305,6 +305,19 @@ button.small {
   color: #4b4b4b;
   font-size: 0.76rem;
   font-weight: 600;
+}
+
+.fit-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: #f1f5ff;
+  color: #3730a3;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .status-pill {
@@ -384,6 +397,36 @@ button.small {
   padding: 12px;
 }
 
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px 0 16px;
+}
+
+.dash-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.dash-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.dash-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.dash-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 .side-title {
   font-weight: 600;
   margin-bottom: 10px;
@@ -422,6 +465,33 @@ button.small {
   gap: 6px;
   font-size: 0.86rem;
   color: var(--ink);
+}
+
+.bar-list {
+  display: grid;
+  gap: 8px;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.bar-track {
+  grid-column: 1 / -1;
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: #c7d2fe;
+  border-radius: 999px;
 }
 
 .form {
@@ -520,6 +590,10 @@ textarea:focus {
 @media (max-width: 1100px) {
   .page {
     padding: 32px 24px 40px;
+  }
+
+  .dashboard {
+    grid-template-columns: 1fr;
   }
 
   .layout {

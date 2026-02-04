@@ -24,40 +24,46 @@ db.exec(`
     notes TEXT,
     website TEXT,
     tag TEXT,
+    fit_score INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
 `);
+const columns = db.prepare(`PRAGMA table_info(internships);`).all();
+const hasFitScore = columns.some((col) => col.name === 'fit_score');
+if (!hasFitScore) {
+  db.exec(`ALTER TABLE internships ADD COLUMN fit_score INTEGER DEFAULT 0;`);
+}
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const selectAll = db.prepare(`
-  SELECT id, company, status, notes, website, tag, created_at, updated_at
+  SELECT id, company, status, notes, website, tag, fit_score, created_at, updated_at
   FROM internships
   ORDER BY id DESC
 `);
 
 const insertOne = db.prepare(`
-  INSERT INTO internships (company, status, notes, website, tag, updated_at)
-  VALUES (?, ?, ?, ?, ?, datetime('now'))
+  INSERT INTO internships (company, status, notes, website, tag, fit_score, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
 `);
 
 const insertWithId = db.prepare(`
-  INSERT INTO internships (id, company, status, notes, website, tag, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO internships (id, company, status, notes, website, tag, fit_score, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 const updateOne = db.prepare(`
   UPDATE internships
-  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, updated_at = datetime('now')
+  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, fit_score = ?, updated_at = datetime('now')
   WHERE id = ?
 `);
 
 const updateWithTimestamps = db.prepare(`
   UPDATE internships
-  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, created_at = ?, updated_at = ?
+  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, fit_score = ?, created_at = ?, updated_at = ?
   WHERE id = ?
 `);
 
@@ -74,6 +80,7 @@ function syncExcel() {
     'Notes',
     'Website',
     'Tag',
+    'Fit Score',
     'Created At',
     'Updated At'
   ]];
@@ -84,6 +91,7 @@ function syncExcel() {
     row.notes || '',
     row.website || '',
     row.tag || '',
+    row.fit_score ?? 0,
     row.created_at,
     row.updated_at
   ]);
@@ -91,6 +99,40 @@ function syncExcel() {
   const workbook = xlsx.utils.book_new();
   xlsx.utils.book_append_sheet(workbook, worksheet, 'Internships');
   xlsx.writeFile(workbook, excelPath);
+}
+
+function computeFitScore({ company, status, notes, website, tag }) {
+  const text = [company, status, notes, website, tag].join(' ').toLowerCase();
+  let score = 1;
+  const strong = [
+    'embedded', 'firmware', 'microcontroller', 'soc', 'iot', 'rtos',
+    'security', 'secure', 'cyber', 'infosec', 'soc', 'threat',
+    'automotive', 'industrial', 'ics', 'scada', 'defense', 'hardware'
+  ];
+  const medium = [
+    'systems', 'system', 'low-level', 'kernel', 'device', 'network',
+    'telecom', 'semiconductor', 'silicon'
+  ];
+
+  const strongHits = strong.filter((k) => text.includes(k)).length;
+  const mediumHits = medium.filter((k) => text.includes(k)).length;
+
+  score += Math.min(2, Math.floor(strongHits / 2));
+  score += Math.min(1, Math.floor(mediumHits / 2));
+
+  if (text.includes('embedded security')) score += 1;
+  if (text.includes('secure systems')) score += 1;
+
+  return Math.max(1, Math.min(5, score));
+}
+
+function backfillFitScores() {
+  const rows = db.prepare(`SELECT id, company, status, notes, website, tag FROM internships`).all();
+  const updateScore = db.prepare(`UPDATE internships SET fit_score = ? WHERE id = ?`);
+  rows.forEach((row) => {
+    const score = computeFitScore(row);
+    updateScore.run(score, row.id);
+  });
 }
 
 function syncFromExcel() {
@@ -109,18 +151,25 @@ function syncFromExcel() {
       const notes = String(item.Notes || '').trim();
       const website = String(item.Website || '').trim();
       const tag = String(item.Tag || '').trim();
+      const fitScore = Number(item['Fit Score'] || item.FitScore || 0) || computeFitScore({
+        company,
+        status,
+        notes,
+        website,
+        tag
+      });
       const createdAt = String(item['Created At'] || item.CreatedAt || '').trim() || new Date().toISOString();
       const updatedAt = String(item['Updated At'] || item.UpdatedAt || '').trim() || new Date().toISOString();
 
       if (id) {
         const exists = db.prepare('SELECT 1 FROM internships WHERE id = ?').get(id);
         if (exists) {
-          updateWithTimestamps.run(company, status, notes, website, tag, createdAt, updatedAt, id);
+          updateWithTimestamps.run(company, status, notes, website, tag, fitScore, createdAt, updatedAt, id);
         } else {
-          insertWithId.run(id, company, status, notes, website, tag, createdAt, updatedAt);
+          insertWithId.run(id, company, status, notes, website, tag, fitScore, createdAt, updatedAt);
         }
       } else {
-        insertOne.run(company, status, notes, website, tag);
+        insertOne.run(company, status, notes, website, tag, fitScore);
       }
     });
   });
@@ -146,12 +195,20 @@ app.post('/api/internships', (req, res) => {
     return res.status(400).json({ error: 'Company is required.' });
   }
   const finalStatus = status && typeof status === 'string' ? status : 'Researching';
+  const fitScore = computeFitScore({
+    company,
+    status: finalStatus,
+    notes,
+    website,
+    tag
+  });
   const info = insertOne.run(
     company.trim(),
     finalStatus.trim(),
     notes ? String(notes) : '',
     website ? String(website) : '',
-    tag ? String(tag) : ''
+    tag ? String(tag) : '',
+    fitScore
   );
   syncExcel();
   res.status(201).json({ id: info.lastInsertRowid });
@@ -164,12 +221,20 @@ app.put('/api/internships/:id', (req, res) => {
     return res.status(400).json({ error: 'Company is required.' });
   }
   const finalStatus = status && typeof status === 'string' ? status : 'Researching';
+  const fitScore = computeFitScore({
+    company,
+    status: finalStatus,
+    notes,
+    website,
+    tag
+  });
   const info = updateOne.run(
     company.trim(),
     finalStatus.trim(),
     notes ? String(notes) : '',
     website ? String(website) : '',
     tag ? String(tag) : '',
+    fitScore,
     Number(id)
   );
   if (info.changes === 0) {
@@ -209,5 +274,7 @@ app.listen(port, () => {
   if (excelIsNewer()) {
     syncFromExcel();
   }
+  backfillFitScores();
+  syncExcel();
   console.log(`Server running on http://localhost:${port}`);
 });

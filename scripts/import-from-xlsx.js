@@ -34,10 +34,17 @@ db.exec(`
     notes TEXT,
     website TEXT,
     tag TEXT,
+    fit_score INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
 `);
+
+const columns = db.prepare(`PRAGMA table_info(internships);`).all();
+const hasFitScore = columns.some((col) => col.name === 'fit_score');
+if (!hasFitScore) {
+  db.exec(`ALTER TABLE internships ADD COLUMN fit_score INTEGER DEFAULT 0;`);
+}
 
 if (replace) {
   db.exec('DELETE FROM internships');
@@ -49,8 +56,8 @@ const sheet = workbook.Sheets[sheetName];
 const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
 
 const insert = db.prepare(`
-  INSERT INTO internships (company, status, notes, website, tag, updated_at)
-  VALUES (?, ?, ?, ?, ?, datetime('now'))
+  INSERT INTO internships (company, status, notes, website, tag, fit_score, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
 `);
 
 let inserted = 0;
@@ -73,20 +80,22 @@ for (const row of rows) {
   const website = row['URL'] || row['Website'] || row['website'] || '';
   const tag = row['Şehir'] || row['Sehir'] || row['Tag'] || row['tag'] || '';
   const status = row['Durum'] || row['Status'] || row['status'] || 'Researching';
+  const fitScore = Number(row['Fit Score'] || row['FitScore'] || 0) || 0;
 
   insert.run(
     String(company).trim(),
     String(status).trim(),
     String(notes).trim(),
     String(website).trim(),
-    String(tag).trim()
+    String(tag).trim(),
+    fitScore
   );
   inserted += 1;
 }
 
 const rowsForExcel = db
   .prepare(
-    `SELECT company, status, notes, website, tag, created_at, updated_at FROM internships ORDER BY id DESC`
+    `SELECT company, status, notes, website, tag, fit_score, created_at, updated_at FROM internships ORDER BY id DESC`
   )
   .all();
 
@@ -96,6 +105,7 @@ const header = [[
   'Notes',
   'Website',
   'Tag',
+  'Fit Score',
   'Created At',
   'Updated At'
 ]];
@@ -105,6 +115,7 @@ const body = rowsForExcel.map((row) => [
   row.notes || '',
   row.website || '',
   row.tag || '',
+  row.fit_score ?? 0,
   row.created_at,
   row.updated_at
 ]);

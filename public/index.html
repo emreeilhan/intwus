@@ -71,19 +71,37 @@
 
         <div class="layout">
           <section class="table-card">
+            <div class="dashboard">
+              <div class="dash-card">
+                <div class="dash-label">Top City</div>
+                <div class="dash-value" id="topCity">-</div>
+                <div class="dash-sub" id="topCityCount">0 entries</div>
+              </div>
+              <div class="dash-card">
+                <div class="dash-label">Top Country</div>
+                <div class="dash-value" id="topCountry">-</div>
+                <div class="dash-sub" id="topCountryCount">0 entries</div>
+              </div>
+              <div class="dash-card">
+                <div class="dash-label">Unique Cities</div>
+                <div class="dash-value" id="cityCount">0</div>
+                <div class="dash-sub">Cities tracked</div>
+              </div>
+            </div>
             <div class="table-header">
               <div class="table-title" id="pageTitle">All</div>
               <div class="table-count" id="count">0 entries</div>
             </div>
             <div class="table">
-              <div class="table-row table-head">
-                <div class="cell">Company</div>
-                <div class="cell">Status</div>
-                <div class="cell">Tag</div>
-                <div class="cell">Website</div>
-                <div class="cell">Notes</div>
-                <div class="cell">Actions</div>
-              </div>
+            <div class="table-row table-head">
+              <div class="cell">Company</div>
+              <div class="cell">Status</div>
+              <div class="cell">Tag</div>
+              <div class="cell">Fit</div>
+              <div class="cell">Website</div>
+              <div class="cell">Notes</div>
+              <div class="cell">Actions</div>
+            </div>
               <div id="list" class="table-body"></div>
             </div>
           </section>
@@ -104,6 +122,16 @@
             <div class="side-card">
               <div class="side-title">Company</div>
               <ul class="company-list" id="companyList"></ul>
+            </div>
+
+            <div class="side-card">
+              <div class="side-title">Top Cities</div>
+              <div class="bar-list" id="cityBars"></div>
+            </div>
+
+            <div class="side-card">
+              <div class="side-title">Top Countries</div>
+              <div class="bar-list" id="countryBars"></div>
             </div>
           </aside>
         </div>
