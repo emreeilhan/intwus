@@ -22,6 +22,9 @@ const themeKey = 'staj-theme';
 const quickAddBtn = document.getElementById('quickAddBtn');
 const quickAddPanel = document.getElementById('quickAddPanel');
 const quickAddClose = document.getElementById('quickAddClose');
+const todoList = document.getElementById('todoList');
+const companyList = document.getElementById('companyList');
+const countryFilter = document.getElementById('countryFilter');
 
 let entries = [];
 
@@ -49,6 +52,52 @@ function statusClass(status) {
   if (value.includes('ready')) return 'status-ready-to-apply';
   if (value.includes('applied')) return 'status-applied';
   return 'status-researching';
+}
+
+const STATUS_FLOW = [
+  'Researching',
+  'Ready to Apply',
+  'Applied',
+  'Interview',
+  'Offer',
+  'Rejected',
+  'Paused'
+];
+
+function parseCountry(tag) {
+  if (!tag) return '';
+  const raw = String(tag).trim();
+  if (!raw) return '';
+  const parts = raw.split(/,|\/|;|·/).map((part) => part.trim()).filter(Boolean);
+  if (!parts.length) return '';
+  return parts[parts.length - 1];
+}
+
+function renderCountryFilter() {
+  if (!countryFilter) return;
+  const countries = Array.from(
+    new Set(entries.map((entry) => parseCountry(entry.tag)).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
+
+  const current = countryFilter.value;
+  countryFilter.innerHTML = '<option value=\"\">All countries</option>';
+  countries.forEach((country) => {
+    const option = document.createElement('option');
+    option.value = country;
+    option.textContent = country;
+    countryFilter.appendChild(option);
+  });
+  if (current) {
+    countryFilter.value = current;
+  }
+}
+
+function nextStatus(current) {
+  const idx = STATUS_FLOW.findIndex(
+    (value) => value.toLowerCase() === String(current || '').toLowerCase()
+  );
+  if (idx === -1) return STATUS_FLOW[0];
+  return STATUS_FLOW[(idx + 1) % STATUS_FLOW.length];
 }
 
 function resetForm() {
@@ -98,6 +147,7 @@ async function loadEntries() {
 function renderList() {
   const query = search.value.trim().toLowerCase();
   const statusQuery = statusFilter.value.trim().toLowerCase();
+  const countryQuery = (countryFilter?.value || '').trim().toLowerCase();
   const filtered = entries.filter((entry) => {
     const matchesQuery =
       !query ||
@@ -105,7 +155,22 @@ function renderList() {
       (entry.tag || '').toLowerCase().includes(query);
     const matchesStatus =
       !statusQuery || entry.status.toLowerCase() === statusQuery;
-    return matchesQuery && matchesStatus;
+    const country = parseCountry(entry.tag).toLowerCase();
+    const matchesCountry = !countryQuery || country === countryQuery;
+    return matchesQuery && matchesStatus && matchesCountry;
+  });
+
+  const completenessScore = (entry) => {
+    const fields = [entry.company, entry.status, entry.tag, entry.website, entry.notes];
+    return fields.reduce((total, value) => {
+      return total + (String(value || '').trim().length > 0 ? 1 : 0);
+    }, 0);
+  };
+
+  filtered.sort((a, b) => {
+    const scoreDiff = completenessScore(b) - completenessScore(a);
+    if (scoreDiff !== 0) return scoreDiff;
+    return String(b.id).localeCompare(String(a.id));
   });
 
   count.textContent = `${filtered.length} entr${filtered.length === 1 ? 'y' : 'ies'}`;
@@ -121,11 +186,14 @@ function renderList() {
   renderFilterChips();
   renderTitle();
   syncNav();
+  renderTodoList();
+  renderCompanyList();
+  renderCountryFilter();
 
   if (!filtered.length) {
     const empty = document.createElement('div');
     empty.className = 'empty';
-    empty.textContent = 'No entries yet. Add your first internship on the left.';
+    empty.textContent = 'No entries yet. Use Quick Add to create your first internship.';
     list.appendChild(empty);
     return;
   }
@@ -147,7 +215,12 @@ function renderList() {
         <div class="muted">Updated ${escapeHtml(entry.updated_at)}</div>
       </div>
       <div class="cell">
-        <span class="status-pill ${statusClass(entry.status)}">${safeStatus}</span>
+        <select class="status-pill ${statusClass(entry.status)}" data-action="status-select" data-id="${entry.id}" aria-label="Change status">
+          ${STATUS_FLOW.map((status) => {
+            const selected = status.toLowerCase() === String(entry.status || '').toLowerCase() ? 'selected' : '';
+            return `<option value="${escapeHtml(status)}" ${selected}>${escapeHtml(status)}</option>`;
+          }).join('')}
+        </select>
       </div>
       <div class="cell">${safeTag ? `<span class="tag-pill">${safeTag}</span>` : '-'}</div>
       <div class="cell">
@@ -162,6 +235,58 @@ function renderList() {
     `;
 
     list.appendChild(row);
+  });
+}
+
+function renderCompanyList() {
+  if (!companyList) return;
+  const names = Array.from(
+    new Set(entries.map((entry) => entry.company).filter(Boolean).map((name) => name.trim()))
+  )
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+
+  companyList.innerHTML = '';
+
+  if (!names.length) {
+    const empty = document.createElement('li');
+    empty.className = 'muted';
+    empty.textContent = 'No companies yet';
+    companyList.appendChild(empty);
+    return;
+  }
+
+  names.slice(0, 12).forEach((name) => {
+    const item = document.createElement('li');
+    item.textContent = name;
+    companyList.appendChild(item);
+  });
+}
+
+function renderTodoList() {
+  if (!todoList) return;
+  const todos = entries.filter((entry) => entry.status.toLowerCase() === 'ready to apply');
+  todoList.innerHTML = '';
+
+  if (!todos.length) {
+    const empty = document.createElement('div');
+    empty.className = 'mini-row';
+    empty.innerHTML = '<span class="muted">No to-do items</span><span></span><span></span>';
+    todoList.appendChild(empty);
+    return;
+  }
+
+  todos.slice(0, 6).forEach((entry) => {
+    const row = document.createElement('div');
+    row.className = 'mini-row';
+    const websiteUrl = normalizeUrl(entry.website || '');
+    const websiteLabel = escapeHtml(entry.website || '-');
+    row.innerHTML = `
+      <span>${escapeHtml(entry.company)}</span>
+      <span>${websiteUrl ? `<a class="link" href="${websiteUrl}" target="_blank" rel="noreferrer">${websiteLabel}</a>` : '-'}</span>
+      <span>${escapeHtml(entry.tag || 'Internship')}</span>
+    `;
+    todoList.appendChild(row);
   });
 }
 
@@ -224,6 +349,7 @@ async function saveEntry(event) {
   }
 
   resetForm();
+  closeQuickAdd();
   await loadEntries();
 }
 
@@ -242,7 +368,7 @@ async function handleListClick(event) {
     notesInput.value = entry.notes || '';
     websiteInput.value = entry.website || '';
     tagInput.value = entry.tag || '';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    openQuickAdd();
   }
 
   if (action === 'applied') {
@@ -268,10 +394,36 @@ async function handleListClick(event) {
   }
 }
 
+async function handleStatusChange(event) {
+  const select = event.target.closest('select[data-action="status-select"]');
+  if (!select) return;
+  const id = select.dataset.id;
+  const entry = entries.find((item) => String(item.id) === String(id));
+  if (!entry) return;
+
+  const payload = {
+    company: entry.company,
+    status: select.value,
+    notes: entry.notes || '',
+    website: entry.website || '',
+    tag: entry.tag || ''
+  };
+  await fetch(`/api/internships/${entry.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  await loadEntries();
+}
+
 form.addEventListener('submit', saveEntry);
 list.addEventListener('click', handleListClick);
+list.addEventListener('change', handleStatusChange);
 search.addEventListener('input', renderList);
 statusFilter.addEventListener('change', renderList);
+if (countryFilter) {
+  countryFilter.addEventListener('change', renderList);
+}
 newBtn.addEventListener('click', resetForm);
 cancelBtn.addEventListener('click', resetForm);
 exportBtn.addEventListener('click', () => {
