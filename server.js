@@ -25,6 +25,10 @@ db.exec(`
     website TEXT,
     tag TEXT,
     fit_score INTEGER DEFAULT 0,
+    applied_at TEXT,
+    followup_at TEXT,
+    priority TEXT DEFAULT 'Medium',
+    focus_tags TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
@@ -34,36 +38,56 @@ const hasFitScore = columns.some((col) => col.name === 'fit_score');
 if (!hasFitScore) {
   db.exec(`ALTER TABLE internships ADD COLUMN fit_score INTEGER DEFAULT 0;`);
 }
+const hasAppliedAt = columns.some((col) => col.name === 'applied_at');
+if (!hasAppliedAt) {
+  db.exec(`ALTER TABLE internships ADD COLUMN applied_at TEXT;`);
+}
+const hasFollowupAt = columns.some((col) => col.name === 'followup_at');
+if (!hasFollowupAt) {
+  db.exec(`ALTER TABLE internships ADD COLUMN followup_at TEXT;`);
+}
+const hasPriority = columns.some((col) => col.name === 'priority');
+if (!hasPriority) {
+  db.exec(`ALTER TABLE internships ADD COLUMN priority TEXT DEFAULT 'Medium';`);
+}
+const hasFocusTags = columns.some((col) => col.name === 'focus_tags');
+if (!hasFocusTags) {
+  db.exec(`ALTER TABLE internships ADD COLUMN focus_tags TEXT DEFAULT '';`);
+}
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
 const selectAll = db.prepare(`
-  SELECT id, company, status, notes, website, tag, fit_score, created_at, updated_at
+  SELECT id, company, status, notes, website, tag, fit_score, applied_at, followup_at, priority, focus_tags, created_at, updated_at
   FROM internships
   ORDER BY id DESC
 `);
 
 const insertOne = db.prepare(`
-  INSERT INTO internships (company, status, notes, website, tag, fit_score, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+  INSERT INTO internships (company, status, notes, website, tag, fit_score, applied_at, followup_at, priority, focus_tags, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 `);
 
 const insertWithId = db.prepare(`
-  INSERT INTO internships (id, company, status, notes, website, tag, fit_score, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO internships (id, company, status, notes, website, tag, fit_score, applied_at, followup_at, priority, focus_tags, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 const updateOne = db.prepare(`
   UPDATE internships
-  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, fit_score = ?, updated_at = datetime('now')
+  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, fit_score = ?, applied_at = ?, followup_at = ?, priority = ?, focus_tags = ?, updated_at = datetime('now')
   WHERE id = ?
 `);
 
 const updateWithTimestamps = db.prepare(`
   UPDATE internships
-  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, fit_score = ?, created_at = ?, updated_at = ?
+  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, fit_score = ?, applied_at = ?, followup_at = ?, priority = ?, focus_tags = ?, created_at = ?, updated_at = ?
   WHERE id = ?
 `);
 
@@ -81,6 +105,10 @@ function syncExcel() {
     'Website',
     'Tag',
     'Fit Score',
+    'Applied At',
+    'Follow-up At',
+    'Priority',
+    'Focus Tags',
     'Created At',
     'Updated At'
   ]];
@@ -92,6 +120,10 @@ function syncExcel() {
     row.website || '',
     row.tag || '',
     row.fit_score ?? 0,
+    row.applied_at || '',
+    row.followup_at || '',
+    row.priority || 'Medium',
+    row.focus_tags || '',
     row.created_at,
     row.updated_at
   ]);
@@ -135,6 +167,10 @@ function backfillFitScores() {
   });
 }
 
+function backfillPriority() {
+  db.prepare(`UPDATE internships SET priority = 'Medium' WHERE priority IS NULL OR priority = ''`).run();
+}
+
 function syncFromExcel() {
   if (!fs.existsSync(excelPath)) return;
   const workbook = xlsx.readFile(excelPath);
@@ -151,6 +187,10 @@ function syncFromExcel() {
       const notes = String(item.Notes || '').trim();
       const website = String(item.Website || '').trim();
       const tag = String(item.Tag || '').trim();
+      const appliedAt = String(item['Applied At'] || item.AppliedAt || '').trim();
+      const followupAt = String(item['Follow-up At'] || item['Followup At'] || item.FollowupAt || '').trim();
+      const priority = String(item.Priority || 'Medium').trim() || 'Medium';
+      const focusTags = String(item['Focus Tags'] || item.FocusTags || '').trim();
       const fitScore = Number(item['Fit Score'] || item.FitScore || 0) || computeFitScore({
         company,
         status,
@@ -164,12 +204,51 @@ function syncFromExcel() {
       if (id) {
         const exists = db.prepare('SELECT 1 FROM internships WHERE id = ?').get(id);
         if (exists) {
-          updateWithTimestamps.run(company, status, notes, website, tag, fitScore, createdAt, updatedAt, id);
+          updateWithTimestamps.run(
+            company,
+            status,
+            notes,
+            website,
+            tag,
+            fitScore,
+            appliedAt || null,
+            followupAt || null,
+            priority || 'Medium',
+            focusTags || '',
+            createdAt,
+            updatedAt,
+            id
+          );
         } else {
-          insertWithId.run(id, company, status, notes, website, tag, fitScore, createdAt, updatedAt);
+          insertWithId.run(
+            id,
+            company,
+            status,
+            notes,
+            website,
+            tag,
+            fitScore,
+            appliedAt || null,
+            followupAt || null,
+            priority || 'Medium',
+            focusTags || '',
+            createdAt,
+            updatedAt
+          );
         }
       } else {
-        insertOne.run(company, status, notes, website, tag, fitScore);
+        insertOne.run(
+          company,
+          status,
+          notes,
+          website,
+          tag,
+          fitScore,
+          appliedAt || null,
+          followupAt || null,
+          priority || 'Medium',
+          focusTags || ''
+        );
       }
     });
   });
@@ -190,7 +269,7 @@ app.get('/api/internships', (req, res) => {
 });
 
 app.post('/api/internships', (req, res) => {
-  const { company, status, notes, website, tag } = req.body || {};
+  const { company, status, notes, website, tag, applied_at, followup_at, priority, focus_tags } = req.body || {};
   if (!company || typeof company !== 'string') {
     return res.status(400).json({ error: 'Company is required.' });
   }
@@ -208,7 +287,11 @@ app.post('/api/internships', (req, res) => {
     notes ? String(notes) : '',
     website ? String(website) : '',
     tag ? String(tag) : '',
-    fitScore
+    fitScore,
+    applied_at ? String(applied_at) : null,
+    followup_at ? String(followup_at) : null,
+    priority ? String(priority) : 'Medium',
+    focus_tags ? String(focus_tags) : ''
   );
   syncExcel();
   res.status(201).json({ id: info.lastInsertRowid });
@@ -216,7 +299,7 @@ app.post('/api/internships', (req, res) => {
 
 app.put('/api/internships/:id', (req, res) => {
   const { id } = req.params;
-  const { company, status, notes, website, tag } = req.body || {};
+  const { company, status, notes, website, tag, applied_at, followup_at, priority, focus_tags } = req.body || {};
   if (!company || typeof company !== 'string') {
     return res.status(400).json({ error: 'Company is required.' });
   }
@@ -235,6 +318,10 @@ app.put('/api/internships/:id', (req, res) => {
     website ? String(website) : '',
     tag ? String(tag) : '',
     fitScore,
+    applied_at ? String(applied_at) : null,
+    followup_at ? String(followup_at) : null,
+    priority ? String(priority) : 'Medium',
+    focus_tags ? String(focus_tags) : '',
     Number(id)
   );
   if (info.changes === 0) {
@@ -275,6 +362,7 @@ app.listen(port, () => {
     syncFromExcel();
   }
   backfillFitScores();
+  backfillPriority();
   syncExcel();
   console.log(`Server running on http://localhost:${port}`);
 });

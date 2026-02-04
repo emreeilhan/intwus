@@ -35,6 +35,10 @@ db.exec(`
     website TEXT,
     tag TEXT,
     fit_score INTEGER DEFAULT 0,
+    applied_at TEXT,
+    followup_at TEXT,
+    priority TEXT DEFAULT 'Medium',
+    focus_tags TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
@@ -44,6 +48,22 @@ const columns = db.prepare(`PRAGMA table_info(internships);`).all();
 const hasFitScore = columns.some((col) => col.name === 'fit_score');
 if (!hasFitScore) {
   db.exec(`ALTER TABLE internships ADD COLUMN fit_score INTEGER DEFAULT 0;`);
+}
+const hasAppliedAt = columns.some((col) => col.name === 'applied_at');
+if (!hasAppliedAt) {
+  db.exec(`ALTER TABLE internships ADD COLUMN applied_at TEXT;`);
+}
+const hasFollowupAt = columns.some((col) => col.name === 'followup_at');
+if (!hasFollowupAt) {
+  db.exec(`ALTER TABLE internships ADD COLUMN followup_at TEXT;`);
+}
+const hasPriority = columns.some((col) => col.name === 'priority');
+if (!hasPriority) {
+  db.exec(`ALTER TABLE internships ADD COLUMN priority TEXT DEFAULT 'Medium';`);
+}
+const hasFocusTags = columns.some((col) => col.name === 'focus_tags');
+if (!hasFocusTags) {
+  db.exec(`ALTER TABLE internships ADD COLUMN focus_tags TEXT DEFAULT '';`);
 }
 
 if (replace) {
@@ -56,8 +76,8 @@ const sheet = workbook.Sheets[sheetName];
 const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
 
 const insert = db.prepare(`
-  INSERT INTO internships (company, status, notes, website, tag, fit_score, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+  INSERT INTO internships (company, status, notes, website, tag, fit_score, applied_at, followup_at, priority, focus_tags, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 `);
 
 let inserted = 0;
@@ -81,6 +101,10 @@ for (const row of rows) {
   const tag = row['Şehir'] || row['Sehir'] || row['Tag'] || row['tag'] || '';
   const status = row['Durum'] || row['Status'] || row['status'] || 'Researching';
   const fitScore = Number(row['Fit Score'] || row['FitScore'] || 0) || 0;
+  const appliedAt = row['Applied At'] || row['AppliedAt'] || '';
+  const followupAt = row['Follow-up At'] || row['Followup At'] || row['FollowupAt'] || '';
+  const priority = row['Priority'] || 'Medium';
+  const focusTags = row['Focus Tags'] || row['FocusTags'] || '';
 
   insert.run(
     String(company).trim(),
@@ -88,14 +112,18 @@ for (const row of rows) {
     String(notes).trim(),
     String(website).trim(),
     String(tag).trim(),
-    fitScore
+    fitScore,
+    appliedAt ? String(appliedAt).trim() : null,
+    followupAt ? String(followupAt).trim() : null,
+    String(priority).trim() || 'Medium',
+    String(focusTags).trim()
   );
   inserted += 1;
 }
 
 const rowsForExcel = db
   .prepare(
-    `SELECT company, status, notes, website, tag, fit_score, created_at, updated_at FROM internships ORDER BY id DESC`
+    `SELECT company, status, notes, website, tag, fit_score, applied_at, followup_at, priority, focus_tags, created_at, updated_at FROM internships ORDER BY id DESC`
   )
   .all();
 
@@ -106,6 +134,10 @@ const header = [[
   'Website',
   'Tag',
   'Fit Score',
+  'Applied At',
+  'Follow-up At',
+  'Priority',
+  'Focus Tags',
   'Created At',
   'Updated At'
 ]];
@@ -116,6 +148,10 @@ const body = rowsForExcel.map((row) => [
   row.website || '',
   row.tag || '',
   row.fit_score ?? 0,
+  row.applied_at || '',
+  row.followup_at || '',
+  row.priority || 'Medium',
+  row.focus_tags || '',
   row.created_at,
   row.updated_at
 ]);

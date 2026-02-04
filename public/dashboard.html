@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Internship Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <div class="content-wrap">
+        <header class="page-header">
+          <div class="header-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path
+                d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z"
+              />
+            </svg>
+          </div>
+          <div class="header-text">
+            <p class="header-title">Dashboard</p>
+          </div>
+          <div class="controls">
+            <a class="ghost small nav-link" href="/">Back</a>
+          </div>
+        </header>
+
+        <section class="dashboard">
+          <div class="dash-card">
+            <div class="dash-label">Top City</div>
+            <div class="dash-value" id="dashTopCity">-</div>
+            <div class="dash-sub" id="dashTopCityCount">0 entries</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">Top Country</div>
+            <div class="dash-value" id="dashTopCountry">-</div>
+            <div class="dash-sub" id="dashTopCountryCount">0 entries</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">Unique Cities</div>
+            <div class="dash-value" id="dashCityCount">0</div>
+            <div class="dash-sub">Cities tracked</div>
+          </div>
+        </section>
+
+        <div class="layout">
+          <section class="table-card">
+            <div class="table-header">
+              <div class="table-title">Applied By Month</div>
+              <div class="table-count" id="appliedCount">0 total</div>
+            </div>
+            <div class="bar-list" id="appliedBars"></div>
+            <div class="empty-state" id="dashboardEmpty">
+              <div class="empty-icon">📊</div>
+              <div class="empty-title">No analytics yet</div>
+              <div class="empty-sub">Add a few internships to unlock dashboard insights.</div>
+              <a class="ghost" href="/">Add entries</a>
+            </div>
+          </section>
+
+          <aside class="side">
+            <div class="side-card">
+              <div class="side-title">Top Cities</div>
+              <div class="bar-list" id="dashCityBars"></div>
+            </div>
+            <div class="side-card">
+              <div class="side-title">Top Countries</div>
+              <div class="bar-list" id="dashCountryBars"></div>
+            </div>
+            <div class="side-card">
+              <div class="side-title">Follow-up Due (14 days)</div>
+              <div class="mini-table" id="followupList"></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <script src="/dashboard.js"></script>
+  </body>
+</html>
