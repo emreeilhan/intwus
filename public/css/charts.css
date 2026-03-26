@@ -1,0 +1,286 @@
+
+.dash-label,
+.mini-label {
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.dash-value {
+  font-size: 1.28rem;
+  font-weight: 650;
+  margin-bottom: 2px;
+}
+
+.dash-sub {
+  font-size: 0.82rem;
+}
+
+.side {
+  display: grid;
+  gap: 12px;
+}
+
+.side-card .side-title {
+  margin-bottom: 10px;
+  font-weight: 650;
+}
+
+.bar-list {
+  display: grid;
+  gap: 8px;
+}
+
+.chart-wrap {
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chart-surface {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.02), rgba(17, 24, 39, 0));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.trend-chart {
+  width: 100%;
+  height: 220px;
+  display: block;
+}
+
+.trend-chart line {
+  stroke: rgba(17, 24, 39, 0.06);
+  stroke-width: 1;
+}
+
+.trend-chart text {
+  fill: var(--muted);
+  font-size: 10px;
+}
+
+.trend-chart circle {
+  fill: #111827;
+}
+
+.chart-caption {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chart-grid-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chart-grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.chart-panel {
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chart-panel:last-child {
+  border-bottom: 0;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.panel-kpi {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.panel-kpi.subtle {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.status-mix,
+.priority-mix {
+  display: grid;
+  gap: 10px;
+}
+
+.mix-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.mix-label {
+  min-width: 78px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mix-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.06);
+  overflow: hidden;
+}
+
+.mix-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #c4c9d4;
+}
+
+.stacked-chart {
+  display: grid;
+  gap: 10px;
+}
+
+.stack-item {
+  display: grid;
+  gap: 6px;
+}
+
+.stack-item header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.82rem;
+}
+
+.stack-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.06);
+  overflow: hidden;
+  display: flex;
+}
+
+.stack-seg {
+  height: 100%;
+}
+
+.donut-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 8px 0 4px;
+}
+
+.donut-chart {
+  width: 220px;
+  height: 220px;
+}
+
+.donut-center {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+}
+
+.donut-kpi {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.donut-sub {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.heat-cell {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  min-height: 74px;
+  display: grid;
+  gap: 6px;
+}
+
+.heat-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.heat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.heat-fill {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.06);
+  overflow: hidden;
+}
+
+.heat-fill > div {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.momentum-bars {
+  display: grid;
+  gap: 8px;
+}
+
+.calendar-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.calendar-scale {
+  display: flex;
+  gap: 6px;
+}
+
+.calendar-scale span,
+.calendar-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: rgba(17, 24, 39, 0.06);
+}
+
+.calendar-heatmap {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}

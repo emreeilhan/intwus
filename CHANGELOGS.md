@@ -63,3 +63,15 @@
 0.0.16
 - Standardized all select pickers into a single modern control style with custom chevrons, cleaner spacing, and better focus states.
 - Harmonized picker appearance across light and dark themes so filters, saved views, and inline status controls feel like one system.
+
+0.0.17
+- Added subtle colored dot accents across navigation, cards, statuses, and priorities to give the UI a more polished and legible visual rhythm.
+- Kept the color usage restrained so the interface still reads calm and professional instead of decorative.
+
+0.0.18
+- Reworked select chevrons to use a single clean icon so picker controls no longer render awkward crossed shapes in compact layouts.
+- Tightened status pill styling to keep the inline selectors readable and visually balanced in both light and dark themes.
+
+0.0.19
+- Split the stylesheet into modular CSS entrypoints so base, layout, charts, and responsive rules are easier to maintain independently.
+- Kept the public `styles.css` file as a thin import layer so the app structure stays stable while the stylesheet becomes easier to scale.
