@@ -19,14 +19,27 @@
           </div>
           <div class="header-text">
             <p class="header-title">Internship Application Tracker</p>
-            <p class="header-subtitle">Workspace · Notes-first structure · Quiet UI</p>
+            <p class="header-subtitle">Focused pipeline for research, applications, interviews, and follow-ups.</p>
           </div>
           <div class="controls compact">
+            <button class="ghost small" id="themeToggleBtn" type="button" aria-label="Toggle theme">Dark mode</button>
+            <button class="ghost small" id="exportBtn" type="button">Export</button>
+            <a class="ghost small nav-link" href="/dashboard">Dashboard</a>
+          </div>
+        </header>
+
+        <section class="workspace-hero">
+          <div class="workspace-copy">
+            <p class="workspace-eyebrow">Application workspace</p>
+            <h1 class="workspace-title">See the pipeline, then act on the next best application.</h1>
+            <p class="workspace-subtitle">Saved views, filters, and row controls stay close, but the focus is on what needs attention now.</p>
+          </div>
+          <div class="workspace-actions">
             <div class="saved-view-control">
               <select id="savedViewSelect" class="country-filter" aria-label="Saved views">
                 <option value="">Saved views</option>
               </select>
-              <button class="ghost small" id="savedViewActionBtn" type="button">View actions</button>
+              <button class="ghost small" id="savedViewActionBtn" type="button">Manage</button>
               <div class="saved-view-menu" id="savedViewMenu" aria-hidden="true">
                 <button class="menu-item" id="applySavedViewBtn" type="button">Apply</button>
                 <button class="menu-item" id="saveViewBtn" type="button">Save current as new</button>
@@ -35,17 +48,32 @@
                 <button class="menu-item danger" id="deleteViewBtn" type="button">Delete</button>
               </div>
             </div>
-            <button class="ghost small" id="themeToggleBtn" type="button" aria-label="Toggle theme">Dark mode</button>
-            <button class="ghost small" id="quickAddBtn" type="button">Quick Add</button>
-            <button class="icon-btn" id="exportBtn" type="button" title="Download Excel" aria-label="Download Excel">
-              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <path
-                  d="M12 3a1 1 0 0 1 1 1v8.6l2.3-2.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L11 12.6V4a1 1 0 0 1 1-1Zm-7 14a1 1 0 0 1 1 1v1h12v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"
-                />
-              </svg>
-            </button>
+            <button class="small" id="quickAddBtn" type="button">Add internship</button>
           </div>
-        </header>
+        </section>
+
+        <section class="workspace-summary" aria-label="Pipeline summary">
+          <div class="summary-card">
+            <div class="summary-label">Tracked</div>
+            <div class="summary-value" id="summaryTracked">0</div>
+            <div class="summary-sub" id="summaryTrackedSub">All records</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Ready To Move</div>
+            <div class="summary-value" id="summaryReady">0</div>
+            <div class="summary-sub" id="summaryReadySub">Ready to apply or follow up</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Active Pipeline</div>
+            <div class="summary-value" id="summaryActive">0</div>
+            <div class="summary-sub" id="summaryActiveSub">Researching through interview</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Applied</div>
+            <div class="summary-value" id="summaryApplied">0</div>
+            <div class="summary-sub" id="summaryAppliedSub">Already submitted</div>
+          </div>
+        </section>
 
         <div class="nav-row">
           <select id="statusFilter" class="sr-only" aria-hidden="true">
@@ -88,14 +116,14 @@
               </span>
               <input id="search" type="search" placeholder="Search" aria-label="Search internships" />
             </div>
-            <button class="pill button" id="followupChip" type="button">Upcoming Follow-ups</button>
-            <a class="ghost small nav-link" href="/dashboard">Dashboard</a>
+            <button class="pill button" id="followupChip" type="button">Needs follow-up</button>
           </div>
         </div>
 
-        <div class="filter-row">
-          <div class="filters">
-            <div class="table-title" id="pageTitle">All</div>
+        <div class="filter-row section-intro">
+          <div class="section-copy">
+            <div class="table-title" id="pageTitle">All applications</div>
+            <div class="table-description" id="pageDescription">Priority-sorted tracker with inline status control and next-step context.</div>
             <div class="filters" id="filterChips"></div>
           </div>
           <div class="table-count" id="count">0 entries</div>
@@ -105,6 +133,7 @@
           <div class="table">
             <div class="table-row table-head">
               <div class="cell">Company</div>
+              <div class="cell">Next step</div>
               <div class="cell">Status</div>
             </div>
             <div id="list" class="table-body"></div>

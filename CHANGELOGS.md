@@ -87,3 +87,7 @@
 0.0.22
 - Refined picker interaction states with softer hover surfaces and cleaner focus rings so the controls feel more intentional without extra decoration.
 - Kept the native picker behavior intact while improving the tactile feel across light and dark themes.
+
+0.0.23
+- Reworked the tracker into a clearer decision workspace with a true top-level summary, calmer control hierarchy, and richer application rows that surface next-step context directly.
+- Simplified the dashboard into a more operational analytics view so pipeline health, market concentration, and follow-up pressure are easier to act on quickly.

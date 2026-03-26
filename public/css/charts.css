@@ -284,3 +284,62 @@
   overflow-x: auto;
   padding-bottom: 2px;
 }
+
+.dashboard-layout {
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.72fr);
+  align-items: start;
+}
+
+.analytics-shell {
+  overflow: hidden;
+}
+
+.side-card .side-title {
+  margin-bottom: 0;
+}
+
+.chart-surface {
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.06), rgba(17, 24, 39, 0));
+  border-radius: 18px;
+}
+
+.chart-panel {
+  padding: 18px;
+}
+
+.compact-panel {
+  padding-top: 6px;
+}
+
+.panel-head {
+  margin-bottom: 12px;
+}
+
+.panel-caption {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.mix-label {
+  min-width: 96px;
+}
+
+.mini-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.82rem;
+}
+
+.mini-row:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 1120px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+}

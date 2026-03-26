@@ -108,6 +108,11 @@
   .chart-grid-three {
     grid-template-columns: 1fr;
   }
+
+  .workspace-summary,
+  .dashboard-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .mini-row {
@@ -195,6 +200,7 @@
 @media (max-width: 900px) {
   .page { padding: 18px 12px 28px; }
   .page-header,
+  .workspace-hero,
   .nav-row,
   .filter-row {
     grid-template-columns: 1fr;
@@ -203,9 +209,25 @@
   }
   .page-header { gap: 12px; }
   .controls,
-  .filters-right { justify-content: flex-start; }
-  .row-main { grid-template-columns: 1fr; gap: 8px; padding-block: 12px; }
-  .row-actions { padding: 0 12px 12px; opacity: 1; pointer-events: auto; }
+  .filters-right,
+  .workspace-actions { justify-content: flex-start; }
+  .workspace-title { max-width: 14ch; }
+  .workspace-summary,
+  .dashboard-kpis { grid-template-columns: 1fr; }
+  .row-main {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 16px 14px 54px;
+    align-items: start;
+  }
+  .row-actions {
+    left: 14px;
+    right: 14px;
+    bottom: 12px;
+    justify-content: flex-start;
+    opacity: 1;
+    pointer-events: auto;
+  }
   .table-row { grid-template-columns: 1fr; }
   .drawer { width: min(100vw, 100%); border-radius: 16px 16px 0 0; }
   .drawer-grid { grid-template-columns: 1fr; }

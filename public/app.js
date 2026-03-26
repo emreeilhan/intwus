@@ -15,6 +15,7 @@ const cancelBtn = el('cancelBtn');
 const filterChips = el('filterChips');
 const followupChip = el('followupChip');
 const pageTitle = el('pageTitle');
+const pageDescription = el('pageDescription');
 const statusNav = el('statusNav');
 const quickAddBtn = el('quickAddBtn');
 const quickAddPanel = el('quickAddPanel');
@@ -55,6 +56,14 @@ const commandPalette = el('commandPalette');
 const commandInput = el('commandInput');
 const commandList = el('commandList');
 const themeToggleBtn = el('themeToggleBtn');
+const summaryTracked = el('summaryTracked');
+const summaryTrackedSub = el('summaryTrackedSub');
+const summaryReady = el('summaryReady');
+const summaryReadySub = el('summaryReadySub');
+const summaryActive = el('summaryActive');
+const summaryActiveSub = el('summaryActiveSub');
+const summaryApplied = el('summaryApplied');
+const summaryAppliedSub = el('summaryAppliedSub');
 
 const themeKey = 'staj-theme';
 const STATUS_FLOW = ['Researching', 'Ready to Apply', 'Applied', 'Interview', 'Offer', 'Rejected', 'Paused'];
@@ -150,6 +159,92 @@ function isFollowupDue(value) {
   const target = new Date(value);
   if (Number.isNaN(target.getTime())) return false;
   return target.getTime() - today.setHours(0, 0, 0, 0) <= 7 * 24 * 60 * 60 * 1000;
+}
+
+function startOfToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+function formatDateLabel(value) {
+  if (!value) return 'No date';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatDistanceInDays(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const diffDays = Math.round((date.getTime() - startOfToday().getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays === -1) return '1 day late';
+  if (diffDays < 0) return `${Math.abs(diffDays)} days late`;
+  return `In ${diffDays} days`;
+}
+
+function nextStepForEntry(entry) {
+  const status = String(entry.status || 'Researching');
+  const followupLabel = entry.followup_at ? `${formatDateLabel(entry.followup_at)} · ${formatDistanceInDays(entry.followup_at)}` : '';
+  if (status === 'Ready to Apply') {
+    return {
+      title: 'Submit application',
+      detail: entry.applied_at ? `Marked for ${formatDateLabel(entry.applied_at)}` : 'Everything needed is in place.'
+    };
+  }
+  if (status === 'Applied') {
+    return {
+      title: entry.followup_at ? 'Prepare follow-up' : 'Wait for response',
+      detail: followupLabel || (entry.applied_at ? `Applied ${formatDateLabel(entry.applied_at)}` : 'Submission logged.')
+    };
+  }
+  if (status === 'Interview') {
+    return {
+      title: 'Prepare interview',
+      detail: followupLabel || 'Capture prep notes and expected timeline.'
+    };
+  }
+  if (status === 'Offer') {
+    return {
+      title: 'Review offer',
+      detail: 'Compare timing, team, and location before deciding.'
+    };
+  }
+  if (status === 'Rejected') {
+    return {
+      title: 'Archive learnings',
+      detail: 'Keep notes for the next pass.'
+    };
+  }
+  if (status === 'Paused') {
+    return {
+      title: 'Revisit later',
+      detail: followupLabel || 'Not active right now.'
+    };
+  }
+  return {
+    title: entry.followup_at ? 'Review before follow-up' : 'Research role fit',
+    detail: followupLabel || 'Validate scope, stack, and location.'
+  };
+}
+
+function renderPipelineSummary(filtered) {
+  const activeCount = entries.filter((entry) => ['Researching', 'Ready to Apply', 'Applied', 'Interview'].includes(entry.status)).length;
+  const readyCount = entries.filter((entry) => entry.status === 'Ready to Apply' || isFollowupDue(entry.followup_at)).length;
+  const appliedCount = entries.filter((entry) => entry.status === 'Applied').length;
+  const appliedPct = entries.length ? (appliedCount ? Math.max(1, Math.round((appliedCount / entries.length) * 100)) : 0) : 0;
+
+  if (summaryTracked) summaryTracked.textContent = String(entries.length);
+  if (summaryTrackedSub) summaryTrackedSub.textContent = `${filtered.length} in current view`;
+  if (summaryReady) summaryReady.textContent = String(readyCount);
+  if (summaryReadySub) summaryReadySub.textContent = `${entries.filter((entry) => entry.status === 'Ready to Apply').length} ready, ${entries.filter((entry) => isFollowupDue(entry.followup_at)).length} follow-up soon`;
+  if (summaryActive) summaryActive.textContent = String(activeCount);
+  if (summaryActiveSub) summaryActiveSub.textContent = `${entries.length ? Math.round((activeCount / entries.length) * 100) : 0}% of tracker still in motion`;
+  if (summaryApplied) summaryApplied.textContent = String(appliedCount);
+  if (summaryAppliedSub) summaryAppliedSub.textContent = entries.length ? `${appliedPct}% of all tracked roles` : 'No submissions yet';
 }
 
 function applyTheme(theme) {
@@ -430,8 +525,16 @@ function renderList() {
   });
 
   lastFiltered = filtered;
+  renderPipelineSummary(filtered);
   count.textContent = `${filtered.length} entr${filtered.length === 1 ? 'y' : 'ies'}`;
-  pageTitle.textContent = el('statusFilter').value.trim() || 'All';
+  pageTitle.textContent = el('statusFilter').value.trim() ? `${el('statusFilter').value.trim()} applications` : 'All applications';
+  if (pageDescription) {
+    pageDescription.textContent = followupOnly
+      ? 'Showing applications that need follow-up attention within the next 7 days.'
+      : filtered.length === entries.length
+        ? 'Priority-sorted tracker with inline status control and next-step context.'
+        : `Filtered view across ${filtered.length} matching applications.`;
+  }
   renderFilterChips();
   syncNav();
 
@@ -448,21 +551,40 @@ function renderList() {
     row.className = 'table-row';
     if (String(activeEntryId) === String(entry.id)) row.classList.add('selected');
     const websiteUrl = normalizeUrl(entry.website || '');
+    const nextStep = nextStepForEntry(entry);
+    const location = entry.tag ? escapeHtml(entry.tag) : 'Location not added';
+    const notes = entry.notes ? escapeHtml(entry.notes) : '';
+    const followupText = entry.followup_at ? `${formatDateLabel(entry.followup_at)} · ${formatDistanceInDays(entry.followup_at)}` : 'No follow-up date';
+    const appliedText = entry.applied_at ? `Applied ${formatDateLabel(entry.applied_at)}` : 'Not applied yet';
+    const followupClass = isFollowupDue(entry.followup_at) ? 'meta-chip urgent' : 'meta-chip';
+    const priorityText = escapeHtml(entry.priority || 'Medium');
     row.innerHTML = `
       <button class="row-main" type="button" data-action="open" data-id="${entry.id}">
         <span class="company-cell">
-          <strong>${escapeHtml(entry.company)}</strong>
-          ${entry.tag ? `<span class="row-meta">${escapeHtml(entry.tag)}</span>` : ''}
+          <span class="company-topline">
+            <strong>${escapeHtml(entry.company)}</strong>
+            <span class="priority-badge priority-${String(entry.priority || 'Medium').toLowerCase()}">${priorityText}</span>
+          </span>
+          <span class="row-meta">${location}</span>
+          <span class="row-meta-grid">
+            <span class="${followupClass}">${escapeHtml(followupText)}</span>
+            <span class="meta-chip">${escapeHtml(appliedText)}</span>
+            ${websiteUrl ? `<span class="meta-chip">${escapeHtml(websiteUrl.replace(/^https?:\/\//, ''))}</span>` : ''}
+          </span>
+          ${notes ? `<span class="row-notes">${notes}</span>` : ''}
+        </span>
+        <span class="next-step-cell">
+          <span class="next-step-title">${escapeHtml(nextStep.title)}</span>
+          <span class="next-step-detail">${escapeHtml(nextStep.detail)}</span>
         </span>
         <span class="status-wrap">
           <select class="status-pill ${statusClass(entry.status)}" data-action="status-select" data-id="${entry.id}" aria-label="Change status">
             ${STATUS_FLOW.map((status) => `<option value="${escapeHtml(status)}" ${status.toLowerCase() === String(entry.status || '').toLowerCase() ? 'selected' : ''}>${escapeHtml(status)}</option>`).join('')}
           </select>
-          <span class="priority-dot priority-${String(entry.priority || 'Medium').toLowerCase()}" title="${escapeHtml(entry.priority || 'Medium')}"></span>
         </span>
       </button>
       <div class="row-actions">
-        <button class="ghost tiny" data-action="applied" data-id="${entry.id}">Mark Applied</button>
+        <button class="ghost tiny" data-action="applied" data-id="${entry.id}">Set Applied</button>
         <button class="ghost tiny" data-action="edit" data-id="${entry.id}">Edit</button>
         <button class="ghost tiny danger" data-action="delete" data-id="${entry.id}">Delete</button>
       </div>

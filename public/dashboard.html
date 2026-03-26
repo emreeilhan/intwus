@@ -19,7 +19,7 @@
           </div>
           <div class="header-text">
             <p class="header-title">Dashboard</p>
-            <p class="header-subtitle">Workspace · Structured insights · Quiet signals</p>
+            <p class="header-subtitle">Pipeline health, market concentration, and short-term action load.</p>
           </div>
           <div class="controls">
             <button class="ghost small" id="themeToggleBtn" type="button" aria-label="Toggle theme">Dark mode</button>
@@ -27,21 +27,29 @@
           </div>
         </header>
 
-        <section class="dashboard">
+        <section class="workspace-hero dashboard-hero">
+          <div class="workspace-copy">
+            <p class="workspace-eyebrow">Decision view</p>
+            <h1 class="workspace-title">A calmer dashboard built for deciding where to push next.</h1>
+            <p class="workspace-subtitle" id="dashboardFocusSummary">Review readiness, concentration, and follow-up pressure without drowning in decorative analytics.</p>
+          </div>
+        </section>
+
+        <section class="dashboard dashboard-kpis">
           <div class="dash-card">
-            <div class="dash-label">Top City</div>
-            <div class="dash-value" id="dashTopCity">-</div>
-            <div class="dash-sub" id="dashTopCityCount">0 entries</div>
+            <div class="dash-label">Tracked</div>
+            <div class="dash-value" id="dashTracked">0</div>
+            <div class="dash-sub" id="dashTrackedSub">All internships</div>
           </div>
           <div class="dash-card">
-            <div class="dash-label">Top Country</div>
-            <div class="dash-value" id="dashTopCountry">-</div>
-            <div class="dash-sub" id="dashTopCountryCount">0 entries</div>
+            <div class="dash-label">Active Pipeline</div>
+            <div class="dash-value" id="dashActivePipeline">0</div>
+            <div class="dash-sub" id="dashActivePipelineSub">Researching through interview</div>
           </div>
           <div class="dash-card">
-            <div class="dash-label">Unique Cities</div>
-            <div class="dash-value" id="dashCityCount">0</div>
-            <div class="dash-sub">Cities tracked</div>
+            <div class="dash-label">Ready Now</div>
+            <div class="dash-value" id="dashReadyNow">0</div>
+            <div class="dash-sub" id="dashReadyNowSub">Ready to apply or follow up</div>
           </div>
           <div class="dash-card">
             <div class="dash-label">Applied Rate</div>
@@ -55,101 +63,74 @@
           </div>
         </section>
 
-        <div class="layout">
-          <section class="table-card">
+        <div class="layout dashboard-layout">
+          <section class="table-card analytics-shell">
             <div class="table-header">
-              <div class="table-title">Application Trend</div>
+              <div>
+                <div class="table-title">Pipeline trend</div>
+                <div class="table-description">How submission activity has been building across recent months.</div>
+              </div>
               <div class="table-count" id="appliedCount">0 total</div>
             </div>
             <div class="chart-wrap">
               <div class="chart-surface">
                 <svg id="trendChart" class="trend-chart" viewBox="0 0 640 220" preserveAspectRatio="none" aria-label="Applications trend chart" role="img"></svg>
               </div>
-              <div class="chart-caption" id="trendCaption">Monthly applications and moving activity</div>
+              <div class="chart-caption" id="trendCaption">Monthly application entries over the last year.</div>
             </div>
             <div class="chart-grid">
               <div class="chart-panel">
                 <div class="panel-head">
-                  <div class="side-title">Status Mix</div>
+                  <div>
+                    <div class="side-title">Stage distribution</div>
+                    <div class="panel-caption">See where the pipeline is concentrated.</div>
+                  </div>
                   <div class="panel-kpi" id="statusMixTotal">0</div>
                 </div>
                 <div id="statusMix" class="status-mix"></div>
               </div>
               <div class="chart-panel">
                 <div class="panel-head">
-                  <div class="side-title">Priority Mix</div>
+                  <div>
+                    <div class="side-title">Priority load</div>
+                    <div class="panel-caption">High-value targets versus the long tail.</div>
+                  </div>
                   <div class="panel-kpi" id="priorityMixTotal">0</div>
                 </div>
                 <div id="priorityMix" class="priority-mix"></div>
               </div>
             </div>
-            <div class="chart-grid chart-grid-three">
-              <div class="chart-panel">
-                <div class="panel-head">
-                  <div class="side-title">Status Donut</div>
-                  <div class="panel-kpi subtle">Share by stage</div>
-                </div>
-                <div class="donut-wrap">
-                  <svg id="statusDonut" class="donut-chart" viewBox="0 0 220 220" aria-label="Status donut chart" role="img"></svg>
-                  <div class="donut-center">
-                    <div class="donut-kpi" id="statusDonutKpi">0</div>
-                    <div class="donut-sub">records</div>
-                  </div>
-                </div>
-              </div>
-              <div class="chart-panel">
-                <div class="panel-head">
-                  <div class="side-title">Priority Heat</div>
-                  <div class="panel-kpi subtle">Count intensity</div>
-                </div>
-                <div id="priorityHeat" class="heatmap-grid"></div>
-              </div>
-              <div class="chart-panel">
-                <div class="panel-head">
-                  <div class="side-title">Monthly Momentum</div>
-                  <div class="panel-kpi subtle">Applied vs total</div>
-                </div>
-                <div id="momentumBars" class="momentum-bars"></div>
-              </div>
-            </div>
-            <div class="chart-panel">
-              <div class="panel-head">
-                <div class="side-title">Applied By Month</div>
-                <div class="panel-kpi subtle">Latest 12 months</div>
-              </div>
-              <div class="bar-list" id="appliedBars"></div>
-            </div>
-            <div class="chart-panel">
-              <div class="panel-head">
-                <div class="side-title">Activity Heatmap</div>
-                <div class="panel-kpi subtle">Daily density, last 12 weeks</div>
-              </div>
-              <div class="calendar-wrap">
-                <div class="calendar-legend">
-                  <span>Low</span>
-                  <div class="calendar-scale">
-                    <span></span><span></span><span></span><span></span>
-                  </div>
-                  <span>High</span>
-                </div>
-                <div id="calendarHeatmap" class="calendar-heatmap"></div>
-              </div>
-            </div>
             <div class="chart-grid chart-grid-two">
               <div class="chart-panel">
                 <div class="panel-head">
-                  <div class="side-title">Lead Time Buckets</div>
-                  <div class="panel-kpi subtle">Applied to follow-up</div>
+                  <div>
+                    <div class="side-title">Momentum</div>
+                    <div class="panel-caption">Applied share compared with total monthly activity.</div>
+                  </div>
+                  <div class="panel-kpi subtle">Recent months</div>
                 </div>
-                <div id="leadTimeBars" class="bar-list"></div>
+                <div id="momentumBars" class="momentum-bars"></div>
               </div>
               <div class="chart-panel">
                 <div class="panel-head">
-                  <div class="side-title">Top Status Flow</div>
-                  <div class="panel-kpi subtle">Stacked ranking</div>
+                  <div>
+                    <div class="side-title">Lead time</div>
+                    <div class="panel-caption">Time between application and follow-up scheduling.</div>
+                  </div>
+                  <div class="panel-kpi subtle">Quality of process</div>
                 </div>
-                <div id="statusFlowStack" class="stacked-chart"></div>
+                <div id="leadTimeBars" class="bar-list"></div>
               </div>
+            </div>
+            <div class="chart-panel compact-panel">
+              <div class="panel-head">
+                <div>
+                  <div class="side-title">Applications by month</div>
+                  <div class="panel-caption">Raw submission volume across the latest 12 months.</div>
+                </div>
+                <div class="panel-kpi subtle">Latest 12 months</div>
+              </div>
+              <div class="bar-list" id="appliedBars"></div>
             </div>
             <div class="empty-state" id="dashboardEmpty">
               <div class="empty-icon">📊</div>
@@ -161,19 +142,42 @@
 
           <aside class="side">
             <div class="side-card">
-              <div class="side-title">Geo Spread</div>
+              <div class="panel-head">
+                <div>
+                  <div class="side-title">Focus markets</div>
+                  <div class="panel-caption">Where the pipeline is most concentrated right now.</div>
+                </div>
+                <div class="panel-kpi subtle" id="dashTopCountry">-</div>
+              </div>
               <div class="stacked-chart" id="geoSpread"></div>
             </div>
             <div class="side-card">
-              <div class="side-title">Top Cities</div>
+              <div class="panel-head">
+                <div>
+                  <div class="side-title">Top cities</div>
+                  <div class="panel-caption" id="dashTopCityCount">0 entries</div>
+                </div>
+                <div class="panel-kpi" id="dashTopCity">-</div>
+              </div>
               <div class="bar-list" id="dashCityBars"></div>
             </div>
             <div class="side-card">
-              <div class="side-title">Top Countries</div>
+              <div class="panel-head">
+                <div>
+                  <div class="side-title">Top countries</div>
+                  <div class="panel-caption" id="dashTopCountryCount">0 entries</div>
+                </div>
+                <div class="panel-kpi" id="dashCityCount">0</div>
+              </div>
               <div class="bar-list" id="dashCountryBars"></div>
             </div>
             <div class="side-card">
-              <div class="side-title">Follow-up Due (14 days)</div>
+              <div class="panel-head">
+                <div>
+                  <div class="side-title">Follow-up queue</div>
+                  <div class="panel-caption">Sorted by due date within the next 14 days.</div>
+                </div>
+              </div>
               <div class="mini-table" id="followupList"></div>
             </div>
           </aside>

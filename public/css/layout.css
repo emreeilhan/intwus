@@ -1,11 +1,14 @@
 .row-actions {
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
   display: flex;
   gap: 6px;
-  padding-right: 14px;
   opacity: 0;
   pointer-events: none;
   transform: translateY(2px);
   transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 2;
 }
 
 .table-row:hover .row-actions,
@@ -19,6 +22,7 @@
   color: var(--muted);
   background: transparent;
   border-color: transparent;
+  backdrop-filter: blur(8px);
 }
 
 .row-actions button.danger { color: #6b7280; }
@@ -313,8 +317,17 @@ textarea:focus {
 
 .dash-card,
 .side-card {
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.dashboard-hero {
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.dashboard-kpis {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
