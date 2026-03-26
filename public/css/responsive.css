@@ -1,191 +1,84 @@
 /* ============================================================
-   RESPONSIVE.CSS — breakpoints, utility classes, remaining component styles
+   RESPONSIVE v2 — sidebar workspace breakpoints
    ============================================================ */
 
-/* ---- Mini table (used in dashboard follow-up queue) ---- */
+/* Components used in dashboard */
 .mini-table { display: grid; gap: 6px; }
 
-/* ---- Momentum row ---- */
-.momentum-row {
-  display: grid;
-  grid-template-columns: 64px 1fr auto;
-  gap: 8px;
-  align-items: center;
-  font-size: 0.8125rem;
-}
-
-.momentum-track {
-  display: flex;
-  height: 8px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(255,255,255,0.07);
-}
+.momentum-row { display: grid; grid-template-columns: 64px 1fr auto; gap: 8px; align-items: center; font-size: 0.8125rem; }
+.momentum-track { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.07); }
 :root[data-theme="light"] .momentum-track { background: rgba(0,0,0,0.06); }
-
 .momentum-applied { height: 100%; background: rgba(59,130,246,0.65); }
 .momentum-total   { height: 100%; background: rgba(255,255,255,0.07); }
-:root[data-theme="light"] .momentum-total { background: rgba(0,0,0,0.08); }
 
-/* ---- Stacked bar ---- */
 .stacked-bar { display: grid; gap: 8px; }
 .stacked-bar-item { display: grid; gap: 5px; }
-.stacked-bar-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 0.8125rem;
-  color: var(--ink-2);
-}
-
-.stacked-bar-track {
-  display: flex;
-  height: 8px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(255,255,255,0.07);
-}
+.stacked-bar-head { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8125rem; color: var(--ink-2); }
+.stacked-bar-track { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.07); }
 :root[data-theme="light"] .stacked-bar-track { background: rgba(0,0,0,0.06); }
-
 .stacked-bar-seg { height: 100%; }
 
-/* ---- Calendar heatmap ---- */
 .calendar-week { display: grid; gap: 4px; }
 .calendar-cell { width: 14px; height: 14px; border-radius: 3px; }
 .calendar-cell.empty { border-color: transparent; background: transparent; }
-
 .calendar-cell[data-level="0"] { background: rgba(255,255,255,0.05); }
 .calendar-cell[data-level="1"] { background: rgba(59,130,246,0.2); }
 .calendar-cell[data-level="2"] { background: rgba(59,130,246,0.4); }
 .calendar-cell[data-level="3"] { background: rgba(59,130,246,0.62); }
 .calendar-cell[data-level="4"] { background: rgba(59,130,246,0.85); }
 
-:root[data-theme="light"] .calendar-cell[data-level="0"] { background: rgba(0,0,0,0.05); }
-:root[data-theme="light"] .calendar-cell[data-level="1"] { background: rgba(59,130,246,0.15); }
-:root[data-theme="light"] .calendar-cell[data-level="2"] { background: rgba(59,130,246,0.35); }
-:root[data-theme="light"] .calendar-cell[data-level="3"] { background: rgba(59,130,246,0.55); }
-:root[data-theme="light"] .calendar-cell[data-level="4"] { background: rgba(59,130,246,0.8); }
+.mini-head { color: var(--muted); font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em; }
 
-/* ---- Mini head (column labels) ---- */
-.mini-head {
-  color: var(--muted);
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-/* ---- Utility ---- */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .muted { color: var(--muted); }
 
 /* ============================================================ BREAKPOINTS */
-
-@media (max-width: 1140px) {
-  .workspace-summary,
-  .dashboard-kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .chart-grid-three {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 900px) {
-  .content-wrap { padding: 0 14px; }
+  :root { --sidebar-w: 0px; }
 
-  /* Topbar */
-  .app-topbar { gap: 8px; }
-  .header-subtitle { display: none; }
+  .app-shell { grid-template-columns: 1fr; }
 
-  /* Workspace shell — stack vertically */
-  .workspace-shell {
-    grid-template-columns: 1fr;
+  .sidebar {
+    position: fixed;
+    left: -260px;
+    width: 260px;
+    transition: left 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
   }
+  .sidebar.open { left: 0; }
 
-  /* Status rail — horizontal scroll strip on mobile */
-  .status-rail {
-    position: static;
-    height: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--line);
-    padding: 10px 0;
-  }
+  .main-panel { grid-column: 1; }
 
-  .status-rail-list {
-    flex-direction: row;
-    gap: 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding: 0 4px;
-  }
-  .status-rail-list::-webkit-scrollbar { display: none; }
+  .context-bar { padding: 12px 14px; }
 
-  .nav-item {
-    width: auto;
-    margin: 0;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
+  .list-head { padding: 0 14px; }
 
-  .workspace-main { padding: 12px 0 20px 0; }
+  .table-row { grid-template-columns: 1fr; }
+  .list-head { display: none; }
 
-  /* Summary */
-  .workspace-summary,
-  .dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-  /* Table row — stack columns */
-  .table-row { grid-template-columns: 1fr; min-height: auto; }
-  .table-head { display: none; }
-
-  .row-main { padding: 12px 14px 6px; }
+  .row-main { padding: 10px 14px 6px; }
   .next-step-cell { padding: 0 14px 6px; }
-  .status-wrap {
-    flex-direction: row;
-    align-items: center;
-    padding: 0 14px 12px;
-    min-width: 0;
-    justify-content: space-between;
-  }
-  .status-label { display: none; }
+  .status-wrap { padding: 0 14px 10px; justify-content: flex-start; }
   .row-actions {
     position: static;
     opacity: 1;
     visibility: visible;
     transform: none;
-    padding: 0 14px 12px;
+    padding: 0 14px 10px;
     flex-wrap: wrap;
   }
 
-  /* Drawer */
   .drawer {
     width: 100%;
     max-width: 100%;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    padding-bottom: 32px;
   }
-  .drawer-grid { grid-template-columns: 1fr; }
 
-  /* Dashboard */
-  .dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .chart-grid { grid-template-columns: 1fr; }
-  .decision-board { grid-template-columns: 1fr; }
+  .filter-controls { flex-wrap: wrap; }
 }
 
 @media (max-width: 600px) {
-  .workspace-summary,
-  .dashboard-kpis { grid-template-columns: 1fr; }
-  .pipeline-strip { gap: 10px; }
-  .strip-sep { display: none; }
+  .context-right { flex-direction: column; align-items: stretch; }
+  .filter-controls { gap: 4px; }
 }
