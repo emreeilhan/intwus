@@ -94,6 +94,33 @@ function parseCountry(tag) {
   return parts[parts.length - 1] || '';
 }
 
+function buildCountryOptions(items) {
+  const options = new Set();
+  items.forEach((entry) => {
+    const country = parseCountry(entry.tag);
+    if (country) options.add(country);
+  });
+  return Array.from(options).sort((a, b) => a.localeCompare(b));
+}
+
+function populateCountryFilterOptions() {
+  if (!countryFilter) return;
+  const current = countryFilter.value;
+  const countries = buildCountryOptions(entries);
+  countryFilter.innerHTML = '<option value="">All countries</option>';
+  countries.forEach((country) => {
+    const option = document.createElement('option');
+    option.value = country;
+    option.textContent = country;
+    countryFilter.appendChild(option);
+  });
+  if (current && countries.includes(current)) {
+    countryFilter.value = current;
+  } else {
+    countryFilter.value = '';
+  }
+}
+
 function countBy(list, getter) {
   const map = new Map();
   list.forEach((item) => {
@@ -255,6 +282,7 @@ async function loadSavedViews() {
 async function loadEntries() {
   const res = await fetch('/api/internships');
   entries = await res.json();
+  populateCountryFilterOptions();
   renderList();
 }
 
@@ -610,10 +638,18 @@ function renderCommands() {
   if (!commandList) return;
   const q = (commandInput?.value || '').toLowerCase().trim();
   const statusOptions = ['Applied', 'Interview', 'Offer', 'Rejected'];
+  const countries = buildCountryOptions(entries).slice(0, 8);
   const items = [
     { label: 'Add internship', action: () => { closeCommandPalette(); openQuickAdd(); } },
-    { label: 'Filter country: Turkey', action: () => { const v = Array.from(countryFilter.options).find((opt) => opt.value === 'Turkey'); if (v) countryFilter.value = 'Turkey'; renderList(); closeCommandPalette(); } },
-    { label: 'Filter country: Germany', action: () => { const v = Array.from(countryFilter.options).find((opt) => opt.value === 'Germany'); if (v) countryFilter.value = 'Germany'; renderList(); closeCommandPalette(); } },
+    ...countries.map((country) => ({
+      label: `Filter country: ${country}`,
+      action: () => {
+        const v = Array.from(countryFilter.options).find((opt) => opt.value === country);
+        if (v) countryFilter.value = country;
+        renderList();
+        closeCommandPalette();
+      }
+    })),
     ...statusOptions.map((status) => ({ label: `Change status: ${status}`, action: async () => { if (activeEntryId) { await bulkUpdate([activeEntryId], { status }); closeCommandPalette(); openDrawer(entries.find((item) => String(item.id) === String(activeEntryId))); } } }))
   ].filter((item) => !q || item.label.toLowerCase().includes(q));
   commandList.innerHTML = '';

@@ -51,3 +51,15 @@
 0.0.13
 - Shifted the UI toward a Notion-inspired editorial feel with flatter surfaces, softer radii, and quieter hierarchy.
 - Tightened spacing and title treatments across the app to feel more document-like and workspace-oriented.
+
+0.0.14
+- Fixed the country filter picker by populating it from loaded internship data instead of leaving it static.
+- Kept the current selection stable while rebuilding country options so filtering stays predictable after refreshes.
+
+0.0.15
+- Refined the visual system for a more polished, production-grade feel with tighter spacing, calmer surfaces, and better responsive behavior.
+- Made the command palette use real country options from data so keyboard shortcuts stay aligned with the current workspace state.
+
+0.0.16
+- Standardized all select pickers into a single modern control style with custom chevrons, cleaner spacing, and better focus states.
+- Harmonized picker appearance across light and dark themes so filters, saved views, and inline status controls feel like one system.
