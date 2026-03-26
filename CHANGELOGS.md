@@ -47,3 +47,7 @@
 0.0.12
 - Applied an OpenAI-inspired quiet UI pass with softer spacing, cleaner surfaces, and more restrained product styling.
 - Tuned typography and micro-interactions to make the app feel more polished without adding visual noise.
+
+0.0.13
+- Shifted the UI toward a Notion-inspired editorial feel with flatter surfaces, softer radii, and quieter hierarchy.
+- Tightened spacing and title treatments across the app to feel more document-like and workspace-oriented.
