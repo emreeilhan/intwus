@@ -91,3 +91,11 @@
 0.0.23
 - Reworked the tracker into a clearer decision workspace with a true top-level summary, calmer control hierarchy, and richer application rows that surface next-step context directly.
 - Simplified the dashboard into a more operational analytics view so pipeline health, market concentration, and follow-up pressure are easier to act on quickly.
+
+0.0.24
+- Rebuilt the app around a stronger workflow shell with top-level mode switching, a dedicated control bar, and a persistent stage rail so navigation, filtering, and execution no longer compete for the same visual space.
+- Made tracker and insights feel like two intentional modes of one product, which improves orientation and keeps large application sets easier to scan and segment.
+
+0.0.25
+- Rebuilt each application row into clear interaction zones so opening a record, reviewing the next step, changing stage, and using secondary actions now feel deliberate instead of cramped together.
+- Moved repeated row actions into a quieter progressive reveal, added a lighter stage treatment, and hardened the row behavior so the main list feels faster, cleaner, and more trustworthy in daily use.

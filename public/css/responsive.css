@@ -113,6 +113,18 @@
   .dashboard-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .workspace-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .status-rail {
+    position: static;
+  }
+
+  .status-rail-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .mini-row {
@@ -201,7 +213,7 @@
   .page { padding: 18px 12px 28px; }
   .page-header,
   .workspace-hero,
-  .nav-row,
+  .workspace-toolbar,
   .filter-row {
     grid-template-columns: 1fr;
     display: grid;
@@ -211,22 +223,35 @@
   .controls,
   .filters-right,
   .workspace-actions { justify-content: flex-start; }
+  .app-topbar { grid-template-columns: 1fr; }
+  .mode-switch { justify-self: start; }
+  .toolbar-row,
+  .toolbar-controls,
+  .toolbar-static { align-items: flex-start; }
   .workspace-title { max-width: 14ch; }
   .workspace-summary,
   .dashboard-kpis { grid-template-columns: 1fr; }
+  .status-rail-list { grid-template-columns: 1fr; }
   .row-main {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 16px 14px 54px;
+    padding: 16px 14px 8px;
     align-items: start;
+  }
+  .next-step-cell { padding: 0 14px 8px; }
+  .status-wrap {
+    justify-items: start;
+    padding: 0 14px 54px;
+    min-width: 0;
   }
   .row-actions {
     left: 14px;
     right: 14px;
+    top: auto;
     bottom: 12px;
     justify-content: flex-start;
     opacity: 1;
-    pointer-events: auto;
+    visibility: visible;
+    transform: translateY(0);
+    flex-wrap: wrap;
   }
   .table-row { grid-template-columns: 1fr; }
   .drawer { width: min(100vw, 100%); border-radius: 16px 16px 0 0; }

@@ -290,6 +290,10 @@
   align-items: start;
 }
 
+.insights-toolbar {
+  margin-top: -4px;
+}
+
 .analytics-shell {
   overflow: hidden;
 }

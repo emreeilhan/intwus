@@ -9,104 +9,44 @@
   <body>
     <div class="page">
       <div class="content-wrap">
-        <header class="page-header">
-          <div class="header-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path
-                d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z"
-              />
-            </svg>
+        <header class="page-header app-topbar">
+          <div class="app-brand">
+            <div class="header-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path
+                  d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z"
+                />
+              </svg>
+            </div>
+            <div class="header-text">
+              <p class="header-title">Internship Application Tracker</p>
+              <p class="header-subtitle">Focused pipeline for research, applications, interviews, and follow-ups.</p>
+            </div>
           </div>
-          <div class="header-text">
-            <p class="header-title">Internship Application Tracker</p>
-            <p class="header-subtitle">Focused pipeline for research, applications, interviews, and follow-ups.</p>
-          </div>
-          <div class="controls compact">
+          <nav class="mode-switch" aria-label="Primary views">
+            <a class="mode-link active" href="/">Tracker</a>
+            <a class="mode-link" href="/dashboard">Insights</a>
+          </nav>
+          <div class="controls compact utility-actions">
             <button class="ghost small" id="themeToggleBtn" type="button" aria-label="Toggle theme">Dark mode</button>
             <button class="ghost small" id="exportBtn" type="button">Export</button>
-            <a class="ghost small nav-link" href="/dashboard">Dashboard</a>
           </div>
         </header>
 
-        <section class="workspace-hero">
+        <section class="workspace-hero workspace-hero-tight">
           <div class="workspace-copy">
             <p class="workspace-eyebrow">Application workspace</p>
-            <h1 class="workspace-title">See the pipeline, then act on the next best application.</h1>
-            <p class="workspace-subtitle">Saved views, filters, and row controls stay close, but the focus is on what needs attention now.</p>
+            <h1 class="workspace-title">Everything you need to review, filter, and move applications without losing the thread.</h1>
+            <p class="workspace-subtitle">Navigation stays fixed at the top, filters live in one structured control bar, and the left rail keeps the full pipeline legible even as the list grows.</p>
           </div>
           <div class="workspace-actions">
-            <div class="saved-view-control">
-              <select id="savedViewSelect" class="country-filter" aria-label="Saved views">
-                <option value="">Saved views</option>
-              </select>
-              <button class="ghost small" id="savedViewActionBtn" type="button">Manage</button>
-              <div class="saved-view-menu" id="savedViewMenu" aria-hidden="true">
-                <button class="menu-item" id="applySavedViewBtn" type="button">Apply</button>
-                <button class="menu-item" id="saveViewBtn" type="button">Save current as new</button>
-                <button class="menu-item" id="overwriteViewBtn" type="button">Overwrite</button>
-                <button class="menu-item" id="renameViewBtn" type="button">Rename</button>
-                <button class="menu-item danger" id="deleteViewBtn" type="button">Delete</button>
-              </div>
-            </div>
             <button class="small" id="quickAddBtn" type="button">Add internship</button>
           </div>
         </section>
 
-        <section class="workspace-summary" aria-label="Pipeline summary">
-          <div class="summary-card">
-            <div class="summary-label">Tracked</div>
-            <div class="summary-value" id="summaryTracked">0</div>
-            <div class="summary-sub" id="summaryTrackedSub">All records</div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-label">Ready To Move</div>
-            <div class="summary-value" id="summaryReady">0</div>
-            <div class="summary-sub" id="summaryReadySub">Ready to apply or follow up</div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-label">Active Pipeline</div>
-            <div class="summary-value" id="summaryActive">0</div>
-            <div class="summary-sub" id="summaryActiveSub">Researching through interview</div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-label">Applied</div>
-            <div class="summary-value" id="summaryApplied">0</div>
-            <div class="summary-sub" id="summaryAppliedSub">Already submitted</div>
-          </div>
-        </section>
-
-        <div class="nav-row">
-          <select id="statusFilter" class="sr-only" aria-hidden="true">
-            <option value="">All</option>
-            <option>Researching</option>
-            <option>Ready to Apply</option>
-            <option>Applied</option>
-            <option>Interview</option>
-            <option>Offer</option>
-            <option>Rejected</option>
-            <option>Paused</option>
-          </select>
-          <div class="nav-tabs" id="statusNav" aria-label="Status filters">
-            <button class="nav-item active" type="button" data-status="">All</button>
-            <button class="nav-item" type="button" data-status="Researching">Researching</button>
-            <button class="nav-item" type="button" data-status="Ready to Apply">To Apply</button>
-            <button class="nav-item" type="button" data-status="Applied">Applied</button>
-            <button class="nav-item" type="button" data-status="Interview">Interview</button>
-            <button class="nav-item" type="button" data-status="Offer">Offer</button>
-            <button class="nav-item" type="button" data-status="Rejected">Rejected</button>
-            <button class="nav-item" type="button" data-status="Paused">Paused</button>
-          </div>
-          <div class="filters-right">
-            <select id="countryFilter" class="country-filter" aria-label="Filter by country">
-              <option value="">All countries</option>
-            </select>
-            <select id="priorityFilter" class="country-filter" aria-label="Filter by priority">
-              <option value="">All priority</option>
-              <option>High</option>
-              <option>Medium</option>
-              <option>Low</option>
-            </select>
-            <div class="search">
+        <section class="workspace-toolbar" aria-label="Tracker controls">
+          <div class="toolbar-row toolbar-row-primary">
+            <label class="search search-prominent" aria-label="Search internships">
               <span class="search-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
                   <path
@@ -114,37 +54,148 @@
                   />
                 </svg>
               </span>
-              <input id="search" type="search" placeholder="Search" aria-label="Search internships" />
-            </div>
-            <button class="pill button" id="followupChip" type="button">Needs follow-up</button>
+              <input id="search" type="search" placeholder="Search company, location, notes, or tags" aria-label="Search internships" />
+            </label>
+            <div class="toolbar-hint">Press <kbd>/</kbd> to focus search</div>
           </div>
-        </div>
-
-        <div class="filter-row section-intro">
-          <div class="section-copy">
-            <div class="table-title" id="pageTitle">All applications</div>
-            <div class="table-description" id="pageDescription">Priority-sorted tracker with inline status control and next-step context.</div>
-            <div class="filters" id="filterChips"></div>
-          </div>
-          <div class="table-count" id="count">0 entries</div>
-        </div>
-
-        <section class="table-card">
-          <div class="table">
-            <div class="table-row table-head">
-              <div class="cell">Company</div>
-              <div class="cell">Next step</div>
-              <div class="cell">Status</div>
+          <div class="toolbar-row toolbar-row-secondary">
+            <div class="toolbar-group">
+              <div class="toolbar-label">Views</div>
+              <div class="saved-view-control">
+                <select id="savedViewSelect" class="country-filter" aria-label="Saved views">
+                  <option value="">Saved views</option>
+                </select>
+                <button class="ghost small" id="savedViewActionBtn" type="button">Manage</button>
+                <div class="saved-view-menu" id="savedViewMenu" aria-hidden="true">
+                  <button class="menu-item" id="applySavedViewBtn" type="button">Apply</button>
+                  <button class="menu-item" id="saveViewBtn" type="button">Save current as new</button>
+                  <button class="menu-item" id="overwriteViewBtn" type="button">Overwrite</button>
+                  <button class="menu-item" id="renameViewBtn" type="button">Rename</button>
+                  <button class="menu-item danger" id="deleteViewBtn" type="button">Delete</button>
+                </div>
+              </div>
             </div>
-            <div id="list" class="table-body"></div>
-            <div class="empty-state" id="emptyState">
-              <div class="empty-icon">📌</div>
-              <div class="empty-title">No applications yet</div>
-              <div class="empty-sub">Add your first internship and keep track of follow-ups.</div>
-              <button class="ghost" id="emptyAddBtn" type="button">Add first entry</button>
+            <div class="toolbar-group">
+              <div class="toolbar-label">Filters</div>
+              <div class="toolbar-controls">
+                <select id="countryFilter" class="country-filter" aria-label="Filter by country">
+                  <option value="">All countries</option>
+                </select>
+                <select id="priorityFilter" class="country-filter" aria-label="Filter by priority">
+                  <option value="">All priority</option>
+                  <option>High</option>
+                  <option>Medium</option>
+                  <option>Low</option>
+                </select>
+                <button class="pill button" id="followupChip" type="button">Needs follow-up</button>
+              </div>
             </div>
           </div>
         </section>
+
+        <div class="workspace-shell">
+          <aside class="status-rail" aria-label="Pipeline stages">
+            <select id="statusFilter" class="sr-only" aria-hidden="true">
+              <option value="">All</option>
+              <option>Researching</option>
+              <option>Ready to Apply</option>
+              <option>Applied</option>
+              <option>Interview</option>
+              <option>Offer</option>
+              <option>Rejected</option>
+              <option>Paused</option>
+            </select>
+            <div class="status-rail-header">
+              <div class="toolbar-label">Stages</div>
+              <div class="status-rail-sub">Segment the list without losing the bigger picture.</div>
+            </div>
+            <div class="status-rail-list nav-tabs" id="statusNav" aria-label="Status filters">
+              <button class="nav-item active" type="button" data-status="">
+                <span>All</span>
+                <strong data-status-count="">0</strong>
+              </button>
+              <button class="nav-item" type="button" data-status="Researching">
+                <span>Researching</span>
+                <strong data-status-count="Researching">0</strong>
+              </button>
+              <button class="nav-item" type="button" data-status="Ready to Apply">
+                <span>To Apply</span>
+                <strong data-status-count="Ready to Apply">0</strong>
+              </button>
+              <button class="nav-item" type="button" data-status="Applied">
+                <span>Applied</span>
+                <strong data-status-count="Applied">0</strong>
+              </button>
+              <button class="nav-item" type="button" data-status="Interview">
+                <span>Interview</span>
+                <strong data-status-count="Interview">0</strong>
+              </button>
+              <button class="nav-item" type="button" data-status="Offer">
+                <span>Offer</span>
+                <strong data-status-count="Offer">0</strong>
+              </button>
+              <button class="nav-item" type="button" data-status="Rejected">
+                <span>Rejected</span>
+                <strong data-status-count="Rejected">0</strong>
+              </button>
+              <button class="nav-item" type="button" data-status="Paused">
+                <span>Paused</span>
+                <strong data-status-count="Paused">0</strong>
+              </button>
+            </div>
+          </aside>
+
+          <main class="workspace-main">
+            <section class="workspace-summary" aria-label="Pipeline summary">
+              <div class="summary-card">
+                <div class="summary-label">Tracked</div>
+                <div class="summary-value" id="summaryTracked">0</div>
+                <div class="summary-sub" id="summaryTrackedSub">All records</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">Ready To Move</div>
+                <div class="summary-value" id="summaryReady">0</div>
+                <div class="summary-sub" id="summaryReadySub">Ready to apply or follow up</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">Active Pipeline</div>
+                <div class="summary-value" id="summaryActive">0</div>
+                <div class="summary-sub" id="summaryActiveSub">Researching through interview</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">Applied</div>
+                <div class="summary-value" id="summaryApplied">0</div>
+                <div class="summary-sub" id="summaryAppliedSub">Already submitted</div>
+              </div>
+            </section>
+
+            <div class="filter-row section-intro">
+              <div class="section-copy">
+                <div class="table-title" id="pageTitle">All applications</div>
+                <div class="table-description" id="pageDescription">Priority-sorted tracker with inline status control and next-step context.</div>
+                <div class="filters" id="filterChips"></div>
+              </div>
+              <div class="table-count" id="count">0 entries</div>
+            </div>
+
+            <section class="table-card">
+              <div class="table">
+                <div class="table-row table-head">
+                  <div class="cell">Company</div>
+                  <div class="cell">Next step</div>
+                  <div class="cell">Status</div>
+                </div>
+                <div id="list" class="table-body"></div>
+                <div class="empty-state" id="emptyState">
+                  <div class="empty-icon">📌</div>
+                  <div class="empty-title">No applications yet</div>
+                  <div class="empty-sub">Add your first internship and keep track of follow-ups.</div>
+                  <button class="ghost" id="emptyAddBtn" type="button">Add first entry</button>
+                </div>
+              </div>
+            </section>
+          </main>
+        </div>
       </div>
     </div>
 
@@ -195,7 +246,7 @@
             Follow-up At
             <input id="followupAt" name="followupAt" type="date" />
           </label>
-          <fieldset class="tag-fieldset" id="drawerTags">
+          <fieldset class="tag-fieldset" id="quickAddTags">
             <legend>Focus Tags</legend>
             <label class="tag-option"><input type="checkbox" value="Embedded" /> Embedded</label>
             <label class="tag-option"><input type="checkbox" value="Firmware" /> Firmware</label>
@@ -280,6 +331,15 @@
             Website
             <input id="drawerWebsite" type="url" />
           </label>
+          <fieldset class="tag-fieldset" id="drawerTags">
+            <legend>Focus Tags</legend>
+            <label class="tag-option"><input type="checkbox" value="Embedded" /> Embedded</label>
+            <label class="tag-option"><input type="checkbox" value="Firmware" /> Firmware</label>
+            <label class="tag-option"><input type="checkbox" value="Security" /> Security</label>
+            <label class="tag-option"><input type="checkbox" value="IoT" /> IoT</label>
+            <label class="tag-option"><input type="checkbox" value="Systems" /> Systems</label>
+            <label class="tag-option"><input type="checkbox" value="Hardware" /> Hardware</label>
+          </fieldset>
           <label>
             Tag
             <input id="drawerTag" type="text" />

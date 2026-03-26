@@ -25,7 +25,7 @@ const priorityFilter = el('priorityFilter');
 const priorityInput = el('priority');
 const appliedAtInput = el('appliedAt');
 const followupAtInput = el('followupAt');
-const tagFieldset = document.querySelector('.tag-fieldset');
+const tagFieldset = el('quickAddTags');
 const emptyState = el('emptyState');
 const emptyAddBtn = el('emptyAddBtn');
 const drawerBackdrop = el('drawerBackdrop');
@@ -56,6 +56,7 @@ const commandPalette = el('commandPalette');
 const commandInput = el('commandInput');
 const commandList = el('commandList');
 const themeToggleBtn = el('themeToggleBtn');
+const statusCountEls = Array.from(document.querySelectorAll('[data-status-count]'));
 const summaryTracked = el('summaryTracked');
 const summaryTrackedSub = el('summaryTrackedSub');
 const summaryReady = el('summaryReady');
@@ -75,6 +76,7 @@ let followupOnly = false;
 let lastFiltered = [];
 let activeEntryId = null;
 let activityCache = new Map();
+let rowMenuId = null;
 
 function escapeHtml(value) {
   return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -82,8 +84,15 @@ function escapeHtml(value) {
 
 function normalizeUrl(url) {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  return `https://${url}`;
+  const candidate = url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
+  try {
+    const parsed = new URL(candidate);
+    const hostname = parsed.hostname || '';
+    const looksValidHost = hostname === 'localhost' || hostname.includes('.') || hostname.startsWith('xn--');
+    return looksValidHost ? parsed.toString() : '';
+  } catch {
+    return '';
+  }
 }
 
 function statusClass(status) {
@@ -101,6 +110,14 @@ function parseCountry(tag) {
   if (!tag) return '';
   const parts = String(tag).split(/,|\/|;|·/).map((part) => part.trim()).filter(Boolean);
   return parts[parts.length - 1] || '';
+}
+
+function parseLocationParts(tag) {
+  const parts = String(tag || '').split(/,|\/|;|·/).map((part) => part.trim()).filter(Boolean);
+  return {
+    city: parts[0] || '',
+    country: parts.length > 1 ? parts[parts.length - 1] : ''
+  };
 }
 
 function buildCountryOptions(items) {
@@ -297,6 +314,7 @@ function closeQuickAdd() {
 function openDrawer(entry) {
   if (!drawerBackdrop || !detailDrawer) return;
   activeEntryId = entry.id;
+  rowMenuId = null;
   drawerBackdrop.classList.add('open');
   detailDrawer.classList.add('open');
   drawerBackdrop.setAttribute('aria-hidden', 'false');
@@ -321,6 +339,12 @@ function closeDrawer() {
   drawerBackdrop?.setAttribute('aria-hidden', 'true');
   detailDrawer?.setAttribute('aria-hidden', 'true');
   activeEntryId = null;
+}
+
+function closeRowMenu() {
+  if (rowMenuId == null) return;
+  rowMenuId = null;
+  renderList();
 }
 
 function currentFilters() {
@@ -496,6 +520,18 @@ function renderFilterChips() {
   });
 }
 
+function renderStatusCounts() {
+  const counts = new Map();
+  entries.forEach((entry) => {
+    const key = entry.status || '';
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  statusCountEls.forEach((node) => {
+    const key = node.dataset.statusCount || '';
+    node.textContent = String(key ? (counts.get(key) || 0) : entries.length);
+  });
+}
+
 function syncNav() {
   if (!statusNav) return;
   const value = el('statusFilter').value.trim();
@@ -526,6 +562,7 @@ function renderList() {
 
   lastFiltered = filtered;
   renderPipelineSummary(filtered);
+  renderStatusCounts();
   count.textContent = `${filtered.length} entr${filtered.length === 1 ? 'y' : 'ies'}`;
   pageTitle.textContent = el('statusFilter').value.trim() ? `${el('statusFilter').value.trim()} applications` : 'All applications';
   if (pageDescription) {
@@ -552,41 +589,55 @@ function renderList() {
     if (String(activeEntryId) === String(entry.id)) row.classList.add('selected');
     const websiteUrl = normalizeUrl(entry.website || '');
     const nextStep = nextStepForEntry(entry);
-    const location = entry.tag ? escapeHtml(entry.tag) : 'Location not added';
+    const locationParts = parseLocationParts(entry.tag);
+    const locationPrimary = [locationParts.city, locationParts.country].filter(Boolean).join(', ') || 'Location not added';
     const notes = entry.notes ? escapeHtml(entry.notes) : '';
-    const followupText = entry.followup_at ? `${formatDateLabel(entry.followup_at)} · ${formatDistanceInDays(entry.followup_at)}` : 'No follow-up date';
-    const appliedText = entry.applied_at ? `Applied ${formatDateLabel(entry.applied_at)}` : 'Not applied yet';
+    const followupText = entry.followup_at ? `${formatDateLabel(entry.followup_at)} · ${formatDistanceInDays(entry.followup_at)}` : '';
+    const appliedText = entry.applied_at ? `Applied ${formatDateLabel(entry.applied_at)}` : '';
     const followupClass = isFollowupDue(entry.followup_at) ? 'meta-chip urgent' : 'meta-chip';
     const priorityText = escapeHtml(entry.priority || 'Medium');
+    const menuOpen = String(rowMenuId) === String(entry.id);
+    const quickActionLabel = entry.status === 'Applied' ? 'Open details' : entry.status === 'Ready to Apply' ? 'Start application' : 'Set applied';
     row.innerHTML = `
+      <span class="row-accent priority-${String(entry.priority || 'Medium').toLowerCase()}"></span>
       <button class="row-main" type="button" data-action="open" data-id="${entry.id}">
         <span class="company-cell">
           <span class="company-topline">
             <strong>${escapeHtml(entry.company)}</strong>
-            <span class="priority-badge priority-${String(entry.priority || 'Medium').toLowerCase()}">${priorityText}</span>
+            <span class="priority-badge priority-${String(entry.priority || 'Medium').toLowerCase()}">${priorityText} priority</span>
           </span>
-          <span class="row-meta">${location}</span>
+          <span class="row-location">${escapeHtml(locationPrimary)}</span>
           <span class="row-meta-grid">
-            <span class="${followupClass}">${escapeHtml(followupText)}</span>
-            <span class="meta-chip">${escapeHtml(appliedText)}</span>
-            ${websiteUrl ? `<span class="meta-chip">${escapeHtml(websiteUrl.replace(/^https?:\/\//, ''))}</span>` : ''}
+            ${followupText ? `<span class="${followupClass}">${escapeHtml(followupText)}</span>` : ''}
+            ${appliedText ? `<span class="meta-chip">${escapeHtml(appliedText)}</span>` : ''}
+            ${entry.tag && locationPrimary !== entry.tag ? `<span class="meta-chip">${escapeHtml(entry.tag)}</span>` : ''}
           </span>
           ${notes ? `<span class="row-notes">${notes}</span>` : ''}
         </span>
-        <span class="next-step-cell">
-          <span class="next-step-title">${escapeHtml(nextStep.title)}</span>
-          <span class="next-step-detail">${escapeHtml(nextStep.detail)}</span>
-        </span>
-        <span class="status-wrap">
-          <select class="status-pill ${statusClass(entry.status)}" data-action="status-select" data-id="${entry.id}" aria-label="Change status">
-            ${STATUS_FLOW.map((status) => `<option value="${escapeHtml(status)}" ${status.toLowerCase() === String(entry.status || '').toLowerCase() ? 'selected' : ''}>${escapeHtml(status)}</option>`).join('')}
-          </select>
-        </span>
       </button>
+      <div class="next-step-cell">
+        <span class="next-step-label">Next</span>
+        <span class="next-step-title">${escapeHtml(nextStep.title)}</span>
+        <span class="next-step-detail">${escapeHtml(nextStep.detail)}</span>
+      </div>
+      <div class="status-wrap">
+        <span class="status-label">Stage</span>
+        <select class="status-pill ${statusClass(entry.status)}" data-action="status-select" data-id="${entry.id}" aria-label="Change status">
+          ${STATUS_FLOW.map((status) => `<option value="${escapeHtml(status)}" ${status.toLowerCase() === String(entry.status || '').toLowerCase() ? 'selected' : ''}>${escapeHtml(status)}</option>`).join('')}
+        </select>
+      </div>
       <div class="row-actions">
-        <button class="ghost tiny" data-action="applied" data-id="${entry.id}">Set Applied</button>
-        <button class="ghost tiny" data-action="edit" data-id="${entry.id}">Edit</button>
-        <button class="ghost tiny danger" data-action="delete" data-id="${entry.id}">Delete</button>
+        ${websiteUrl ? `<a class="row-icon-link" href="${escapeHtml(websiteUrl)}" target="_blank" rel="noreferrer noopener" aria-label="Open company website" title="Open website">↗</a>` : ''}
+        <button class="ghost tiny row-quick-action" data-action="${entry.status === 'Applied' ? 'edit' : 'applied'}" data-id="${entry.id}">${quickActionLabel}</button>
+        <div class="row-menu-wrap">
+          <button class="ghost tiny row-menu-trigger" data-action="toggle-menu" data-id="${entry.id}" aria-expanded="${menuOpen ? 'true' : 'false'}" aria-label="More actions">•••</button>
+          ${menuOpen ? `
+            <div class="row-menu" role="menu">
+              <button class="menu-item" data-action="edit" data-id="${entry.id}" type="button">Open details</button>
+              <button class="menu-item danger" data-action="delete" data-id="${entry.id}" type="button">Delete entry</button>
+            </div>
+          ` : ''}
+        </div>
       </div>
     `;
     list.appendChild(row);
@@ -668,6 +719,13 @@ function selectedEntryFromEvent(event) {
 async function handleListClick(event) {
   const action = event.target?.dataset?.action;
   const entry = selectedEntryFromEvent(event);
+  if (action === 'toggle-menu') {
+    event.preventDefault();
+    event.stopPropagation();
+    rowMenuId = String(rowMenuId) === String(event.target.dataset.id) ? null : event.target.dataset.id;
+    renderList();
+    return;
+  }
   if (!entry) return;
 
   if (action === 'open') {
@@ -840,13 +898,24 @@ document.addEventListener('keydown', (event) => {
     const entry = entries.find((item) => String(item.id) === String(activeEntryId));
     if (entry) openDrawer(entry);
   }
+  if (event.key.toLowerCase() === 'a' && !event.metaKey && !event.ctrlKey && !event.altKey && activeEntryId) {
+    const entry = entries.find((item) => String(item.id) === String(activeEntryId));
+    if (entry && entry.status !== 'Applied') {
+      bulkUpdate([entry.id], { status: 'Applied', priority: entry.priority || 'Medium' }).then(() => openDrawer(entry));
+    }
+  }
   if (event.key === 'Escape') {
     closeQuickAdd();
     closeDrawer();
     closeCommandPalette();
+    closeRowMenu();
     savedViewMenu?.classList.remove('open');
     savedViewMenu?.setAttribute('aria-hidden', 'true');
   }
+});
+
+document.addEventListener('click', (event) => {
+  if (!event.target.closest('.row-menu-wrap')) closeRowMenu();
 });
 
 commandPalette?.addEventListener('click', (event) => {

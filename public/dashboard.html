@@ -9,29 +9,47 @@
   <body>
     <div class="page">
       <div class="content-wrap">
-        <header class="page-header">
-          <div class="header-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path
-                d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z"
-              />
-            </svg>
+        <header class="page-header app-topbar">
+          <div class="app-brand">
+            <div class="header-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path
+                  d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z"
+                />
+              </svg>
+            </div>
+            <div class="header-text">
+              <p class="header-title">Internship Application Tracker</p>
+              <p class="header-subtitle">Pipeline health, market concentration, and short-term action load.</p>
+            </div>
           </div>
-          <div class="header-text">
-            <p class="header-title">Dashboard</p>
-            <p class="header-subtitle">Pipeline health, market concentration, and short-term action load.</p>
-          </div>
-          <div class="controls">
+          <nav class="mode-switch" aria-label="Primary views">
+            <a class="mode-link" href="/">Tracker</a>
+            <a class="mode-link active" href="/dashboard">Insights</a>
+          </nav>
+          <div class="controls compact utility-actions">
             <button class="ghost small" id="themeToggleBtn" type="button" aria-label="Toggle theme">Dark mode</button>
-            <a class="ghost small nav-link" href="/">Back</a>
           </div>
         </header>
 
-        <section class="workspace-hero dashboard-hero">
+        <section class="workspace-hero workspace-hero-tight dashboard-hero">
           <div class="workspace-copy">
-            <p class="workspace-eyebrow">Decision view</p>
-            <h1 class="workspace-title">A calmer dashboard built for deciding where to push next.</h1>
+            <p class="workspace-eyebrow">Insight workspace</p>
+            <h1 class="workspace-title">Read the pipeline clearly, then go back to the tracker with a sharper decision.</h1>
             <p class="workspace-subtitle" id="dashboardFocusSummary">Review readiness, concentration, and follow-up pressure without drowning in decorative analytics.</p>
+          </div>
+        </section>
+
+        <section class="workspace-toolbar insights-toolbar" aria-label="Insights context">
+          <div class="toolbar-row toolbar-row-secondary">
+            <div class="toolbar-group">
+              <div class="toolbar-label">Mode</div>
+              <div class="toolbar-static">Insights is a separate decision layer. Keep the tracker for execution.</div>
+            </div>
+            <div class="toolbar-group">
+              <div class="toolbar-label">Next move</div>
+              <div class="toolbar-static">Use this page to spot concentration risk, submission pace, and follow-up pressure.</div>
+            </div>
           </div>
         </section>
 
