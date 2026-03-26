@@ -54,6 +54,7 @@ const deleteViewBtn = el('deleteViewBtn');
 const commandPalette = el('commandPalette');
 const commandInput = el('commandInput');
 const commandList = el('commandList');
+const themeToggleBtn = el('themeToggleBtn');
 
 const themeKey = 'staj-theme';
 const STATUS_FLOW = ['Researching', 'Ready to Apply', 'Applied', 'Interview', 'Offer', 'Rejected', 'Paused'];
@@ -128,10 +129,23 @@ function applyTheme(theme) {
   if (!theme) {
     document.documentElement.removeAttribute('data-theme');
     localStorage.removeItem(themeKey);
+    if (themeToggleBtn) themeToggleBtn.textContent = 'Dark mode';
     return;
   }
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem(themeKey, theme);
+  if (themeToggleBtn) themeToggleBtn.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(themeKey);
+  const preferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  applyTheme(saved || preferred);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 
 function resetForm() {
@@ -209,6 +223,13 @@ function applySavedView(view) {
   if (countryFilter) countryFilter.value = filters.country || '';
   if (priorityFilter) priorityFilter.value = filters.priority || '';
   followupOnly = Boolean(filters.followupOnly);
+  renderList();
+}
+
+function setStatusFilter(value) {
+  const statusFilter = el('statusFilter');
+  if (!statusFilter) return;
+  statusFilter.value = value || '';
   renderList();
 }
 
@@ -593,7 +614,7 @@ function renderCommands() {
     { label: 'Add internship', action: () => { closeCommandPalette(); openQuickAdd(); } },
     { label: 'Filter country: Turkey', action: () => { const v = Array.from(countryFilter.options).find((opt) => opt.value === 'Turkey'); if (v) countryFilter.value = 'Turkey'; renderList(); closeCommandPalette(); } },
     { label: 'Filter country: Germany', action: () => { const v = Array.from(countryFilter.options).find((opt) => opt.value === 'Germany'); if (v) countryFilter.value = 'Germany'; renderList(); closeCommandPalette(); } },
-    ...statusOptions.map((status) => ({ label: `Change status: ${status}`, action: () => { if (activeEntryId) { bulkUpdate([activeEntryId], { status }); closeCommandPalette(); } } }))
+    ...statusOptions.map((status) => ({ label: `Change status: ${status}`, action: async () => { if (activeEntryId) { await bulkUpdate([activeEntryId], { status }); closeCommandPalette(); openDrawer(entries.find((item) => String(item.id) === String(activeEntryId))); } } }))
   ].filter((item) => !q || item.label.toLowerCase().includes(q));
   commandList.innerHTML = '';
   items.forEach((item) => {
@@ -612,6 +633,11 @@ list.addEventListener('click', handleListClick);
 list.addEventListener('change', handleListChange);
 search.addEventListener('input', renderList);
 el('statusFilter').addEventListener('change', renderList);
+statusNav?.addEventListener('click', (event) => {
+  const btn = event.target.closest('button[data-status]');
+  if (!btn) return;
+  setStatusFilter(btn.dataset.status || '');
+});
 countryFilter?.addEventListener('change', renderList);
 priorityFilter?.addEventListener('change', renderList);
 followupChip?.addEventListener('click', () => { followupOnly = !followupOnly; renderList(); });
@@ -630,6 +656,7 @@ savedViewActionBtn?.addEventListener('click', () => {
   const open = savedViewMenu.classList.toggle('open');
   savedViewMenu.setAttribute('aria-hidden', open ? 'false' : 'true');
 });
+themeToggleBtn?.addEventListener('click', toggleTheme);
 applySavedViewBtn?.addEventListener('click', () => {
   const view = selectedSavedView();
   if (view) applySavedView(view);
@@ -669,7 +696,7 @@ commandPalette?.addEventListener('click', (event) => {
 });
 
 async function init() {
-  applyTheme(localStorage.getItem(themeKey));
+  initTheme();
   renderActivityFallback();
   await Promise.all([loadSavedViews(), loadEntries()]);
 }

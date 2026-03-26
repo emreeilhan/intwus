@@ -19,7 +19,7 @@
           </div>
           <div class="header-text">
             <p class="header-title">Internship Application Tracker</p>
-            <p class="header-subtitle">Focus mode</p>
+            <p class="header-subtitle">Focus mode · Keyboard-first workflow · Quiet UI</p>
           </div>
           <div class="controls compact">
             <div class="saved-view-control">
@@ -35,6 +35,7 @@
                 <button class="menu-item danger" id="deleteViewBtn" type="button">Delete</button>
               </div>
             </div>
+            <button class="ghost small" id="themeToggleBtn" type="button" aria-label="Toggle theme">Dark mode</button>
             <button class="ghost small" id="quickAddBtn" type="button">Quick Add</button>
             <button class="icon-btn" id="exportBtn" type="button" title="Download Excel" aria-label="Download Excel">
               <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -47,6 +48,16 @@
         </header>
 
         <div class="nav-row">
+          <select id="statusFilter" class="sr-only" aria-hidden="true">
+            <option value="">All</option>
+            <option>Researching</option>
+            <option>Ready to Apply</option>
+            <option>Applied</option>
+            <option>Interview</option>
+            <option>Offer</option>
+            <option>Rejected</option>
+            <option>Paused</option>
+          </select>
           <div class="nav-tabs" id="statusNav" aria-label="Status filters">
             <button class="nav-item active" type="button" data-status="">All</button>
             <button class="nav-item" type="button" data-status="Researching">Researching</button>
@@ -83,7 +94,10 @@
         </div>
 
         <div class="filter-row">
-          <div class="filters" id="filterChips"></div>
+          <div class="filters">
+            <div class="table-title" id="pageTitle">All</div>
+            <div class="filters" id="filterChips"></div>
+          </div>
           <div class="table-count" id="count">0 entries</div>
         </div>
 
@@ -152,7 +166,7 @@
             Follow-up At
             <input id="followupAt" name="followupAt" type="date" />
           </label>
-          <fieldset class="tag-fieldset">
+          <fieldset class="tag-fieldset" id="drawerTags">
             <legend>Focus Tags</legend>
             <label class="tag-option"><input type="checkbox" value="Embedded" /> Embedded</label>
             <label class="tag-option"><input type="checkbox" value="Firmware" /> Firmware</label>

@@ -19,8 +19,10 @@
           </div>
           <div class="header-text">
             <p class="header-title">Dashboard</p>
+            <p class="header-subtitle">Overview · Analytics · Quiet signals</p>
           </div>
           <div class="controls">
+            <button class="ghost small" id="themeToggleBtn" type="button" aria-label="Toggle theme">Dark mode</button>
             <a class="ghost small nav-link" href="/">Back</a>
           </div>
         </header>
@@ -41,15 +43,114 @@
             <div class="dash-value" id="dashCityCount">0</div>
             <div class="dash-sub">Cities tracked</div>
           </div>
+          <div class="dash-card">
+            <div class="dash-label">Applied Rate</div>
+            <div class="dash-value" id="dashAppliedRate">0%</div>
+            <div class="dash-sub" id="dashAppliedRateSub">Applied vs total</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-label">Due Follow-ups</div>
+            <div class="dash-value" id="dashFollowupDue">0</div>
+            <div class="dash-sub">Next 14 days</div>
+          </div>
         </section>
 
         <div class="layout">
           <section class="table-card">
             <div class="table-header">
-              <div class="table-title">Applied By Month</div>
+              <div class="table-title">Application Trend</div>
               <div class="table-count" id="appliedCount">0 total</div>
             </div>
-            <div class="bar-list" id="appliedBars"></div>
+            <div class="chart-wrap">
+              <div class="chart-surface">
+                <svg id="trendChart" class="trend-chart" viewBox="0 0 640 220" preserveAspectRatio="none" aria-label="Applications trend chart" role="img"></svg>
+              </div>
+              <div class="chart-caption" id="trendCaption">Monthly applications and moving activity</div>
+            </div>
+            <div class="chart-grid">
+              <div class="chart-panel">
+                <div class="panel-head">
+                  <div class="side-title">Status Mix</div>
+                  <div class="panel-kpi" id="statusMixTotal">0</div>
+                </div>
+                <div id="statusMix" class="status-mix"></div>
+              </div>
+              <div class="chart-panel">
+                <div class="panel-head">
+                  <div class="side-title">Priority Mix</div>
+                  <div class="panel-kpi" id="priorityMixTotal">0</div>
+                </div>
+                <div id="priorityMix" class="priority-mix"></div>
+              </div>
+            </div>
+            <div class="chart-grid chart-grid-three">
+              <div class="chart-panel">
+                <div class="panel-head">
+                  <div class="side-title">Status Donut</div>
+                  <div class="panel-kpi subtle">Share by stage</div>
+                </div>
+                <div class="donut-wrap">
+                  <svg id="statusDonut" class="donut-chart" viewBox="0 0 220 220" aria-label="Status donut chart" role="img"></svg>
+                  <div class="donut-center">
+                    <div class="donut-kpi" id="statusDonutKpi">0</div>
+                    <div class="donut-sub">records</div>
+                  </div>
+                </div>
+              </div>
+              <div class="chart-panel">
+                <div class="panel-head">
+                  <div class="side-title">Priority Heat</div>
+                  <div class="panel-kpi subtle">Count intensity</div>
+                </div>
+                <div id="priorityHeat" class="heatmap-grid"></div>
+              </div>
+              <div class="chart-panel">
+                <div class="panel-head">
+                  <div class="side-title">Monthly Momentum</div>
+                  <div class="panel-kpi subtle">Applied vs total</div>
+                </div>
+                <div id="momentumBars" class="momentum-bars"></div>
+              </div>
+            </div>
+            <div class="chart-panel">
+              <div class="panel-head">
+                <div class="side-title">Applied By Month</div>
+                <div class="panel-kpi subtle">Latest 12 months</div>
+              </div>
+              <div class="bar-list" id="appliedBars"></div>
+            </div>
+            <div class="chart-panel">
+              <div class="panel-head">
+                <div class="side-title">Activity Heatmap</div>
+                <div class="panel-kpi subtle">Daily density, last 12 weeks</div>
+              </div>
+              <div class="calendar-wrap">
+                <div class="calendar-legend">
+                  <span>Low</span>
+                  <div class="calendar-scale">
+                    <span></span><span></span><span></span><span></span>
+                  </div>
+                  <span>High</span>
+                </div>
+                <div id="calendarHeatmap" class="calendar-heatmap"></div>
+              </div>
+            </div>
+            <div class="chart-grid chart-grid-two">
+              <div class="chart-panel">
+                <div class="panel-head">
+                  <div class="side-title">Lead Time Buckets</div>
+                  <div class="panel-kpi subtle">Applied to follow-up</div>
+                </div>
+                <div id="leadTimeBars" class="bar-list"></div>
+              </div>
+              <div class="chart-panel">
+                <div class="panel-head">
+                  <div class="side-title">Top Status Flow</div>
+                  <div class="panel-kpi subtle">Stacked ranking</div>
+                </div>
+                <div id="statusFlowStack" class="stacked-chart"></div>
+              </div>
+            </div>
             <div class="empty-state" id="dashboardEmpty">
               <div class="empty-icon">📊</div>
               <div class="empty-title">No analytics yet</div>
@@ -59,6 +160,10 @@
           </section>
 
           <aside class="side">
+            <div class="side-card">
+              <div class="side-title">Geo Spread</div>
+              <div class="stacked-chart" id="geoSpread"></div>
+            </div>
             <div class="side-card">
               <div class="side-title">Top Cities</div>
               <div class="bar-list" id="dashCityBars"></div>
