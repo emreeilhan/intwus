@@ -95,6 +95,119 @@ const deleteOne = db.prepare(`
   DELETE FROM internships WHERE id = ?
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS saved_views (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    filters_json TEXT NOT NULL,
+    sort_key TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS activity_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    internship_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+`);
+
+const insertActivity = db.prepare(`
+  INSERT INTO activity_log (internship_id, event_type, old_value, new_value, created_at)
+  VALUES (?, ?, ?, ?, ?)
+`);
+
+const selectActivity = db.prepare(`
+  SELECT id, internship_id, event_type, old_value, new_value, created_at
+  FROM activity_log
+  WHERE internship_id = ?
+  ORDER BY id DESC
+`);
+
+const selectSavedViews = db.prepare(`
+  SELECT id, name, filters_json, sort_key, created_at, updated_at
+  FROM saved_views
+  ORDER BY name COLLATE NOCASE ASC
+`);
+
+const insertSavedView = db.prepare(`
+  INSERT INTO saved_views (name, filters_json, sort_key, updated_at)
+  VALUES (?, ?, ?, datetime('now'))
+`);
+
+const updateSavedView = db.prepare(`
+  UPDATE saved_views
+  SET name = ?, filters_json = ?, sort_key = ?, updated_at = datetime('now')
+  WHERE id = ?
+`);
+
+const deleteSavedView = db.prepare(`
+  DELETE FROM saved_views WHERE id = ?
+`);
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function safeJsonParse(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function serializeValue(value) {
+  if (value == null) return null;
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value);
+}
+
+function addActivity(internshipId, eventType, oldValue, newValue) {
+  insertActivity.run(
+    internshipId,
+    eventType,
+    serializeValue(oldValue),
+    serializeValue(newValue),
+    nowIso()
+  );
+}
+
+function getInternship(id) {
+  return db.prepare(`
+    SELECT id, company, status, notes, website, tag, fit_score, applied_at, followup_at, priority, focus_tags, created_at, updated_at
+    FROM internships
+    WHERE id = ?
+  `).get(id);
+}
+
+function getBaseChangePayload(row) {
+  return {
+    company: row.company,
+    status: row.status,
+    notes: row.notes || '',
+    website: row.website || '',
+    tag: row.tag || '',
+    priority: row.priority || 'Medium',
+    applied_at: row.applied_at || '',
+    followup_at: row.followup_at || '',
+    focus_tags: row.focus_tags || ''
+  };
+}
+
+function compareFieldChanges(before, after) {
+  const changes = {};
+  Object.keys(after).forEach((key) => {
+    if (String(before?.[key] ?? '') !== String(after?.[key] ?? '')) {
+      changes[key] = { before: before?.[key] ?? '', after: after?.[key] ?? '' };
+    }
+  });
+  return changes;
+}
+
 function syncExcel() {
   const rows = selectAll.all();
   const header = [[
@@ -268,6 +381,58 @@ app.get('/api/internships', (req, res) => {
   res.json(selectAll.all());
 });
 
+app.get('/api/internships/:id/activity', (req, res) => {
+  const { id } = req.params;
+  res.json(selectActivity.all(Number(id)));
+});
+
+app.get('/api/saved-views', (req, res) => {
+  const rows = selectSavedViews.all().map((row) => ({
+    ...row,
+    filters: safeJsonParse(row.filters_json, {})
+  }));
+  res.json(rows);
+});
+
+app.post('/api/saved-views', (req, res) => {
+  const { name, filters = {}, sort_key = '' } = req.body || {};
+  const finalName = String(name || '').trim();
+  if (!finalName) {
+    return res.status(400).json({ error: 'Name is required.' });
+  }
+  try {
+    const info = insertSavedView.run(finalName, JSON.stringify(filters || {}), String(sort_key || ''));
+    res.status(201).json({ id: info.lastInsertRowid });
+  } catch (error) {
+    if (String(error?.message || '').includes('UNIQUE')) {
+      return res.status(409).json({ error: 'Saved view already exists.' });
+    }
+    throw error;
+  }
+});
+
+app.put('/api/saved-views/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, filters = {}, sort_key = '' } = req.body || {};
+  const finalName = String(name || '').trim();
+  if (!finalName) {
+    return res.status(400).json({ error: 'Name is required.' });
+  }
+  const info = updateSavedView.run(finalName, JSON.stringify(filters || {}), String(sort_key || ''), Number(id));
+  if (info.changes === 0) {
+    return res.status(404).json({ error: 'Not found.' });
+  }
+  res.json({ ok: true });
+});
+
+app.delete('/api/saved-views/:id', (req, res) => {
+  const info = deleteSavedView.run(Number(req.params.id));
+  if (info.changes === 0) {
+    return res.status(404).json({ error: 'Not found.' });
+  }
+  res.json({ ok: true });
+});
+
 app.post('/api/internships', (req, res) => {
   const { company, status, notes, website, tag, applied_at, followup_at, priority, focus_tags } = req.body || {};
   if (!company || typeof company !== 'string') {
@@ -293,6 +458,17 @@ app.post('/api/internships', (req, res) => {
     priority ? String(priority) : 'Medium',
     focus_tags ? String(focus_tags) : ''
   );
+  addActivity(info.lastInsertRowid, 'created', null, getBaseChangePayload({
+    company: company.trim(),
+    status: finalStatus.trim(),
+    notes: notes ? String(notes) : '',
+    website: website ? String(website) : '',
+    tag: tag ? String(tag) : '',
+    priority: priority ? String(priority) : 'Medium',
+    applied_at: applied_at ? String(applied_at) : '',
+    followup_at: followup_at ? String(followup_at) : '',
+    focus_tags: focus_tags ? String(focus_tags) : ''
+  }));
   syncExcel();
   res.status(201).json({ id: info.lastInsertRowid });
 });
@@ -303,29 +479,55 @@ app.put('/api/internships/:id', (req, res) => {
   if (!company || typeof company !== 'string') {
     return res.status(400).json({ error: 'Company is required.' });
   }
+  const existing = getInternship(Number(id));
+  if (!existing) {
+    return res.status(404).json({ error: 'Not found.' });
+  }
   const finalStatus = status && typeof status === 'string' ? status : 'Researching';
+  const nextPayload = {
+    company: company.trim(),
+    status: finalStatus.trim(),
+    notes: notes ? String(notes) : '',
+    website: website ? String(website) : '',
+    tag: tag ? String(tag) : '',
+    priority: priority ? String(priority) : 'Medium',
+    applied_at: applied_at ? String(applied_at) : '',
+    followup_at: followup_at ? String(followup_at) : '',
+    focus_tags: focus_tags ? String(focus_tags) : ''
+  };
   const fitScore = computeFitScore({
-    company,
-    status: finalStatus,
-    notes,
-    website,
-    tag
+    company: nextPayload.company,
+    status: nextPayload.status,
+    notes: nextPayload.notes,
+    website: nextPayload.website,
+    tag: nextPayload.tag
   });
+  const previousPayload = getBaseChangePayload(existing);
   const info = updateOne.run(
-    company.trim(),
-    finalStatus.trim(),
-    notes ? String(notes) : '',
-    website ? String(website) : '',
-    tag ? String(tag) : '',
+    nextPayload.company,
+    nextPayload.status,
+    nextPayload.notes,
+    nextPayload.website,
+    nextPayload.tag,
     fitScore,
-    applied_at ? String(applied_at) : null,
-    followup_at ? String(followup_at) : null,
-    priority ? String(priority) : 'Medium',
-    focus_tags ? String(focus_tags) : '',
+    nextPayload.applied_at || null,
+    nextPayload.followup_at || null,
+    nextPayload.priority,
+    nextPayload.focus_tags,
     Number(id)
   );
   if (info.changes === 0) {
     return res.status(404).json({ error: 'Not found.' });
+  }
+  const changes = compareFieldChanges(previousPayload, nextPayload);
+  if (Object.keys(changes).length > 0) {
+    addActivity(Number(id), 'edited', previousPayload, nextPayload);
+    if (changes.status) {
+      addActivity(Number(id), 'status changed', previousPayload.status, nextPayload.status);
+    }
+    if (changes.followup_at) {
+      addActivity(Number(id), 'follow-up changed', previousPayload.followup_at, nextPayload.followup_at);
+    }
   }
   syncExcel();
   res.json({ ok: true });
@@ -333,12 +535,88 @@ app.put('/api/internships/:id', (req, res) => {
 
 app.delete('/api/internships/:id', (req, res) => {
   const { id } = req.params;
+  const existing = getInternship(Number(id));
+  if (!existing) {
+    return res.status(404).json({ error: 'Not found.' });
+  }
   const info = deleteOne.run(Number(id));
   if (info.changes === 0) {
     return res.status(404).json({ error: 'Not found.' });
   }
+  addActivity(Number(id), 'deleted', getBaseChangePayload(existing), null);
   syncExcel();
   res.json({ ok: true });
+});
+
+app.post('/api/internships/bulk-update', (req, res) => {
+  const { ids = [], status, priority } = req.body || {};
+  const idList = Array.isArray(ids) ? ids.map(Number).filter(Boolean) : [];
+  if (!idList.length) {
+    return res.status(400).json({ error: 'At least one id is required.' });
+  }
+  const rows = idList.map((id) => getInternship(id)).filter(Boolean);
+  if (!rows.length) {
+    return res.status(404).json({ error: 'Not found.' });
+  }
+
+  const applyUpdate = db.transaction((items) => {
+    items.forEach((row) => {
+      const next = {
+        ...getBaseChangePayload(row),
+        status: status ? String(status) : row.status,
+        priority: priority ? String(priority) : row.priority || 'Medium'
+      };
+      const fitScore = computeFitScore({
+        company: next.company,
+        status: next.status,
+        notes: next.notes,
+        website: next.website,
+        tag: next.tag
+      });
+      updateOne.run(
+        next.company,
+        next.status,
+        next.notes,
+        next.website,
+        next.tag,
+        fitScore,
+        next.applied_at || null,
+        next.followup_at || null,
+        next.priority,
+        next.focus_tags,
+        row.id
+      );
+      addActivity(row.id, 'edited', getBaseChangePayload(row), next);
+      if (status && String(row.status) !== String(next.status)) {
+        addActivity(row.id, 'status changed', row.status, next.status);
+      }
+    });
+  });
+
+  applyUpdate(rows);
+  syncExcel();
+  res.json({ ok: true, updated: rows.length });
+});
+
+app.post('/api/internships/bulk-delete', (req, res) => {
+  const { ids = [] } = req.body || {};
+  const idList = Array.isArray(ids) ? ids.map(Number).filter(Boolean) : [];
+  if (!idList.length) {
+    return res.status(400).json({ error: 'At least one id is required.' });
+  }
+  const rows = idList.map((id) => getInternship(id)).filter(Boolean);
+  if (!rows.length) {
+    return res.status(404).json({ error: 'Not found.' });
+  }
+  const deleteMany = db.transaction((items) => {
+    items.forEach((row) => {
+      deleteOne.run(row.id);
+      addActivity(row.id, 'deleted', getBaseChangePayload(row), null);
+    });
+  });
+  deleteMany(rows);
+  syncExcel();
+  res.json({ ok: true, deleted: rows.length });
 });
 
 app.get('/api/export', (req, res) => {

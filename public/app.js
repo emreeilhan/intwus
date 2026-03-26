@@ -1,72 +1,73 @@
-const form = document.getElementById('entryForm');
-const entryId = document.getElementById('entryId');
-const companyInput = document.getElementById('company');
-const statusInput = document.getElementById('status');
-const notesInput = document.getElementById('notes');
-const websiteInput = document.getElementById('website');
-const tagInput = document.getElementById('tag');
-const list = document.getElementById('list');
-const count = document.getElementById('count');
-const countHero = document.getElementById('countHero');
-const appliedCount = document.getElementById('appliedCount');
-const interviewCount = document.getElementById('interviewCount');
-const search = document.getElementById('search');
-const statusFilter = document.getElementById('statusFilter');
-const exportBtn = document.getElementById('exportBtn');
-const newBtn = document.getElementById('newBtn');
-const cancelBtn = document.getElementById('cancelBtn');
-const filterChips = document.getElementById('filterChips');
-const followupChip = document.getElementById('followupChip');
-const pageTitle = document.getElementById('pageTitle');
-const statusNav = document.getElementById('statusNav');
-const themeKey = 'staj-theme';
-const quickAddBtn = document.getElementById('quickAddBtn');
-const quickAddPanel = document.getElementById('quickAddPanel');
-const quickAddClose = document.getElementById('quickAddClose');
-const todoList = document.getElementById('todoList');
-const companyList = document.getElementById('companyList');
-const countryFilter = document.getElementById('countryFilter');
-const priorityFilter = document.getElementById('priorityFilter');
-const priorityInput = document.getElementById('priority');
-const appliedAtInput = document.getElementById('appliedAt');
-const followupAtInput = document.getElementById('followupAt');
+const el = (id) => document.getElementById(id);
+
+const form = el('entryForm');
+const entryId = el('entryId');
+const companyInput = el('company');
+const statusInput = el('status');
+const notesInput = el('notes');
+const websiteInput = el('website');
+const tagInput = el('tag');
+const list = el('list');
+const count = el('count');
+const search = el('search');
+const exportBtn = el('exportBtn');
+const cancelBtn = el('cancelBtn');
+const filterChips = el('filterChips');
+const followupChip = el('followupChip');
+const pageTitle = el('pageTitle');
+const statusNav = el('statusNav');
+const quickAddBtn = el('quickAddBtn');
+const quickAddPanel = el('quickAddPanel');
+const quickAddClose = el('quickAddClose');
+const countryFilter = el('countryFilter');
+const priorityFilter = el('priorityFilter');
+const priorityInput = el('priority');
+const appliedAtInput = el('appliedAt');
+const followupAtInput = el('followupAt');
 const tagFieldset = document.querySelector('.tag-fieldset');
-const emptyState = document.getElementById('emptyState');
-const emptyAddBtn = document.getElementById('emptyAddBtn');
-const topCity = document.getElementById('topCity');
-const topCityCount = document.getElementById('topCityCount');
-const topCountry = document.getElementById('topCountry');
-const topCountryCount = document.getElementById('topCountryCount');
-const cityCount = document.getElementById('cityCount');
-const cityBars = document.getElementById('cityBars');
-const countryBars = document.getElementById('countryBars');
-const drawerBackdrop = document.getElementById('drawerBackdrop');
-const detailDrawer = document.getElementById('detailDrawer');
-const drawerClose = document.getElementById('drawerClose');
-const drawerCancel = document.getElementById('drawerCancel');
-const drawerForm = document.getElementById('drawerForm');
-const drawerId = document.getElementById('drawerId');
-const drawerCompany = document.getElementById('drawerCompany');
-const drawerStatus = document.getElementById('drawerStatus');
-const drawerPriority = document.getElementById('drawerPriority');
-const drawerAppliedAt = document.getElementById('drawerAppliedAt');
-const drawerFollowupAt = document.getElementById('drawerFollowupAt');
-const drawerTags = document.getElementById('drawerTags');
-const drawerWebsite = document.getElementById('drawerWebsite');
-const drawerTag = document.getElementById('drawerTag');
-const drawerNotes = document.getElementById('drawerNotes');
+const emptyState = el('emptyState');
+const emptyAddBtn = el('emptyAddBtn');
+const drawerBackdrop = el('drawerBackdrop');
+const detailDrawer = el('detailDrawer');
+const drawerClose = el('drawerClose');
+const drawerCancel = el('drawerCancel');
+const drawerForm = el('drawerForm');
+const drawerId = el('drawerId');
+const drawerCompany = el('drawerCompany');
+const drawerStatus = el('drawerStatus');
+const drawerPriority = el('drawerPriority');
+const drawerAppliedAt = el('drawerAppliedAt');
+const drawerFollowupAt = el('drawerFollowupAt');
+const drawerWebsite = el('drawerWebsite');
+const drawerTag = el('drawerTag');
+const drawerNotes = el('drawerNotes');
+const drawerActivityList = el('activityList');
+const activityCount = el('activityCount');
+const savedViewSelect = el('savedViewSelect');
+const savedViewActionBtn = el('savedViewActionBtn');
+const savedViewMenu = el('savedViewMenu');
+const applySavedViewBtn = el('applySavedViewBtn');
+const saveViewBtn = el('saveViewBtn');
+const overwriteViewBtn = el('overwriteViewBtn');
+const renameViewBtn = el('renameViewBtn');
+const deleteViewBtn = el('deleteViewBtn');
+const commandPalette = el('commandPalette');
+const commandInput = el('commandInput');
+const commandList = el('commandList');
+
+const themeKey = 'staj-theme';
+const STATUS_FLOW = ['Researching', 'Ready to Apply', 'Applied', 'Interview', 'Offer', 'Rejected', 'Paused'];
+const PRIORITY_ORDER = { High: 3, Medium: 2, Low: 1 };
 
 let entries = [];
+let savedViews = [];
 let followupOnly = false;
 let lastFiltered = [];
+let activeEntryId = null;
+let activityCache = new Map();
 
 function escapeHtml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function normalizeUrl(url) {
@@ -86,117 +87,20 @@ function statusClass(status) {
   return 'status-researching';
 }
 
-const STATUS_FLOW = [
-  'Researching',
-  'Ready to Apply',
-  'Applied',
-  'Interview',
-  'Offer',
-  'Rejected',
-  'Paused'
-];
-
-const PRIORITY_ORDER = {
-  High: 3,
-  Medium: 2,
-  Low: 1
-};
-
 function parseCountry(tag) {
   if (!tag) return '';
-  const raw = String(tag).trim();
-  if (!raw) return '';
-  const parts = raw.split(/,|\/|;|·/).map((part) => part.trim()).filter(Boolean);
-  if (!parts.length) return '';
-  return parts[parts.length - 1];
+  const parts = String(tag).split(/,|\/|;|·/).map((part) => part.trim()).filter(Boolean);
+  return parts[parts.length - 1] || '';
 }
 
-function parseCity(tag) {
-  if (!tag) return '';
-  const raw = String(tag).trim();
-  if (!raw) return '';
-  const parts = raw.split(/,|\/|;|·/).map((part) => part.trim()).filter(Boolean);
-  if (!parts.length) return '';
-  return parts[0];
-}
-
-function renderCountryFilter() {
-  if (!countryFilter) return;
-  const countries = Array.from(
-    new Set(entries.map((entry) => parseCountry(entry.tag)).filter(Boolean))
-  ).sort((a, b) => a.localeCompare(b));
-
-  const current = countryFilter.value;
-  countryFilter.innerHTML = '<option value=\"\">All countries</option>';
-  countries.forEach((country) => {
-    const option = document.createElement('option');
-    option.value = country;
-    option.textContent = country;
-    countryFilter.appendChild(option);
+function countBy(list, getter) {
+  const map = new Map();
+  list.forEach((item) => {
+    const key = getter(item);
+    if (!key) return;
+    map.set(key, (map.get(key) || 0) + 1);
   });
-  if (current) {
-    countryFilter.value = current;
-  }
-}
-
-function nextStatus(current) {
-  const idx = STATUS_FLOW.findIndex(
-    (value) => value.toLowerCase() === String(current || '').toLowerCase()
-  );
-  if (idx === -1) return STATUS_FLOW[0];
-  return STATUS_FLOW[(idx + 1) % STATUS_FLOW.length];
-}
-
-function resetForm() {
-  entryId.value = '';
-  companyInput.value = '';
-  statusInput.value = 'Researching';
-  notesInput.value = '';
-  websiteInput.value = '';
-  tagInput.value = '';
-  if (priorityInput) priorityInput.value = 'Medium';
-  if (appliedAtInput) appliedAtInput.value = '';
-  if (followupAtInput) followupAtInput.value = '';
-  if (tagFieldset) {
-    tagFieldset.querySelectorAll('input[type="checkbox"]').forEach((input) => {
-      input.checked = false;
-    });
-  }
-}
-
-function openQuickAdd() {
-  if (!quickAddPanel) return;
-  quickAddPanel.classList.add('open');
-  quickAddPanel.setAttribute('aria-hidden', 'false');
-  companyInput.focus();
-}
-
-function closeQuickAdd() {
-  if (!quickAddPanel) return;
-  quickAddPanel.classList.remove('open');
-  quickAddPanel.setAttribute('aria-hidden', 'true');
-}
-
-function applyTheme(theme) {
-  if (!theme) {
-    document.documentElement.removeAttribute('data-theme');
-    localStorage.removeItem(themeKey);
-    return;
-  }
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(themeKey, theme);
-}
-
-function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
-}
-
-async function loadEntries() {
-  const res = await fetch('/api/internships');
-  entries = await res.json();
-  renderList();
+  return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
 }
 
 function getFocusTagsFromFieldset(fieldset) {
@@ -212,131 +116,55 @@ function applyFocusTagsToFieldset(fieldset, tags) {
   });
 }
 
-function renderList() {
-  const query = search.value.trim().toLowerCase();
-  const statusQuery = statusFilter.value.trim().toLowerCase();
-  const countryQuery = (countryFilter?.value || '').trim().toLowerCase();
-  const priorityQuery = (priorityFilter?.value || '').trim().toLowerCase();
-  const filtered = entries.filter((entry) => {
-    const matchesQuery =
-      !query ||
-      entry.company.toLowerCase().includes(query) ||
-      (entry.tag || '').toLowerCase().includes(query);
-    const matchesStatus =
-      !statusQuery || entry.status.toLowerCase() === statusQuery;
-    const country = parseCountry(entry.tag).toLowerCase();
-    const matchesCountry = !countryQuery || country === countryQuery;
-    const matchesPriority =
-      !priorityQuery || String(entry.priority || 'Medium').toLowerCase() === priorityQuery;
-    const followupMatch = !followupOnly || isFollowupDue(entry.followup_at);
-    return matchesQuery && matchesStatus && matchesCountry && matchesPriority && followupMatch;
-  });
-
-  const completenessScore = (entry) => {
-    const fields = [entry.company, entry.status, entry.tag, entry.website, entry.notes];
-    return fields.reduce((total, value) => {
-      return total + (String(value || '').trim().length > 0 ? 1 : 0);
-    }, 0);
-  };
-
-  filtered.sort((a, b) => {
-    const prioDiff = (PRIORITY_ORDER[b.priority || 'Medium'] || 0) - (PRIORITY_ORDER[a.priority || 'Medium'] || 0);
-    if (prioDiff !== 0) return prioDiff;
-    const fitDiff = (b.fit_score || 0) - (a.fit_score || 0);
-    if (fitDiff !== 0) return fitDiff;
-    const scoreDiff = completenessScore(b) - completenessScore(a);
-    if (scoreDiff !== 0) return scoreDiff;
-    return String(b.id).localeCompare(String(a.id));
-  });
-
-  count.textContent = `${filtered.length} entr${filtered.length === 1 ? 'y' : 'ies'}`;
-  if (countHero) countHero.textContent = entries.length;
-  if (appliedCount) {
-    appliedCount.textContent = entries.filter((e) => e.status.toLowerCase() === 'applied').length;
-  }
-  if (interviewCount) {
-    interviewCount.textContent = entries.filter((e) => e.status.toLowerCase() === 'interview').length;
-  }
-
-  lastFiltered = filtered;
-  list.innerHTML = '';
-  renderFilterChips();
-  renderTitle();
-  syncNav();
-  renderTodoList();
-  renderCompanyList();
-  renderCountryFilter();
-  renderDashboard();
-
-  if (!filtered.length) {
-    if (emptyState) emptyState.classList.add('show');
-    return;
-  }
-  if (emptyState) emptyState.classList.remove('show');
-
-  filtered.forEach((entry) => {
-    const row = document.createElement('div');
-    row.className = 'table-row';
-
-    const safeCompany = escapeHtml(entry.company);
-    const safeNotes = escapeHtml(entry.notes || '');
-    const safeTag = escapeHtml(entry.tag || '');
-    const safeStatus = escapeHtml(entry.status || '');
-    const websiteUrl = normalizeUrl(entry.website || '');
-    const websiteLabel = escapeHtml(entry.website || '');
-    const fitScore = Number(entry.fit_score ?? entry.fitScore ?? 0) || 0;
-    const priority = entry.priority || 'Medium';
-    const followupAt = entry.followup_at || '';
-    const followupLabel = followupAt ? followupAt : '-';
-
-    row.innerHTML = `
-      <div class="cell">
-        <strong>${safeCompany}</strong>
-        <div class="muted">Updated ${escapeHtml(entry.updated_at)}</div>
-      </div>
-      <div class="cell">
-        <select class="status-pill ${statusClass(entry.status)}" data-action="status-select" data-id="${entry.id}" aria-label="Change status">
-          ${STATUS_FLOW.map((status) => {
-            const selected = status.toLowerCase() === String(entry.status || '').toLowerCase() ? 'selected' : '';
-            return `<option value="${escapeHtml(status)}" ${selected}>${escapeHtml(status)}</option>`;
-          }).join('')}
-        </select>
-      </div>
-      <div class="cell">${safeTag ? `<span class="tag-pill">${safeTag}</span>` : '-'}</div>
-      <div class="cell"><span class="fit-pill">${fitScore || '-'}</span></div>
-      <div class="cell"><span class="priority-pill priority-${priority.toLowerCase()}">${priority}</span></div>
-      <div class="cell"><span class="followup-pill">${escapeHtml(followupLabel)}</span></div>
-      <div class="cell">
-        ${websiteUrl ? `<a class="link" href="${websiteUrl}" target="_blank" rel="noreferrer">${websiteLabel}</a>` : '-'}
-      </div>
-      <div class="cell">${safeNotes || '-'}</div>
-      <div class="cell action-btns">
-        <button class="ghost" data-action="applied" data-id="${entry.id}">Applied</button>
-        <button class="ghost" data-action="edit" data-id="${entry.id}">Edit</button>
-        <button data-action="delete" data-id="${entry.id}">Delete</button>
-      </div>
-    `;
-
-    list.appendChild(row);
-  });
-}
-
 function isFollowupDue(value) {
   if (!value) return false;
   const today = new Date();
   const target = new Date(value);
   if (Number.isNaN(target.getTime())) return false;
-  const diff = target.getTime() - today.setHours(0, 0, 0, 0);
-  return diff <= 7 * 24 * 60 * 60 * 1000;
+  return target.getTime() - today.setHours(0, 0, 0, 0) <= 7 * 24 * 60 * 60 * 1000;
+}
+
+function applyTheme(theme) {
+  if (!theme) {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.removeItem(themeKey);
+    return;
+  }
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(themeKey, theme);
+}
+
+function resetForm() {
+  entryId.value = '';
+  companyInput.value = '';
+  statusInput.value = 'Researching';
+  notesInput.value = '';
+  websiteInput.value = '';
+  tagInput.value = '';
+  if (priorityInput) priorityInput.value = 'Medium';
+  if (appliedAtInput) appliedAtInput.value = '';
+  if (followupAtInput) followupAtInput.value = '';
+  applyFocusTagsToFieldset(tagFieldset, []);
+}
+
+function openQuickAdd() {
+  quickAddPanel?.classList.add('open');
+  quickAddPanel?.setAttribute('aria-hidden', 'false');
+  companyInput.focus();
+}
+
+function closeQuickAdd() {
+  quickAddPanel?.classList.remove('open');
+  quickAddPanel?.setAttribute('aria-hidden', 'true');
 }
 
 function openDrawer(entry) {
   if (!drawerBackdrop || !detailDrawer) return;
+  activeEntryId = entry.id;
   drawerBackdrop.classList.add('open');
   detailDrawer.classList.add('open');
   drawerBackdrop.setAttribute('aria-hidden', 'false');
   detailDrawer.setAttribute('aria-hidden', 'false');
-
   drawerId.value = entry.id;
   drawerCompany.value = entry.company || '';
   drawerStatus.value = entry.status || 'Researching';
@@ -346,163 +174,251 @@ function openDrawer(entry) {
   drawerWebsite.value = entry.website || '';
   drawerTag.value = entry.tag || '';
   drawerNotes.value = entry.notes || '';
-  const tags = String(entry.focus_tags || '').split(',').map((t) => t.trim()).filter(Boolean);
-  applyFocusTagsToFieldset(drawerTags, tags);
+  applyFocusTagsToFieldset(document.querySelector('#drawerTags'), String(entry.focus_tags || '').split(',').map((t) => t.trim()).filter(Boolean));
+  renderActivity(activityCache.get(String(entry.id)) || []);
+  loadActivity(entry.id);
 }
 
 function closeDrawer() {
-  if (!drawerBackdrop || !detailDrawer) return;
-  drawerBackdrop.classList.remove('open');
-  detailDrawer.classList.remove('open');
-  drawerBackdrop.setAttribute('aria-hidden', 'true');
-  detailDrawer.setAttribute('aria-hidden', 'true');
+  drawerBackdrop?.classList.remove('open');
+  detailDrawer?.classList.remove('open');
+  drawerBackdrop?.setAttribute('aria-hidden', 'true');
+  detailDrawer?.setAttribute('aria-hidden', 'true');
+  activeEntryId = null;
 }
 
-function countBy(list, getter) {
-  const map = new Map();
-  list.forEach((item) => {
-    const key = getter(item);
-    if (!key) return;
-    map.set(key, (map.get(key) || 0) + 1);
-  });
-  return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+function currentFilters() {
+  return {
+    search: search.value.trim(),
+    status: el('statusFilter')?.value || '',
+    country: countryFilter?.value || '',
+    priority: priorityFilter?.value || '',
+    followupOnly
+  };
 }
 
-function renderDashboard() {
-  const cityCounts = countBy(entries, (e) => parseCity(e.tag));
-  const countryCounts = countBy(entries, (e) => parseCountry(e.tag));
-
-  if (topCity) {
-    topCity.textContent = cityCounts[0]?.[0] || '-';
-  }
-  if (topCityCount) {
-    topCityCount.textContent = cityCounts[0] ? `${cityCounts[0][1]} entries` : '0 entries';
-  }
-  if (topCountry) {
-    topCountry.textContent = countryCounts[0]?.[0] || '-';
-  }
-  if (topCountryCount) {
-    topCountryCount.textContent = countryCounts[0] ? `${countryCounts[0][1]} entries` : '0 entries';
-  }
-  if (cityCount) {
-    cityCount.textContent = String(cityCounts.length);
-  }
-
-  if (!cityBars) return;
-  cityBars.innerHTML = '';
-  const max = cityCounts[0]?.[1] || 1;
-  cityCounts.slice(0, 6).forEach(([city, count]) => {
-    const row = document.createElement('div');
-    row.className = 'bar-row';
-    const color = colorFromString(city);
-    row.innerHTML = `<div>${city}</div><div>${count}</div><div class=\"bar-track\"><div class=\"bar-fill\" style=\"width:${Math.round((count / max) * 100)}%; background:${color}\"></div></div>`;
-    cityBars.appendChild(row);
-  });
-
-  if (!countryBars) return;
-  countryBars.innerHTML = '';
-  const maxCountry = countryCounts[0]?.[1] || 1;
-  countryCounts.slice(0, 6).forEach(([country, count]) => {
-    const row = document.createElement('div');
-    row.className = 'bar-row';
-    const color = colorFromString(country);
-    row.innerHTML = `<div>${country}</div><div>${count}</div><div class=\"bar-track\"><div class=\"bar-fill\" style=\"width:${Math.round((count / maxCountry) * 100)}%; background:${color}\"></div></div>`;
-    countryBars.appendChild(row);
-  });
-}
-function renderCompanyList() {
-  if (!companyList) return;
-  const names = Array.from(
-    new Set(entries.map((entry) => entry.company).filter(Boolean).map((name) => name.trim()))
-  )
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
-
-  companyList.innerHTML = '';
-
-  if (!names.length) {
-    const empty = document.createElement('li');
-    empty.className = 'muted';
-    empty.textContent = 'No companies yet';
-    companyList.appendChild(empty);
-    return;
-  }
-
-  names.slice(0, 12).forEach((name) => {
-    const item = document.createElement('li');
-    item.textContent = name;
-    companyList.appendChild(item);
-  });
+function selectedSavedView() {
+  return savedViews.find((item) => String(item.id) === String(savedViewSelect?.value || ''));
 }
 
-function renderTodoList() {
-  if (!todoList) return;
-  const todos = entries.filter((entry) => entry.status.toLowerCase() === 'ready to apply');
-  todoList.innerHTML = '';
+function applySavedView(view) {
+  if (!view) return;
+  const filters = view.filters || {};
+  search.value = filters.search || '';
+  el('statusFilter').value = filters.status || '';
+  if (countryFilter) countryFilter.value = filters.country || '';
+  if (priorityFilter) priorityFilter.value = filters.priority || '';
+  followupOnly = Boolean(filters.followupOnly);
+  renderList();
+}
 
-  if (!todos.length) {
+function renderSavedViews() {
+  if (!savedViewSelect) return;
+  const current = savedViewSelect.value;
+  savedViewSelect.innerHTML = '<option value="">Saved views</option>';
+  savedViews.forEach((view) => {
+    const option = document.createElement('option');
+    option.value = String(view.id);
+    option.textContent = view.name;
+    savedViewSelect.appendChild(option);
+  });
+  savedViewSelect.value = current;
+}
+
+async function loadSavedViews() {
+  const res = await fetch('/api/saved-views');
+  savedViews = await res.json();
+  renderSavedViews();
+}
+
+async function loadEntries() {
+  const res = await fetch('/api/internships');
+  entries = await res.json();
+  renderList();
+}
+
+function safeParseActivityPayload(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function formatActivityValue(value) {
+  if (value == null || value === '') return '-';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+function formatFieldLabel(field) {
+  return String(field || '').replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function diffEntries(before, after) {
+  const beforeObj = before && typeof before === 'object' ? before : {};
+  const afterObj = after && typeof after === 'object' ? after : {};
+  const keys = Array.from(new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]));
+  return keys.filter((key) => String(beforeObj[key] ?? '') !== String(afterObj[key] ?? '')).map((field) => ({
+    field,
+    before: beforeObj[field],
+    after: afterObj[field]
+  }));
+}
+
+function renderActivity(items) {
+  if (!drawerActivityList) return;
+  drawerActivityList.innerHTML = '';
+  if (activityCount) activityCount.textContent = `${items.length} events`;
+  if (!items.length) {
     const empty = document.createElement('div');
-    empty.className = 'mini-row';
-    empty.innerHTML = '<span class="muted">No to-do items</span><span></span><span></span>';
-    todoList.appendChild(empty);
+    empty.className = 'timeline-empty';
+    empty.textContent = 'No activity yet';
+    drawerActivityList.appendChild(empty);
     return;
   }
-
-  todos.slice(0, 6).forEach((entry) => {
+  items.forEach((item) => {
+    const oldValue = safeParseActivityPayload(item.old_value);
+    const newValue = safeParseActivityPayload(item.new_value);
+    const diffs = item.event_type === 'created' || item.event_type === 'edited' ? diffEntries(oldValue, newValue) : [];
+    const headline = item.event_type === 'created'
+      ? 'Created'
+      : item.event_type === 'deleted'
+        ? 'Deleted'
+        : item.event_type === 'status changed'
+          ? 'Status changed'
+          : item.event_type === 'follow-up changed'
+            ? 'Follow-up changed'
+            : 'Edited';
+    const details = diffs.length
+      ? `<div class="timeline-diff-list">${diffs.map((diff) => `
+          <div class="timeline-diff-row">
+            <span class="timeline-field">${escapeHtml(formatFieldLabel(diff.field))}</span>
+            <span class="timeline-old">${escapeHtml(formatActivityValue(diff.before))}</span>
+            <span class="timeline-arrow">→</span>
+            <span class="timeline-new">${escapeHtml(formatActivityValue(diff.after))}</span>
+          </div>
+        `).join('')}</div>`
+      : `<div class="timeline-values">
+          <span><strong>old</strong> ${escapeHtml(formatActivityValue(oldValue))}</span>
+          <span><strong>new</strong> ${escapeHtml(formatActivityValue(newValue))}</span>
+        </div>`;
     const row = document.createElement('div');
-    row.className = 'mini-row';
-    const websiteUrl = normalizeUrl(entry.website || '');
-    const websiteLabel = escapeHtml(entry.website || '-');
+    row.className = 'timeline-item';
     row.innerHTML = `
-      <span>${escapeHtml(entry.company)}</span>
-      <span>${websiteUrl ? `<a class="link" href="${websiteUrl}" target="_blank" rel="noreferrer">${websiteLabel}</a>` : '-'}</span>
-      <span>${escapeHtml(entry.tag || 'Internship')}</span>
+      <div class="timeline-dot"></div>
+      <div class="timeline-body">
+        <div class="timeline-top">
+          <strong>${escapeHtml(headline)}</strong>
+          <span>${escapeHtml(item.created_at)}</span>
+        </div>
+        ${details}
+      </div>
     `;
-    todoList.appendChild(row);
+    drawerActivityList.appendChild(row);
   });
 }
 
-function renderTitle() {
-  if (!pageTitle) return;
-  const value = statusFilter.value.trim();
-  pageTitle.textContent = value ? value : 'All';
+async function loadActivity(id) {
+  if (!id) return;
+  const res = await fetch(`/api/internships/${id}/activity`);
+  const items = await res.json();
+  activityCache.set(String(id), items);
+  if (String(activeEntryId) === String(id)) renderActivity(items);
 }
 
 function renderFilterChips() {
   if (!filterChips) return;
   filterChips.innerHTML = '';
-  const statusValue = statusFilter.value.trim();
-  if (statusValue) {
+  const statusFilter = el('statusFilter');
+  const items = [
+    statusFilter?.value.trim() && { label: statusFilter.value.trim(), clear: () => { statusFilter.value = ''; } },
+    countryFilter?.value && { label: countryFilter.value, clear: () => { countryFilter.value = ''; } },
+    priorityFilter?.value && { label: priorityFilter.value, clear: () => { priorityFilter.value = ''; } },
+    followupOnly && { label: 'Upcoming Follow-ups', clear: () => { followupOnly = false; } }
+  ].filter(Boolean);
+  items.forEach((item) => {
     const chip = document.createElement('button');
     chip.className = 'pill button';
     chip.type = 'button';
-    chip.textContent = `${statusValue} ×`;
+    chip.textContent = `${item.label} ×`;
     chip.addEventListener('click', () => {
-      statusFilter.value = '';
+      item.clear();
       renderList();
     });
     filterChips.appendChild(chip);
-  }
-  if (followupOnly) {
-    const chip = document.createElement('button');
-    chip.className = 'pill button';
-    chip.type = 'button';
-    chip.textContent = 'Upcoming Follow-ups ×';
-    chip.addEventListener('click', () => {
-      followupOnly = false;
-      renderList();
-    });
-    filterChips.appendChild(chip);
-  }
+  });
 }
 
 function syncNav() {
   if (!statusNav) return;
-  const buttons = statusNav.querySelectorAll('button');
-  const value = statusFilter.value.trim();
-  buttons.forEach((btn) => {
-    const match = (btn.dataset.status || '') === value;
-    btn.classList.toggle('active', match);
+  const value = el('statusFilter').value.trim();
+  statusNav.querySelectorAll('button').forEach((btn) => {
+    btn.classList.toggle('active', (btn.dataset.status || '') === value);
+  });
+}
+
+function renderList() {
+  const query = search.value.trim().toLowerCase();
+  const statusQuery = el('statusFilter').value.trim().toLowerCase();
+  const countryQuery = (countryFilter?.value || '').trim().toLowerCase();
+  const priorityQuery = (priorityFilter?.value || '').trim().toLowerCase();
+  const filtered = entries.filter((entry) => {
+    const matchesQuery = !query || entry.company.toLowerCase().includes(query) || (entry.tag || '').toLowerCase().includes(query) || (entry.notes || '').toLowerCase().includes(query);
+    const matchesStatus = !statusQuery || entry.status.toLowerCase() === statusQuery;
+    const matchesCountry = !countryQuery || parseCountry(entry.tag).toLowerCase() === countryQuery;
+    const matchesPriority = !priorityQuery || String(entry.priority || 'Medium').toLowerCase() === priorityQuery;
+    const matchesFollowup = !followupOnly || isFollowupDue(entry.followup_at);
+    return matchesQuery && matchesStatus && matchesCountry && matchesPriority && matchesFollowup;
+  });
+
+  filtered.sort((a, b) => {
+    const prioDiff = (PRIORITY_ORDER[b.priority || 'Medium'] || 0) - (PRIORITY_ORDER[a.priority || 'Medium'] || 0);
+    if (prioDiff !== 0) return prioDiff;
+    return String(b.id).localeCompare(String(a.id));
+  });
+
+  lastFiltered = filtered;
+  count.textContent = `${filtered.length} entr${filtered.length === 1 ? 'y' : 'ies'}`;
+  pageTitle.textContent = el('statusFilter').value.trim() || 'All';
+  renderFilterChips();
+  syncNav();
+
+  if (!filtered.length) {
+    emptyState?.classList.add('show');
+    list.innerHTML = '';
+    return;
+  }
+  emptyState?.classList.remove('show');
+
+  list.innerHTML = '';
+  filtered.forEach((entry) => {
+    const row = document.createElement('div');
+    row.className = 'table-row';
+    if (String(activeEntryId) === String(entry.id)) row.classList.add('selected');
+    const websiteUrl = normalizeUrl(entry.website || '');
+    row.innerHTML = `
+      <button class="row-main" type="button" data-action="open" data-id="${entry.id}">
+        <span class="company-cell">
+          <strong>${escapeHtml(entry.company)}</strong>
+          ${entry.tag ? `<span class="row-meta">${escapeHtml(entry.tag)}</span>` : ''}
+        </span>
+        <span class="status-wrap">
+          <select class="status-pill ${statusClass(entry.status)}" data-action="status-select" data-id="${entry.id}" aria-label="Change status">
+            ${STATUS_FLOW.map((status) => `<option value="${escapeHtml(status)}" ${status.toLowerCase() === String(entry.status || '').toLowerCase() ? 'selected' : ''}>${escapeHtml(status)}</option>`).join('')}
+          </select>
+          <span class="priority-dot priority-${String(entry.priority || 'Medium').toLowerCase()}" title="${escapeHtml(entry.priority || 'Medium')}"></span>
+        </span>
+      </button>
+      <div class="row-actions">
+        <button class="ghost tiny" data-action="applied" data-id="${entry.id}">Mark Applied</button>
+        <button class="ghost tiny" data-action="edit" data-id="${entry.id}">Edit</button>
+        <button class="ghost tiny danger" data-action="delete" data-id="${entry.id}">Delete</button>
+      </div>
+    `;
+    list.appendChild(row);
   });
 }
 
@@ -519,219 +435,243 @@ async function saveEntry(event) {
     followup_at: followupAtInput ? followupAtInput.value : '',
     focus_tags: getFocusTagsFromFieldset(tagFieldset).join(',')
   };
-
   const id = entryId.value.trim();
-  if (id) {
-    await fetch(`/api/internships/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } else {
-    await fetch('/api/internships', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  }
-
+  await fetch(id ? `/api/internships/${id}` : '/api/internships', {
+    method: id ? 'PUT' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
   resetForm();
   closeQuickAdd();
-  await loadEntries();
+  await Promise.all([loadEntries(), loadSavedViews()]);
 }
 
-async function handleListClick(event) {
-  const button = event.target.closest('button');
-  if (!button) return;
-  const action = button.dataset.action;
-  const id = button.dataset.id;
-  const entry = entries.find((item) => String(item.id) === String(id));
-  if (!entry) return;
-
-  if (action === 'edit') {
-    openDrawer(entry);
-  }
-
-  if (action === 'applied') {
-    const payload = {
-      company: entry.company,
-      status: 'Applied',
-      notes: entry.notes || '',
-      website: entry.website || '',
-      tag: entry.tag || '',
-      priority: entry.priority || 'Medium',
-      applied_at: entry.applied_at || '',
-      followup_at: entry.followup_at || '',
-      focus_tags: entry.focus_tags || ''
-    };
-    await fetch(`/api/internships/${entry.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    await loadEntries();
-  }
-
-  if (action === 'delete') {
-    const ok = window.confirm(`Delete ${entry.company}?`);
-    if (!ok) return;
-    fetch(`/api/internships/${entry.id}`, { method: 'DELETE' }).then(loadEntries);
-  }
-}
-
-async function handleStatusChange(event) {
-  const select = event.target.closest('select[data-action="status-select"]');
-  if (!select) return;
-  const id = select.dataset.id;
-  const entry = entries.find((item) => String(item.id) === String(id));
-  if (!entry) return;
-
+async function saveDrawer(event) {
+  event.preventDefault();
+  const id = drawerId.value.trim();
   const payload = {
-    company: entry.company,
-    status: select.value,
-    notes: entry.notes || '',
-    website: entry.website || '',
-    tag: entry.tag || '',
-    priority: entry.priority || 'Medium',
-    applied_at: entry.applied_at || '',
-    followup_at: entry.followup_at || '',
-    focus_tags: entry.focus_tags || ''
+    company: drawerCompany.value.trim(),
+    status: drawerStatus.value.trim(),
+    notes: drawerNotes.value.trim(),
+    website: drawerWebsite.value.trim(),
+    tag: drawerTag.value.trim(),
+    priority: drawerPriority.value.trim(),
+    applied_at: drawerAppliedAt.value,
+    followup_at: drawerFollowupAt.value,
+    focus_tags: getFocusTagsFromFieldset(document.querySelector('#drawerTags')).join(',')
   };
-  await fetch(`/api/internships/${entry.id}`, {
+  await fetch(`/api/internships/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
+  await Promise.all([loadEntries(), loadActivity(id)]);
+}
+
+async function bulkUpdate(ids, payload) {
+  await fetch('/api/internships/bulk-update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, ...payload })
+  });
   await loadEntries();
 }
 
-form.addEventListener('submit', saveEntry);
-list.addEventListener('click', handleListClick);
-list.addEventListener('change', handleStatusChange);
-list.addEventListener('click', (event) => {
+async function bulkDelete(ids) {
+  await fetch('/api/internships/bulk-delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids })
+  });
+  activeEntryId = null;
+  closeDrawer();
+  await loadEntries();
+}
+
+function selectedEntryFromEvent(event) {
   const row = event.target.closest('.table-row');
-  if (!row || row.classList.contains('table-head')) return;
-  if (event.target.closest('button, a, select, input')) return;
-  const index = Array.from(list.children).indexOf(row);
-  const entry = index >= 0 ? lastFiltered[index] : null;
-  if (entry) openDrawer(entry);
-});
+  const id = event.target?.dataset?.id || row?.querySelector('[data-action="open"]')?.dataset?.id;
+  return entries.find((item) => String(item.id) === String(id));
+}
+
+async function handleListClick(event) {
+  const action = event.target?.dataset?.action;
+  const entry = selectedEntryFromEvent(event);
+  if (!entry) return;
+
+  if (action === 'open') {
+    openDrawer(entry);
+    return;
+  }
+  if (action === 'edit') {
+    openDrawer(entry);
+    return;
+  }
+  if (action === 'applied') {
+    await bulkUpdate([entry.id], { status: 'Applied', priority: entry.priority || 'Medium' });
+    openDrawer(entry);
+    return;
+  }
+  if (action === 'delete') {
+    if (window.confirm(`Delete ${entry.company}?`)) await bulkDelete([entry.id]);
+  }
+}
+
+async function handleListChange(event) {
+  const select = event.target.closest('select[data-action="status-select"]');
+  if (!select) return;
+  const entry = entries.find((item) => String(item.id) === String(select.dataset.id));
+  if (!entry) return;
+  await bulkUpdate([entry.id], { status: select.value, priority: entry.priority || 'Medium' });
+}
+
+async function saveView() {
+  const name = window.prompt('Saved view name?');
+  if (!name) return;
+  await fetch('/api/saved-views', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name.trim(), filters: currentFilters(), sort_key: '' })
+  });
+  await loadSavedViews();
+}
+
+async function overwriteView() {
+  const view = selectedSavedView();
+  if (!view) return;
+  await fetch(`/api/saved-views/${view.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: view.name, filters: currentFilters(), sort_key: '' })
+  });
+  await loadSavedViews();
+}
+
+async function renameView() {
+  const view = selectedSavedView();
+  if (!view) return;
+  const nextName = window.prompt('Rename saved view', view.name);
+  if (!nextName) return;
+  await fetch(`/api/saved-views/${view.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: nextName.trim(), filters: view.filters || currentFilters(), sort_key: view.sort_key || '' })
+  });
+  await loadSavedViews();
+}
+
+async function deleteView() {
+  const view = selectedSavedView();
+  if (!view) return;
+  if (!window.confirm(`Delete saved view "${view.name}"?`)) return;
+  await fetch(`/api/saved-views/${view.id}`, { method: 'DELETE' });
+  await loadSavedViews();
+}
+
+function renderActivityFallback() {
+  if (!drawerActivityList) return;
+  drawerActivityList.innerHTML = '<div class="timeline-empty">Open a record to see its activity.</div>';
+}
+
+function openCommandPalette() {
+  commandPalette?.classList.add('open');
+  commandPalette?.setAttribute('aria-hidden', 'false');
+  commandInput?.focus();
+  renderCommands();
+}
+
+function closeCommandPalette() {
+  commandPalette?.classList.remove('open');
+  commandPalette?.setAttribute('aria-hidden', 'true');
+}
+
+function renderCommands() {
+  if (!commandList) return;
+  const q = (commandInput?.value || '').toLowerCase().trim();
+  const statusOptions = ['Applied', 'Interview', 'Offer', 'Rejected'];
+  const items = [
+    { label: 'Add internship', action: () => { closeCommandPalette(); openQuickAdd(); } },
+    { label: 'Filter country: Turkey', action: () => { const v = Array.from(countryFilter.options).find((opt) => opt.value === 'Turkey'); if (v) countryFilter.value = 'Turkey'; renderList(); closeCommandPalette(); } },
+    { label: 'Filter country: Germany', action: () => { const v = Array.from(countryFilter.options).find((opt) => opt.value === 'Germany'); if (v) countryFilter.value = 'Germany'; renderList(); closeCommandPalette(); } },
+    ...statusOptions.map((status) => ({ label: `Change status: ${status}`, action: () => { if (activeEntryId) { bulkUpdate([activeEntryId], { status }); closeCommandPalette(); } } }))
+  ].filter((item) => !q || item.label.toLowerCase().includes(q));
+  commandList.innerHTML = '';
+  items.forEach((item) => {
+    const btn = document.createElement('button');
+    btn.className = 'command-item';
+    btn.type = 'button';
+    btn.textContent = item.label;
+    btn.addEventListener('click', item.action);
+    commandList.appendChild(btn);
+  });
+}
+
+form.addEventListener('submit', saveEntry);
+drawerForm.addEventListener('submit', saveDrawer);
+list.addEventListener('click', handleListClick);
+list.addEventListener('change', handleListChange);
 search.addEventListener('input', renderList);
-statusFilter.addEventListener('change', renderList);
-if (countryFilter) {
-  countryFilter.addEventListener('change', renderList);
-}
-if (priorityFilter) {
-  priorityFilter.addEventListener('change', renderList);
-}
-if (followupChip) {
-  followupChip.addEventListener('click', () => {
-    followupOnly = !followupOnly;
-    renderList();
-  });
-}
-newBtn.addEventListener('click', resetForm);
-cancelBtn.addEventListener('click', resetForm);
-exportBtn.addEventListener('click', () => {
-  window.location.href = '/api/export';
+el('statusFilter').addEventListener('change', renderList);
+countryFilter?.addEventListener('change', renderList);
+priorityFilter?.addEventListener('change', renderList);
+followupChip?.addEventListener('click', () => { followupOnly = !followupOnly; renderList(); });
+quickAddBtn?.addEventListener('click', openQuickAdd);
+quickAddClose?.addEventListener('click', closeQuickAdd);
+cancelBtn?.addEventListener('click', resetForm);
+emptyAddBtn?.addEventListener('click', openQuickAdd);
+exportBtn.addEventListener('click', () => { window.location.href = '/api/export'; });
+drawerClose?.addEventListener('click', closeDrawer);
+drawerCancel?.addEventListener('click', closeDrawer);
+savedViewSelect?.addEventListener('change', () => {
+  const view = selectedSavedView();
+  if (view) applySavedView(view);
 });
-
-if (quickAddBtn) {
-  quickAddBtn.addEventListener('click', openQuickAdd);
-}
-
-if (emptyAddBtn) {
-  emptyAddBtn.addEventListener('click', openQuickAdd);
-}
-
-if (quickAddClose) {
-  quickAddClose.addEventListener('click', closeQuickAdd);
-}
-
-if (quickAddPanel) {
-  quickAddPanel.addEventListener('click', (event) => {
-    if (event.target === quickAddPanel) {
-      closeQuickAdd();
-    }
-  });
-}
-
-if (drawerBackdrop) {
-  drawerBackdrop.addEventListener('click', (event) => {
-    if (event.target === drawerBackdrop) closeDrawer();
-  });
-}
-
-if (drawerClose) {
-  drawerClose.addEventListener('click', closeDrawer);
-}
-
-if (drawerCancel) {
-  drawerCancel.addEventListener('click', closeDrawer);
-}
-
-if (drawerForm) {
-  drawerForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const id = drawerId.value.trim();
-    if (!id) return;
-    const payload = {
-      company: drawerCompany.value.trim(),
-      status: drawerStatus.value.trim(),
-      priority: drawerPriority.value.trim(),
-      applied_at: drawerAppliedAt.value,
-      followup_at: drawerFollowupAt.value,
-      website: drawerWebsite.value.trim(),
-      tag: drawerTag.value.trim(),
-      notes: drawerNotes.value.trim(),
-      focus_tags: getFocusTagsFromFieldset(drawerTags).join(',')
-    };
-    await fetch(`/api/internships/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    closeDrawer();
-    await loadEntries();
-  });
-}
+savedViewActionBtn?.addEventListener('click', () => {
+  const open = savedViewMenu.classList.toggle('open');
+  savedViewMenu.setAttribute('aria-hidden', open ? 'false' : 'true');
+});
+applySavedViewBtn?.addEventListener('click', () => {
+  const view = selectedSavedView();
+  if (view) applySavedView(view);
+});
+saveViewBtn?.addEventListener('click', saveView);
+overwriteViewBtn?.addEventListener('click', overwriteView);
+renameViewBtn?.addEventListener('click', renameView);
+deleteViewBtn?.addEventListener('click', deleteView);
+commandInput?.addEventListener('input', renderCommands);
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') closeQuickAdd();
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    openCommandPalette();
+    return;
+  }
+  if (event.key === '/' && document.activeElement !== search && document.activeElement !== commandInput) {
+    event.preventDefault();
+    search.focus();
+    return;
+  }
+  if (event.key.toLowerCase() === 'e' && !event.metaKey && !event.ctrlKey && !event.altKey && activeEntryId) {
+    const entry = entries.find((item) => String(item.id) === String(activeEntryId));
+    if (entry) openDrawer(entry);
+  }
+  if (event.key === 'Escape') {
+    closeQuickAdd();
+    closeDrawer();
+    closeCommandPalette();
+    savedViewMenu?.classList.remove('open');
+    savedViewMenu?.setAttribute('aria-hidden', 'true');
+  }
 });
 
-if (statusNav) {
-  statusNav.addEventListener('click', (event) => {
-    const button = event.target.closest('button');
-    if (!button) return;
-    statusFilter.value = button.dataset.status || '';
-    renderList();
-  });
+commandPalette?.addEventListener('click', (event) => {
+  if (event.target === commandPalette) closeCommandPalette();
+});
+
+async function init() {
+  applyTheme(localStorage.getItem(themeKey));
+  renderActivityFallback();
+  await Promise.all([loadSavedViews(), loadEntries()]);
 }
 
-resetForm();
-loadEntries();
-
-const savedTheme = localStorage.getItem(themeKey);
-if (savedTheme === 'dark' || savedTheme === 'light') {
-  applyTheme(savedTheme);
-}
-
-function handleThemeShortcut(event) {
-  if (event.repeat) return;
-  if (event.metaKey || event.ctrlKey || event.altKey) return;
-  if (event.code === 'KeyT' || event.key.toLowerCase() === 't') {
-    toggleTheme();
-  }
-}
-
-window.addEventListener('keydown', handleThemeShortcut, true);
-document.addEventListener('keydown', handleThemeShortcut, true);
-function colorFromString(value) {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = value.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 70%, 78%)`;
-}
+init();
