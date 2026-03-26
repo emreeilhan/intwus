@@ -75,3 +75,11 @@
 0.0.19
 - Split the stylesheet into modular CSS entrypoints so base, layout, charts, and responsive rules are easier to maintain independently.
 - Kept the public `styles.css` file as a thin import layer so the app structure stays stable while the stylesheet becomes easier to scale.
+
+0.0.20
+- Removed the over-applied decorative dots and kept the visual language focused on functional indicators only.
+- Preserved the subtle status and priority signals while making the interface calmer and less noisy.
+
+0.0.21
+- Simplified picker controls back to a clean native select style to avoid the cross-shaped rendering issue on macOS/Safari.
+- Kept the controls modern through spacing, radius, and contrast instead of forcing a custom arrow that was visually breaking.
