@@ -96,21 +96,17 @@ function formatMonthLabel(key) {
 }
 
 function applyTheme(theme) {
-  if (!theme) {
-    document.documentElement.removeAttribute('data-theme');
-    localStorage.removeItem(themeKey);
-    if (themeToggleBtn) themeToggleBtn.textContent = 'Dark mode';
-    return;
-  }
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(themeKey, theme);
-  if (themeToggleBtn) themeToggleBtn.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  const resolved = theme || 'dark';
+  document.documentElement.setAttribute('data-theme', resolved);
+  localStorage.setItem(themeKey, resolved);
+  const themeLabel = document.getElementById('themeLabel');
+  if (themeLabel) themeLabel.textContent = resolved === 'dark' ? 'Light' : 'Dark';
+  else if (themeToggleBtn) themeToggleBtn.textContent = resolved === 'dark' ? 'Light mode' : 'Dark mode';
 }
 
 function initTheme() {
   const saved = localStorage.getItem(themeKey);
-  const preferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  applyTheme(saved || preferred);
+  applyTheme(saved || 'dark');
 }
 
 function toggleTheme() {

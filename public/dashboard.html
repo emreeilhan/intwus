@@ -1,59 +1,49 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Internship Dashboard</title>
+    <title>Insights — Internship Tracker</title>
+    <meta name="description" content="Pipeline health, market concentration, and application rhythm for your internship tracker." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <div class="page">
       <div class="content-wrap">
-        <header class="page-header app-topbar">
+
+        <!-- TOPBAR -->
+        <header class="app-topbar">
           <div class="app-brand">
             <div class="header-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <path
-                  d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z"
-                />
+                <path d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z" />
               </svg>
             </div>
             <div class="header-text">
-              <p class="header-title">Internship Application Tracker</p>
-              <p class="header-subtitle">Pipeline health, market concentration, and short-term action load.</p>
+              <p class="header-title">Internship Tracker</p>
+              <p class="header-subtitle">Pipeline &amp; follow-up manager</p>
             </div>
           </div>
+
           <nav class="mode-switch" aria-label="Primary views">
             <a class="mode-link" href="/">Tracker</a>
             <a class="mode-link active" href="/dashboard">Insights</a>
           </nav>
-          <div class="controls compact utility-actions">
-            <button class="ghost small" id="themeToggleBtn" type="button" aria-label="Toggle theme">Dark mode</button>
+
+          <div class="utility-actions">
+            <button class="ghost small" id="themeToggleBtn" type="button" aria-label="Toggle theme">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              <span id="themeLabel">Light</span>
+            </button>
+            <a class="ghost small" href="/" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;padding:5px 10px;font-size:0.75rem;font-weight:600;border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--ink-2);background:var(--surface-2);">← Tracker</a>
           </div>
         </header>
 
-        <section class="workspace-hero workspace-hero-tight dashboard-hero">
-          <div class="workspace-copy">
-            <p class="workspace-eyebrow">Insight workspace</p>
-            <h1 class="workspace-title">Read the pipeline clearly, then go back to the tracker with a sharper decision.</h1>
-            <p class="workspace-subtitle" id="dashboardFocusSummary">Review readiness, concentration, and follow-up pressure without drowning in decorative analytics.</p>
-          </div>
-        </section>
-
-        <section class="workspace-toolbar insights-toolbar" aria-label="Insights context">
-          <div class="toolbar-row toolbar-row-secondary">
-            <div class="toolbar-group">
-              <div class="toolbar-label">Mode</div>
-              <div class="toolbar-static">Insights is a separate decision layer. Keep the tracker for execution.</div>
-            </div>
-            <div class="toolbar-group">
-              <div class="toolbar-label">Next move</div>
-              <div class="toolbar-static">Use this page to spot concentration risk, submission pace, and follow-up pressure.</div>
-            </div>
-          </div>
-        </section>
-
-        <section class="dashboard dashboard-kpis">
+        <!-- KPI STRIP -->
+        <div class="dashboard dashboard-kpis" style="margin-top:16px;">
           <div class="dash-card">
             <div class="dash-label">Tracked</div>
             <div class="dash-value" id="dashTracked">0</div>
@@ -62,7 +52,7 @@
           <div class="dash-card">
             <div class="dash-label">Active Pipeline</div>
             <div class="dash-value" id="dashActivePipeline">0</div>
-            <div class="dash-sub" id="dashActivePipelineSub">Researching through interview</div>
+            <div class="dash-sub" id="dashActivePipelineSub">Researching → Interview</div>
           </div>
           <div class="dash-card">
             <div class="dash-label">Ready Now</div>
@@ -75,33 +65,37 @@
             <div class="dash-sub" id="dashAppliedRateSub">Applied vs total</div>
           </div>
           <div class="dash-card">
-            <div class="dash-label">Due Follow-ups</div>
+            <div class="dash-label">Follow-ups Due</div>
             <div class="dash-value" id="dashFollowupDue">0</div>
             <div class="dash-sub">Next 14 days</div>
           </div>
-        </section>
+        </div>
 
-        <div class="layout dashboard-layout">
+        <!-- MAIN GRID -->
+        <div class="layout dashboard-layout" style="margin-top:12px;margin-bottom:24px;">
+
+          <!-- Left: Analytics shell -->
           <section class="table-card analytics-shell">
             <div class="table-header">
               <div>
                 <div class="table-title">Pipeline trend</div>
-                <div class="table-description">How submission activity has been building across recent months.</div>
+                <div class="table-description">Submission activity building over time.</div>
               </div>
               <div class="table-count" id="appliedCount">0 total</div>
             </div>
             <div class="chart-wrap">
               <div class="chart-surface">
-                <svg id="trendChart" class="trend-chart" viewBox="0 0 640 220" preserveAspectRatio="none" aria-label="Applications trend chart" role="img"></svg>
+                <svg id="trendChart" class="trend-chart" viewBox="0 0 640 200" preserveAspectRatio="none" aria-label="Applications trend chart" role="img"></svg>
               </div>
               <div class="chart-caption" id="trendCaption">Monthly application entries over the last year.</div>
             </div>
+
             <div class="chart-grid">
               <div class="chart-panel">
                 <div class="panel-head">
                   <div>
                     <div class="side-title">Stage distribution</div>
-                    <div class="panel-caption">See where the pipeline is concentrated.</div>
+                    <div class="panel-caption">Where the pipeline is concentrated.</div>
                   </div>
                   <div class="panel-kpi" id="statusMixTotal">0</div>
                 </div>
@@ -111,19 +105,20 @@
                 <div class="panel-head">
                   <div>
                     <div class="side-title">Priority load</div>
-                    <div class="panel-caption">High-value targets versus the long tail.</div>
+                    <div class="panel-caption">High-value targets vs long tail.</div>
                   </div>
                   <div class="panel-kpi" id="priorityMixTotal">0</div>
                 </div>
                 <div id="priorityMix" class="priority-mix"></div>
               </div>
             </div>
-            <div class="chart-grid chart-grid-two">
+
+            <div class="chart-grid">
               <div class="chart-panel">
                 <div class="panel-head">
                   <div>
                     <div class="side-title">Momentum</div>
-                    <div class="panel-caption">Applied share compared with total monthly activity.</div>
+                    <div class="panel-caption">Applied share vs monthly activity.</div>
                   </div>
                   <div class="panel-kpi subtle">Recent months</div>
                 </div>
@@ -133,39 +128,42 @@
                 <div class="panel-head">
                   <div>
                     <div class="side-title">Lead time</div>
-                    <div class="panel-caption">Time between application and follow-up scheduling.</div>
+                    <div class="panel-caption">Application → follow-up scheduling.</div>
                   </div>
-                  <div class="panel-kpi subtle">Quality of process</div>
+                  <div class="panel-kpi subtle">Quality signal</div>
                 </div>
                 <div id="leadTimeBars" class="bar-list"></div>
               </div>
             </div>
+
             <div class="chart-panel compact-panel">
               <div class="panel-head">
                 <div>
                   <div class="side-title">Applications by month</div>
-                  <div class="panel-caption">Raw submission volume across the latest 12 months.</div>
+                  <div class="panel-caption">Raw submission volume — latest 12 months.</div>
                 </div>
-                <div class="panel-kpi subtle">Latest 12 months</div>
+                <div class="panel-kpi subtle">12 months</div>
               </div>
               <div class="bar-list" id="appliedBars"></div>
             </div>
+
             <div class="empty-state" id="dashboardEmpty">
               <div class="empty-icon">📊</div>
-              <div class="empty-title">No analytics yet</div>
+              <div class="empty-title">No data yet</div>
               <div class="empty-sub">Add a few internships to unlock dashboard insights.</div>
-              <a class="ghost" href="/">Add entries</a>
+              <a class="ghost small" href="/" style="display:inline-flex;align-items:center;text-decoration:none;padding:5px 10px;font-size:0.75rem;font-weight:600;border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--ink-2);background:var(--surface-2);">Go to Tracker</a>
             </div>
           </section>
 
+          <!-- Right: Side cards -->
           <aside class="side">
             <div class="side-card">
               <div class="panel-head">
                 <div>
                   <div class="side-title">Focus markets</div>
-                  <div class="panel-caption">Where the pipeline is most concentrated right now.</div>
+                  <div class="panel-caption">Where the pipeline is most concentrated.</div>
                 </div>
-                <div class="panel-kpi subtle" id="dashTopCountry">-</div>
+                <div class="panel-kpi subtle" id="dashTopCountry">—</div>
               </div>
               <div class="stacked-chart" id="geoSpread"></div>
             </div>
@@ -175,7 +173,7 @@
                   <div class="side-title">Top cities</div>
                   <div class="panel-caption" id="dashTopCityCount">0 entries</div>
                 </div>
-                <div class="panel-kpi" id="dashTopCity">-</div>
+                <div class="panel-kpi" id="dashTopCity">—</div>
               </div>
               <div class="bar-list" id="dashCityBars"></div>
             </div>
@@ -193,13 +191,14 @@
               <div class="panel-head">
                 <div>
                   <div class="side-title">Follow-up queue</div>
-                  <div class="panel-caption">Sorted by due date within the next 14 days.</div>
+                  <div class="panel-caption">Sorted by due date — next 14 days.</div>
                 </div>
               </div>
               <div class="mini-table" id="followupList"></div>
             </div>
           </aside>
         </div>
+
       </div>
     </div>
 

@@ -15,7 +15,7 @@ const cancelBtn = el('cancelBtn');
 const filterChips = el('filterChips');
 const followupChip = el('followupChip');
 const pageTitle = el('pageTitle');
-const pageDescription = el('pageDescription');
+const pageDescription = el('pageDescription'); // may be null in new HTML
 const statusNav = el('statusNav');
 const quickAddBtn = el('quickAddBtn');
 const quickAddPanel = el('quickAddPanel');
@@ -265,21 +265,20 @@ function renderPipelineSummary(filtered) {
 }
 
 function applyTheme(theme) {
-  if (!theme) {
-    document.documentElement.removeAttribute('data-theme');
-    localStorage.removeItem(themeKey);
-    if (themeToggleBtn) themeToggleBtn.textContent = 'Dark mode';
-    return;
-  }
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(themeKey, theme);
-  if (themeToggleBtn) themeToggleBtn.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  const resolved = theme || 'dark';
+  document.documentElement.setAttribute('data-theme', resolved);
+  localStorage.setItem(themeKey, resolved);
+  // Update the label span inside the button (if present)
+  const themeLabel = document.getElementById('themeLabel');
+  if (themeLabel) themeLabel.textContent = resolved === 'dark' ? 'Light' : 'Dark';
+  // Fallback: update button text directly if no label span
+  else if (themeToggleBtn) themeToggleBtn.textContent = resolved === 'dark' ? 'Light mode' : 'Dark mode';
 }
 
 function initTheme() {
+  // Default is dark — only override if user explicitly set a preference
   const saved = localStorage.getItem(themeKey);
-  const preferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  applyTheme(saved || preferred);
+  applyTheme(saved || 'dark');
 }
 
 function toggleTheme() {
