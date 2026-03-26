@@ -99,3 +99,7 @@
 0.0.25
 - Rebuilt each application row into clear interaction zones so opening a record, reviewing the next step, changing stage, and using secondary actions now feel deliberate instead of cramped together.
 - Moved repeated row actions into a quieter progressive reveal, added a lighter stage treatment, and hardened the row behavior so the main list feels faster, cleaner, and more trustworthy in daily use.
+
+0.0.26
+- Applied a final shared-system polish pass across tracker and insights so spacing, radii, hover motion, focus treatment, control sizing, and surface contrast now feel consistent instead of drifting component by component.
+- Tightened the list and dashboard presentation with calmer row states, cleaner pills and icon controls, more disciplined chart/card edges, and quieter interaction feedback that makes the product feel more premium during repeated daily use.

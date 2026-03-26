@@ -8,7 +8,7 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(2px);
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
   z-index: 4;
 }
 
@@ -22,9 +22,11 @@
 
 .row-actions button {
   color: var(--muted);
-  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   border-color: var(--line);
   backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-soft);
+  min-height: 32px;
 }
 
 .row-actions button:hover,
@@ -42,10 +44,12 @@
   height: 30px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   color: var(--muted);
   text-decoration: none;
   font-size: 0.86rem;
+  box-shadow: var(--shadow-soft);
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
 }
 
 .row-quick-action {
@@ -72,9 +76,10 @@
   gap: 4px;
   padding: 6px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
   box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
 }
 
 .row-menu .menu-item {
@@ -84,15 +89,15 @@
 
 .empty-state {
   display: none;
-  padding: 40px 20px 44px;
+  padding: 48px 24px 52px;
   text-align: center;
 }
 
 .empty-state.show { display: grid; gap: 10px; justify-items: center; }
 
-.empty-icon { font-size: 1.3rem; }
-.empty-title { font-weight: 650; }
-.empty-sub { color: var(--muted); font-size: 0.88rem; max-width: 420px; }
+.empty-icon { font-size: 1.35rem; }
+.empty-title { font-weight: 650; letter-spacing: -0.02em; }
+.empty-sub { color: var(--muted); font-size: 0.88rem; line-height: 1.55; max-width: 440px; }
 
 .quick-add-panel,
 .command-palette,
@@ -132,13 +137,13 @@
 .drawer {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
 }
 
 .quick-add-card {
   width: min(460px, calc(100vw - 28px));
-  padding: 18px;
+  padding: 20px;
   backdrop-filter: blur(14px);
 }
 
@@ -167,7 +172,7 @@
 
 .form {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 label {
@@ -188,13 +193,14 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: rgba(17, 24, 39, 0.22);
-  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.06);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .tag-fieldset {
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  padding: 12px 12px;
+  background: color-mix(in srgb, var(--surface-2) 74%, transparent);
 }
 
 .tag-fieldset legend {
@@ -221,7 +227,7 @@ textarea:focus {
 
 .command-card {
   width: min(520px, calc(100vw - 28px));
-  padding: 12px;
+  padding: 14px;
   backdrop-filter: blur(14px);
 }
 
@@ -244,12 +250,18 @@ textarea:focus {
   background: transparent;
   color: var(--ink);
   border-color: transparent;
-  border-radius: 11px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
   transform: none;
 }
 
 .command-item:hover { background: var(--accent-soft); }
+
+.command-item:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--surface-2) 84%, transparent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
 
 .drawer-backdrop {
   align-items: stretch;
@@ -258,8 +270,8 @@ textarea:focus {
 
 .drawer {
   width: min(430px, calc(100vw - 20px));
-  border-radius: 16px 0 0 16px;
-  padding: 18px;
+  border-radius: 18px 0 0 18px;
+  padding: 20px;
   overflow: auto;
   backdrop-filter: blur(14px);
 }
@@ -372,10 +384,11 @@ textarea:focus {
 
 .dash-card,
 .side-card {
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   padding: 18px;
+  box-shadow: var(--shadow-soft);
 }
 
 .dashboard-hero {
