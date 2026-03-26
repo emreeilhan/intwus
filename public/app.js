@@ -57,11 +57,47 @@ const commandList = el('commandList');
 const themeToggleBtn = el('themeToggleBtn');
 const searchTrigger = el('searchTrigger');
 const inlineSearch = el('inlineSearch');
+const viewToggle = el('viewToggle');
+const listView = el('listView');
+const boardView = el('boardView');
+const board = el('board');
+const emptyIcon = el('emptyIcon');
+const emptyTitle = el('emptyTitle');
+const emptySub = el('emptySub');
+const onboarding = el('onboarding');
+const obStep = el('obStep');
+const obNext = el('obNext');
+const obSkip = el('obSkip');
 const statusCountEls = Array.from(document.querySelectorAll('[data-status-count]'));
 
 const themeKey = 'staj-theme';
+const onboardingKey = 'staj-onboarded';
+const viewModeKey = 'staj-viewmode';
 const STATUS_FLOW = ['Researching', 'Ready to Apply', 'Applied', 'Interview', 'Offer', 'Rejected', 'Paused'];
 const PRIORITY_ORDER = { High: 3, Medium: 2, Low: 1 };
+
+/* Per-stage empty state content */
+const STAGE_EMPTY = {
+  '': { icon: '📌', title: 'No applications yet', sub: 'Add your first internship to start tracking your pipeline.' },
+  'Researching': { icon: '🔍', title: 'No companies being researched', sub: 'Start exploring roles and companies — add them here as you discover opportunities.' },
+  'Ready to Apply': { icon: '✅', title: 'Nothing ready to apply', sub: 'When you\'ve done your research & prep, move entries here to submit.' },
+  'Applied': { icon: '📬', title: 'No applications sent yet', sub: 'Once you submit, track them here. Good luck!' },
+  'Interview': { icon: '🎯', title: 'No interviews scheduled', sub: 'Keep applying — interviews will come. Prepare notes when they do.' },
+  'Offer': { icon: '🎉', title: 'No offers yet', sub: 'Stay focused on the pipeline. Your offer is coming!' },
+  'Rejected': { icon: '📝', title: 'No rejections yet', sub: 'Every "no" is one step closer to a "yes." Keep going.' },
+  'Paused': { icon: '⏸️', title: 'Nothing paused', sub: 'Use this stage for opportunities you want to revisit later.' }
+};
+
+/* Board-level empty messages */
+const BOARD_EMPTY = {
+  'Researching':    { icon: '🔍', msg: 'Start by adding companies to research.' },
+  'Ready to Apply': { icon: '📋', msg: 'Move researched companies here when ready.' },
+  'Applied':        { icon: '📬', msg: 'Applications will appear here.' },
+  'Interview':      { icon: '🎯', msg: 'Interview invites show up here.' },
+  'Offer':          { icon: '🎉', msg: 'Offers land here.' },
+  'Rejected':       { icon: '📝', msg: 'Rejections tracked here.' },
+  'Paused':         { icon: '⏸️', msg: 'Paused items rest here.' }
+};
 
 let entries = [];
 let savedViews = [];
@@ -71,6 +107,8 @@ let activeEntryId = null;
 let activityCache = new Map();
 let rowMenuId = null;
 let activeViewId = null;
+let currentViewMode = localStorage.getItem(viewModeKey) || 'list';
+let onboardingStep = 0;
 
 function escapeHtml(value) {
   return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -303,7 +341,26 @@ function setStatusFilter(value) {
   const statusFilter = el('statusFilter');
   if (!statusFilter) return;
   statusFilter.value = value || '';
-  renderList();
+  renderAll();
+}
+
+/* ============================================================ VIEW MODE */
+function setViewMode(mode) {
+  currentViewMode = mode;
+  localStorage.setItem(viewModeKey, mode);
+  if (listView) listView.style.display = mode === 'list' ? '' : 'none';
+  if (boardView) boardView.style.display = mode === 'board' ? '' : 'none';
+  if (viewToggle) {
+    viewToggle.querySelectorAll('.vt-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.view === mode);
+    });
+  }
+  renderAll();
+}
+
+function renderAll() {
+  if (currentViewMode === 'board') renderBoard();
+  else renderList();
 }
 
 /* ============================================================ SAVED VIEWS */
@@ -372,7 +429,7 @@ async function loadEntries() {
   const res = await fetch('/api/internships');
   entries = await res.json();
   populateCountryFilterOptions();
-  renderList();
+  renderAll();
 }
 
 /* ============================================================ ACTIVITY */
@@ -471,7 +528,7 @@ function syncNav() {
   });
 }
 
-function renderList() {
+function getFilteredEntries() {
   const query = (search?.value || '').trim().toLowerCase();
   const statusQuery = (el('statusFilter')?.value || '').trim().toLowerCase();
   const countryQuery = (countryFilter?.value || '').trim().toLowerCase();
@@ -484,13 +541,30 @@ function renderList() {
     const matchesFollowup = !followupOnly || isFollowupDue(entry.followup_at);
     return matchesQuery && matchesStatus && matchesCountry && matchesPriority && matchesFollowup;
   });
-
   filtered.sort((a, b) => {
     const prioDiff = (PRIORITY_ORDER[b.priority || 'Medium'] || 0) - (PRIORITY_ORDER[a.priority || 'Medium'] || 0);
     if (prioDiff !== 0) return prioDiff;
     return String(b.id).localeCompare(String(a.id));
   });
+  return filtered;
+}
 
+function updateEmptyState(filtered) {
+  const statusVal = el('statusFilter')?.value?.trim() || '';
+  const stage = STAGE_EMPTY[statusVal] || STAGE_EMPTY[''];
+  if (emptyIcon) emptyIcon.textContent = stage.icon;
+  if (emptyTitle) emptyTitle.textContent = stage.title;
+  if (emptySub) emptySub.textContent = stage.sub;
+  if (!filtered.length) {
+    emptyState?.classList.add('show');
+    list.innerHTML = '';
+  } else {
+    emptyState?.classList.remove('show');
+  }
+}
+
+function renderList() {
+  const filtered = getFilteredEntries();
   lastFiltered = filtered;
   renderStatusCounts();
   if (count) count.textContent = String(filtered.length);
@@ -500,13 +574,8 @@ function renderList() {
   }
   renderFilterChips();
   syncNav();
-
-  if (!filtered.length) {
-    emptyState?.classList.add('show');
-    list.innerHTML = '';
-    return;
-  }
-  emptyState?.classList.remove('show');
+  updateEmptyState(filtered);
+  if (!filtered.length) return;
 
   list.innerHTML = '';
   filtered.forEach((entry) => {
@@ -560,6 +629,82 @@ function renderList() {
       </div>
     `;
     list.appendChild(row);
+  });
+}
+
+/* ============================================================ KANBAN BOARD */
+function renderBoard() {
+  if (!board) return;
+  const filtered = getFilteredEntries();
+  lastFiltered = filtered;
+  renderStatusCounts();
+  if (count) count.textContent = String(filtered.length);
+  if (pageTitle) {
+    const statusVal = el('statusFilter')?.value?.trim();
+    pageTitle.textContent = statusVal ? `${statusVal}` : 'All entries';
+  }
+  renderFilterChips();
+  syncNav();
+
+  const byStatus = new Map();
+  STATUS_FLOW.forEach((s) => byStatus.set(s, []));
+  filtered.forEach((entry) => {
+    const s = entry.status || 'Researching';
+    if (byStatus.has(s)) byStatus.get(s).push(entry);
+    else byStatus.set(s, [entry]);
+  });
+
+  board.innerHTML = '';
+  const columnsToRender = el('statusFilter')?.value?.trim()
+    ? [el('statusFilter').value.trim()]
+    : STATUS_FLOW;
+
+  columnsToRender.forEach((status, colIdx) => {
+    const items = byStatus.get(status) || [];
+    const col = document.createElement('div');
+    col.className = 'board-column';
+    const dotClass = statusClass(status);
+    const emptyInfo = BOARD_EMPTY[status] || { icon: '📌', msg: 'No entries here.' };
+
+    col.innerHTML = `
+      <div class="board-col-header">
+        <div class="board-col-title">
+          <span class="nav-dot ${dotClass.replace('status-', 'dot-').replace('-to-apply','')}"
+                style="width:7px;height:7px;border-radius:50%;background:var(--${dotClass.replace('status-','status-').replace('-to-apply','-ready')});"></span>
+          ${escapeHtml(status)}
+        </div>
+        <span class="board-col-count">${items.length}</span>
+      </div>
+      <div class="board-col-cards">
+        ${items.length === 0 ? `<div class="board-col-empty"><div class="board-col-empty-icon">${emptyInfo.icon}</div>${escapeHtml(emptyInfo.msg)}</div>` : ''}
+      </div>
+    `;
+
+    const cardsContainer = col.querySelector('.board-col-cards');
+    items.forEach((entry, i) => {
+      const card = document.createElement('div');
+      card.className = 'board-card';
+      card.style.animationDelay = `${colIdx * 30 + i * 40}ms`;
+      card.dataset.id = entry.id;
+      const loc = parseLocationParts(entry.tag);
+      const locStr = [loc.city, loc.country].filter(Boolean).join(', ');
+      const priorityStr = entry.priority || 'Medium';
+      card.innerHTML = `
+        <div class="board-card-company">${escapeHtml(entry.company)}</div>
+        ${locStr ? `<div class="board-card-location">${escapeHtml(locStr)}</div>` : ''}
+        <div class="board-card-footer">
+          <span class="board-card-badge priority-${priorityStr.toLowerCase()}">${escapeHtml(priorityStr)}</span>
+          ${entry.followup_at ? `<span class="board-card-badge ${isFollowupDue(entry.followup_at) ? 'urgent' : ''}">${formatDateLabel(entry.followup_at)}</span>` : ''}
+        </div>
+      `;
+      card.addEventListener('click', () => {
+        const found = entries.find((e) => String(e.id) === String(entry.id));
+        if (found) openDrawer(found);
+      });
+      cardsContainer.appendChild(card);
+    });
+
+    board.appendChild(col);
   });
 }
 
@@ -718,13 +863,70 @@ function renderCommands() {
   });
 }
 
+/* ============================================================ ONBOARDING */
+const ONBOARDING_STEPS = [
+  {
+    emoji: '👋',
+    title: 'Welcome to Internship Tracker',
+    desc: 'Track your entire internship pipeline — from initial research to offer. Let\'s get you oriented in 30 seconds.'
+  },
+  {
+    emoji: '📌',
+    title: 'Add entries to your pipeline',
+    desc: 'Click the blue "New entry" button in the sidebar, or press Ctrl+K to open the command palette. Each entry moves through stages: Researching → Ready → Applied → Interview → Offer.'
+  },
+  {
+    emoji: '⚡',
+    title: 'Power-user shortcuts',
+    desc: 'Press / to search instantly. Use the sidebar to filter by stage. Switch to Board view to see your pipeline as a kanban. Right-click saved views to manage them.'
+  }
+];
+
+function showOnboarding() {
+  if (localStorage.getItem(onboardingKey)) return;
+  onboardingStep = 0;
+  onboarding?.setAttribute('aria-hidden', 'false');
+  renderOnboardingStep();
+}
+
+function renderOnboardingStep() {
+  if (!obStep) return;
+  const step = ONBOARDING_STEPS[onboardingStep];
+  obStep.innerHTML = `
+    <div class="ob-emoji">${step.emoji}</div>
+    <h2 class="ob-title">${step.title}</h2>
+    <p class="ob-desc">${step.desc}</p>
+  `;
+  document.querySelectorAll('.ob-dot').forEach((dot, i) => {
+    dot.classList.toggle('active', i === onboardingStep);
+    dot.classList.toggle('done', i < onboardingStep);
+  });
+  if (obNext) {
+    obNext.textContent = onboardingStep === ONBOARDING_STEPS.length - 1 ? 'Get started' : 'Next';
+  }
+}
+
+function advanceOnboarding() {
+  onboardingStep++;
+  if (onboardingStep >= ONBOARDING_STEPS.length) {
+    closeOnboarding();
+    return;
+  }
+  renderOnboardingStep();
+}
+
+function closeOnboarding() {
+  localStorage.setItem(onboardingKey, '1');
+  onboarding?.setAttribute('aria-hidden', 'true');
+}
+
 /* ============================================================ EVENT BINDINGS */
 form.addEventListener('submit', saveEntry);
 drawerForm.addEventListener('submit', saveDrawer);
 list.addEventListener('click', handleListClick);
 list.addEventListener('change', handleListChange);
-search?.addEventListener('input', renderList);
-el('statusFilter')?.addEventListener('change', renderList);
+search?.addEventListener('input', renderAll);
+el('statusFilter')?.addEventListener('change', renderAll);
 statusNav?.addEventListener('click', (event) => {
   const btn = event.target.closest('.sidebar-nav-item[data-status]');
   if (!btn) return;
@@ -732,9 +934,9 @@ statusNav?.addEventListener('click', (event) => {
   renderSavedViewsInSidebar();
   setStatusFilter(btn.dataset.status || '');
 });
-countryFilter?.addEventListener('change', renderList);
-priorityFilter?.addEventListener('change', renderList);
-followupChip?.addEventListener('click', () => { followupOnly = !followupOnly; followupChip.classList.toggle('active', followupOnly); renderList(); });
+countryFilter?.addEventListener('change', renderAll);
+priorityFilter?.addEventListener('change', renderAll);
+followupChip?.addEventListener('click', () => { followupOnly = !followupOnly; followupChip.classList.toggle('active', followupOnly); renderAll(); });
 quickAddBtn?.addEventListener('click', openQuickAdd);
 quickAddClose?.addEventListener('click', closeQuickAdd);
 cancelBtn?.addEventListener('click', resetForm);
@@ -750,6 +952,15 @@ renameViewBtn?.addEventListener('click', renameView);
 deleteViewBtn?.addEventListener('click', deleteView);
 searchTrigger?.addEventListener('click', openSearch);
 commandInput?.addEventListener('input', renderCommands);
+obNext?.addEventListener('click', advanceOnboarding);
+obSkip?.addEventListener('click', closeOnboarding);
+
+/* View toggle */
+viewToggle?.addEventListener('click', (event) => {
+  const btn = event.target.closest('.vt-btn[data-view]');
+  if (!btn) return;
+  setViewMode(btn.dataset.view);
+});
 
 document.addEventListener('keydown', (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -785,7 +996,9 @@ commandPalette?.addEventListener('click', (event) => {
 
 async function init() {
   initTheme();
+  setViewMode(currentViewMode);
   await Promise.all([loadSavedViews(), loadEntries()]);
+  showOnboarding();
 }
 
 init();

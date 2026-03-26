@@ -17,7 +17,6 @@
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-inner">
 
-          <!-- Brand -->
           <div class="sidebar-brand">
             <div class="brand-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z" /></svg>
@@ -25,20 +24,17 @@
             <span class="brand-name">Tracker</span>
           </div>
 
-          <!-- Primary action -->
           <button class="sidebar-add" id="quickAddBtn" type="button">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             New entry
           </button>
 
-          <!-- Search trigger -->
           <button class="sidebar-search-trigger" id="searchTrigger" type="button">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm8.7 12.3-3.2-3.2a1 1 0 0 0-1.4 1.4l3.2 3.2a1 1 0 0 0 1.4-1.4Z"/></svg>
             <span>Search…</span>
             <kbd>/</kbd>
           </button>
 
-          <!-- Stage navigation -->
           <div class="sidebar-section">
             <div class="sidebar-section-label">Pipeline</div>
             <div class="sidebar-nav" id="statusNav" aria-label="Status filters">
@@ -85,18 +81,13 @@
             </div>
           </div>
 
-          <!-- Saved views -->
           <div class="sidebar-section">
             <div class="sidebar-section-label">
               <span>Views</span>
               <button class="sidebar-section-action" id="saveViewBtn" type="button" title="Save current view">+</button>
             </div>
-            <div class="sidebar-nav" id="savedViewNav">
-              <!-- JS populates -->
-            </div>
-            <select id="savedViewSelect" class="sr-only" aria-hidden="true">
-              <option value="">Views</option>
-            </select>
+            <div class="sidebar-nav" id="savedViewNav"></div>
+            <select id="savedViewSelect" class="sr-only" aria-hidden="true"><option value="">Views</option></select>
             <div class="saved-view-menu" id="savedViewMenu" aria-hidden="true">
               <button class="menu-item" id="applySavedViewBtn" type="button">Apply view</button>
               <button class="menu-item" id="overwriteViewBtn" type="button">Overwrite</button>
@@ -105,10 +96,8 @@
             </div>
           </div>
 
-          <!-- Spacer -->
           <div class="sidebar-spacer"></div>
 
-          <!-- Utilities -->
           <div class="sidebar-footer">
             <a class="sidebar-footer-link" href="/dashboard">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
@@ -126,16 +115,10 @@
         </div>
       </aside>
 
-      <!-- Hidden select for status JS binding -->
       <select id="statusFilter" class="sr-only" aria-hidden="true">
         <option value="">All</option>
-        <option>Researching</option>
-        <option>Ready to Apply</option>
-        <option>Applied</option>
-        <option>Interview</option>
-        <option>Offer</option>
-        <option>Rejected</option>
-        <option>Paused</option>
+        <option>Researching</option><option>Ready to Apply</option><option>Applied</option>
+        <option>Interview</option><option>Offer</option><option>Rejected</option><option>Paused</option>
       </select>
 
       <!-- ===== MAIN PANEL ===== -->
@@ -149,22 +132,31 @@
           </div>
           <div class="context-right">
             <div class="context-filters" id="filterChips"></div>
+
+            <!-- View mode toggle -->
+            <div class="view-toggle" id="viewToggle">
+              <button class="vt-btn active" data-view="list" type="button" title="List view">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+              </button>
+              <button class="vt-btn" data-view="board" type="button" title="Board view">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              </button>
+            </div>
+
             <div class="filter-controls">
               <select id="countryFilter" class="filter-select" aria-label="Filter by country">
                 <option value="">Country</option>
               </select>
               <select id="priorityFilter" class="filter-select" aria-label="Filter by priority">
                 <option value="">Priority</option>
-                <option>High</option>
-                <option>Medium</option>
-                <option>Low</option>
+                <option>High</option><option>Medium</option><option>Low</option>
               </select>
               <button class="filter-chip" id="followupChip" type="button">Follow-up due</button>
             </div>
           </div>
         </header>
 
-        <!-- Inline search (expanded from trigger) -->
+        <!-- Inline search -->
         <div class="inline-search" id="inlineSearch" aria-hidden="true">
           <label class="search-bar" aria-label="Search internships">
             <svg class="search-bar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm8.7 12.3-3.2-3.2a1 1 0 0 0-1.4 1.4l3.2 3.2a1 1 0 0 0 1.4-1.4Z"/></svg>
@@ -173,8 +165,8 @@
           </label>
         </div>
 
-        <!-- Table -->
-        <section class="list-container" aria-label="Applications list">
+        <!-- LIST VIEW -->
+        <section class="list-container" id="listView" aria-label="Applications list">
           <div class="list-table">
             <div class="list-head">
               <div class="lh-cell lh-company">Company</div>
@@ -183,12 +175,17 @@
             </div>
             <div id="list" class="list-body"></div>
             <div class="empty-state" id="emptyState">
-              <div class="empty-icon">📌</div>
-              <div class="empty-title">No applications yet</div>
-              <div class="empty-sub">Add your first internship to start tracking your pipeline.</div>
+              <div class="empty-icon" id="emptyIcon">📌</div>
+              <div class="empty-title" id="emptyTitle">No applications yet</div>
+              <div class="empty-sub" id="emptySub">Add your first internship to start tracking your pipeline.</div>
               <button class="ghost-btn" id="emptyAddBtn" type="button">Add first entry</button>
             </div>
           </div>
+        </section>
+
+        <!-- KANBAN BOARD VIEW -->
+        <section class="board-container" id="boardView" aria-label="Board view" style="display:none;">
+          <div class="board" id="board"></div>
         </section>
 
       </main>
@@ -314,6 +311,24 @@
           </div>
         </form>
       </aside>
+    </div>
+
+    <!-- ONBOARDING OVERLAY -->
+    <div class="onboarding-overlay" id="onboarding" aria-hidden="true">
+      <div class="onboarding-card" id="onboardingCard">
+        <div class="onboarding-progress">
+          <span class="ob-dot active" data-step="0"></span>
+          <span class="ob-dot" data-step="1"></span>
+          <span class="ob-dot" data-step="2"></span>
+        </div>
+        <div class="onboarding-step" id="obStep">
+          <!-- JS fills -->
+        </div>
+        <div class="onboarding-actions">
+          <button class="ghost-btn ob-skip" id="obSkip" type="button">Skip</button>
+          <button class="ob-next" id="obNext" type="button">Next</button>
+        </div>
+      </div>
     </div>
 
     <script src="/app.js"></script>
