@@ -155,6 +155,16 @@
   color: var(--ink);
 }
 
+:root[data-theme="dark"] select:hover {
+  background-color: rgba(230, 237, 243, 0.04);
+  border-color: var(--line-strong);
+}
+
+:root[data-theme="dark"] .status-pill:hover {
+  background-color: rgba(230, 237, 243, 0.06);
+  border-color: var(--line-strong);
+}
+
 :root[data-theme="dark"] .calendar-cell[data-level="0"] { background: rgba(230, 237, 243, 0.06); }
 :root[data-theme="dark"] .calendar-cell[data-level="1"] { background: rgba(230, 237, 243, 0.12); }
 :root[data-theme="dark"] .calendar-cell[data-level="2"] { background: rgba(230, 237, 243, 0.22); }

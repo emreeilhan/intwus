@@ -83,3 +83,7 @@
 0.0.21
 - Simplified picker controls back to a clean native select style to avoid the cross-shaped rendering issue on macOS/Safari.
 - Kept the controls modern through spacing, radius, and contrast instead of forcing a custom arrow that was visually breaking.
+
+0.0.22
+- Refined picker interaction states with softer hover surfaces and cleaner focus rings so the controls feel more intentional without extra decoration.
+- Kept the native picker behavior intact while improving the tactile feel across light and dark themes.

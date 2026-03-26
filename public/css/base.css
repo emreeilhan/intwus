@@ -229,6 +229,11 @@ select {
   padding-right: 12px;
 }
 
+select:hover {
+  border-color: var(--line-strong);
+  background-color: var(--surface-2);
+}
+
 .country-filter {
   padding: 8px 12px;
   font-size: 0.84rem;
@@ -415,10 +420,15 @@ button.tiny { padding: 6px 9px; font-size: 0.78rem; }
   background-image: none;
 }
 
+.status-pill:hover {
+  background: rgba(17, 24, 39, 0.05);
+  border-color: var(--line-strong);
+}
+
 .status-pill:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
-  border-color: rgba(17, 24, 39, 0.18);
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.09);
+  border-color: rgba(17, 24, 39, 0.22);
 }
 
 .status-researching,
@@ -428,8 +438,13 @@ button.tiny { padding: 6px 9px; font-size: 0.78rem; }
 .status-offer,
 .status-rejected,
 .status-paused {
-  background-color: rgba(17, 24, 39, 0.05);
+  background-color: rgba(17, 24, 39, 0.045);
   color: #374151;
+}
+
+.status-pill option:checked,
+.status-pill option:focus {
+  background: rgba(17, 24, 39, 0.06);
 }
 
 .priority-dot {
