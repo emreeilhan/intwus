@@ -663,6 +663,7 @@ function renderBoard() {
     const items = byStatus.get(status) || [];
     const col = document.createElement('div');
     col.className = 'board-column';
+    col.dataset.status = status;
     const dotClass = statusClass(status);
     const emptyInfo = BOARD_EMPTY[status] || { icon: '📌', msg: 'No entries here.' };
 
