@@ -107,3 +107,7 @@
 0.0.27
 - Added a new local-first `/profile` workspace that turns the CRR whoami documents into an editable, structured career profile page aligned with the existing product shell.
 - Introduced a seeded `data/profile.json` store and profile API so updates stay fast inside the app without adding Google Drive writeback complexity.
+
+0.0.28
+- Added 15 new research-grade internship targets across Fraunhofer institutes, university labs, and applied security organizations focused on embedded and hardware security.
+- Filled the tracker spreadsheet with fit scores, location tags, focus tags, and outreach-ready notes so the shortlist is immediately usable for 2026 summer applications.
