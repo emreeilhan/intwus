@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile - Internship Tracker</title>
+    <meta name="description" content="Structured career profile workspace powered by local profile data." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-inner">
+          <div class="sidebar-brand">
+            <div class="brand-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z" /></svg>
+            </div>
+            <span class="brand-name">Tracker</span>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="sidebar-section-label">Navigate</div>
+            <div class="sidebar-nav">
+              <a class="sidebar-nav-item" href="/" style="text-decoration:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                <span class="nav-label">Tracker</span>
+              </a>
+              <a class="sidebar-nav-item" href="/dashboard" style="text-decoration:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                <span class="nav-label">Insights</span>
+              </a>
+              <a class="sidebar-nav-item active" href="/profile" style="text-decoration:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                <span class="nav-label">Profile</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="sidebar-spacer"></div>
+
+          <div class="sidebar-footer">
+            <button class="sidebar-footer-link" id="themeToggleBtn" type="button" aria-label="Toggle theme">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              <span id="themeLabel">Light mode</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <header class="context-bar">
+          <div class="context-left">
+            <h1 class="context-title">Profile</h1>
+            <span class="context-count" id="profileCount">0 source docs</span>
+          </div>
+          <div class="context-right">
+            <span class="profile-save-status" id="saveStatus">Local profile store</span>
+            <button type="submit" form="profileForm" id="saveBtn">Save profile</button>
+          </div>
+        </header>
+
+        <div class="profile-page">
+          <section class="profile-hero">
+            <div class="profile-hero-card profile-hero-card--wide">
+              <div class="profile-hero-top">
+                <span class="profile-badge">CRR Profile</span>
+                <span class="profile-hero-meta" id="heroUpdated">-</span>
+              </div>
+              <h2 class="profile-hero-title" id="heroHeadline">Loading profile...</h2>
+              <p class="profile-hero-copy" id="heroFocus"></p>
+              <div class="profile-chip-list" id="heroRoles"></div>
+            </div>
+            <div class="profile-hero-card">
+              <div class="profile-stat-label">Current status</div>
+              <div class="profile-stat-value" id="heroStatus">-</div>
+              <div class="profile-stat-sub" id="heroMarket">-</div>
+            </div>
+            <div class="profile-hero-card">
+              <div class="profile-stat-label">Execution focus</div>
+              <div class="profile-stat-value" id="heroGoalCount">0</div>
+              <div class="profile-stat-sub">Goals kept visible</div>
+            </div>
+            <div class="profile-hero-card">
+              <div class="profile-stat-label">Source docs</div>
+              <div class="profile-stat-value" id="heroSourceCount">0</div>
+              <div class="profile-stat-sub">PDF + text context</div>
+            </div>
+          </section>
+
+          <div class="profile-layout">
+            <form id="profileForm" class="profile-form">
+              <section class="table-card profile-section">
+                <div class="table-header">
+                  <div>
+                    <div class="table-title">Identity</div>
+                    <div class="table-description">Core context used across the page.</div>
+                  </div>
+                </div>
+                <div class="profile-section-body">
+                  <div class="form-row-2">
+                    <label>Name <input id="identityName" type="text" /></label>
+                    <label>Current status <input id="identityStatus" type="text" /></label>
+                  </div>
+                  <div class="form-row-2">
+                    <label>Headline <input id="identityHeadline" type="text" /></label>
+                    <label>Target market <input id="identityMarket" type="text" /></label>
+                  </div>
+                  <label>Current focus <textarea id="identityFocus" rows="3"></textarea></label>
+                  <label>Target roles <textarea id="identityRoles" rows="4" placeholder="One role per line"></textarea></label>
+                </div>
+              </section>
+
+              <section class="table-card profile-section">
+                <div class="table-header">
+                  <div>
+                    <div class="table-title">Narrative</div>
+                    <div class="table-description">Executive-level framing and positioning.</div>
+                  </div>
+                </div>
+                <div class="profile-section-body">
+                  <label>Executive summary <textarea id="summaryExecutive" rows="4"></textarea></label>
+                  <label>Profile summary <textarea id="summaryProfile" rows="4"></textarea></label>
+                  <label>Positioning <textarea id="summaryPositioning" rows="3"></textarea></label>
+                </div>
+              </section>
+
+              <section class="table-card profile-section">
+                <div class="table-header">
+                  <div>
+                    <div class="table-title">Strategy</div>
+                    <div class="table-description">Primary/secondary axis and why this path exists.</div>
+                  </div>
+                </div>
+                <div class="profile-section-body">
+                  <label>Thesis <textarea id="strategyThesis" rows="3"></textarea></label>
+                  <label>Primary axis <textarea id="strategyPrimary" rows="4"></textarea></label>
+                  <label>Secondary axis <textarea id="strategySecondary" rows="4"></textarea></label>
+                  <label>Integration point <textarea id="strategyIntegration" rows="4"></textarea></label>
+                  <label>Rationale <textarea id="strategyRationale" rows="4"></textarea></label>
+                  <label>Identity statement <textarea id="strategyIdentity" rows="3"></textarea></label>
+                </div>
+              </section>
+
+              <section class="table-card profile-section">
+                <div class="table-header">
+                  <div>
+                    <div class="table-title">Execution Lists</div>
+                    <div class="table-description">One item per line keeps editing fast and predictable.</div>
+                  </div>
+                </div>
+                <div class="profile-section-body">
+                  <label>Goals <textarea id="goals" rows="6" placeholder="One goal per line"></textarea></label>
+                  <label>Strengths <textarea id="strengths" rows="6" placeholder="One strength per line"></textarea></label>
+                  <label>Growth areas <textarea id="growthAreas" rows="6" placeholder="One growth area per line"></textarea></label>
+                  <div class="form-row-2">
+                    <label>Technical skills <textarea id="skillsTechnical" rows="6" placeholder="One skill per line"></textarea></label>
+                    <label>Domains <textarea id="skillsDomains" rows="6" placeholder="One domain per line"></textarea></label>
+                  </div>
+                  <label>Focus areas <textarea id="skillsFocus" rows="6" placeholder="One focus area per line"></textarea></label>
+                  <div class="form-row-2">
+                    <label>Languages <textarea id="languages" rows="5" placeholder="One language per line"></textarea></label>
+                    <label>Non-goals <textarea id="nonGoals" rows="5" placeholder="One item per line"></textarea></label>
+                  </div>
+                </div>
+              </section>
+            </form>
+
+            <aside class="profile-side">
+              <section class="side-card profile-side-card">
+                <div class="panel-head">
+                  <div>
+                    <div class="side-title">Quick read</div>
+                    <div class="panel-caption">High-signal scan for positioning.</div>
+                  </div>
+                </div>
+                <div class="profile-side-list" id="quickReadList"></div>
+              </section>
+
+              <section class="side-card profile-side-card">
+                <div class="panel-head">
+                  <div>
+                    <div class="side-title">Skills snapshot</div>
+                    <div class="panel-caption">Rendered from the local model.</div>
+                  </div>
+                </div>
+                <div class="profile-chip-list" id="skillsSnapshot"></div>
+              </section>
+            </aside>
+          </div>
+
+          <section class="table-card profile-section">
+            <div class="table-header">
+              <div>
+                <div class="table-title">Source documents</div>
+                <div class="table-description">Reference docs stay visible even though editing is local-first.</div>
+              </div>
+            </div>
+            <div class="profile-sources" id="sourceCards"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="/profile.js"></script>
+  </body>
+</html>

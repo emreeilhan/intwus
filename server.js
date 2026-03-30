@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename);
 const dataDir = path.join(process.cwd(), 'data');
 const dbPath = path.join(dataDir, 'internships.db');
 const excelPath = path.join(dataDir, 'internships.xlsx');
+const profilePath = path.join(dataDir, 'profile.json');
 
 fs.mkdirSync(dataDir, { recursive: true });
 
@@ -55,12 +56,125 @@ if (!hasFocusTags) {
   db.exec(`ALTER TABLE internships ADD COLUMN focus_tags TEXT DEFAULT '';`);
 }
 
+const PROFILE_SEED = {
+  identity: {
+    name: 'Emre Ilhan',
+    currentStatus: 'Bilgisayar Muhendisligi lisans ogrencisi',
+    headline: 'Embedded-heavy security ve sistem seviyesi muhendislik odagi',
+    targetMarket: 'Global ve DACH pazari',
+    currentFocus: 'Guvenligi muhendislik zihniyetiyle ele alip firmware ve cihaz davranisini anlayan teknik profil.',
+    targetRoles: [
+      'Embedded Engineer',
+      'Embedded Security Engineer',
+      'System-Level Engineer',
+      'Security Engineer'
+    ]
+  },
+  summary: {
+    executive: 'Aday, standart web gelistirme yerine gomulu sistemler, guvenlik ve sistem seviyesinde calisan yazilimlara yoneliyor. Karar acik bir sekilde security + embedded, ancak embedded-heavy eksende kilitlenmis durumda.',
+    profile: 'Ogrenme yaklasimi arac odakli degil, prensip odakli. Sistemlerin neden boyle davrandigini anlamaya, log ve telemetri okumaya ve gercek dunya kisitlariyla dusunmeye agirlik veriyor.',
+    positioning: 'Kendisini "guvenlige muhendislik zihniyetiyle yaklasan ve firmware/device seviyesinde sistem davranisini anlayan aday" olarak konumluyor.'
+  },
+  goals: [
+    'Turkiye pazarinda hizli ise alinabilirlik, orta vadede AB ve remote opsiyonlari',
+    'AI tarafindan kolay degistirilemeyecek bir uzmanlik zemini kurmak',
+    'Uzun vadede yuksek maas tavanina sahip teknik roller hedeflemek',
+    '1-2 yil boyunca anlamsiz yavas ilerleme riskinden kacinmak',
+    'Teknik anlami koruyarak para ve etkiyi birlikte optimize etmek'
+  ],
+  strengths: [
+    'Sistem seviyesinde dusunme egilimi ve mimari merak',
+    'C, Java ve Python ile rahat calisabilme',
+    'Ag temelleri ve guvenlik operasyonlarina giris seviyesinde pratik maruziyet',
+    'ESP32 ve mikrodenetleyici ekosistemine erken temas',
+    'Zor teknik konulara karsi yuksek tolerans ve uzun vadeli plan kurabilme'
+  ],
+  growthAreas: [
+    'RTOS mimarileri ve gorev-zamanlama-memori modeli',
+    'Embedded Linux ic yapisi',
+    'Firmware ve donanim guvenligi portfoy derinligi',
+    'Modern C++ veya Rust ile daha fazla uygulamali deneyim',
+    'Gercek veriyle calisan sistem gozlemi ve detection projeleri'
+  ],
+  skills: {
+    technical: [
+      'C',
+      'Java',
+      'Python',
+      'Networking fundamentals',
+      'System behavior analysis',
+      'Detection logic',
+      'Automation scripting'
+    ],
+    domains: [
+      'Embedded systems',
+      'Cybersecurity',
+      'Systems engineering',
+      'Device logging and telemetry'
+    ],
+    focusAreas: [
+      'Firmware-level thinking',
+      'Secure communication and update mechanisms',
+      'Device telemetry analysis',
+      'Embedded security entegrasyonu',
+      'Engineering-leaning security roles'
+    ]
+  },
+  languages: [
+    'English - teknik dokumantasyon ve akademik kaynak kullaniminda aktif',
+    'German (B1) - teknik Almanca okuma ve mesleki kullanim motivasyonu yuksek',
+    'Turkish - ana iletisim dili'
+  ],
+  strategy: {
+    thesis: 'Security ve Embedded, ancak net bicimde embedded-heavy strateji. Ne saf SOC ne de saf embedded; kontrollu iki eksenli ama ana kimligi belli bir yonelim.',
+    primaryAxis: 'Kisa vadeli gelir ve ise giris ekseni engineering-leaning cybersecurity. SOC sadece giris mekanizmasi; alert triage-only rol hedef degil.',
+    secondaryAxis: 'Uzun vadeli fark yaratma ekseni aktif sekilde gelistirilen embedded systems. Hobi gibi degil, ciddi ikinci eksen olarak surduruluyor.',
+    integrationPoint: 'Asil fark yaratan kisim embedded cihazlardan gelen log ve telemetriyi guvenlik zihniyetiyle yorumlayabilmek; yani embedded ile security hatlarini birlestirmek.',
+    rationale: 'Bu strateji dusuk seviyeli SOC AI riskinden kaciyor, junior embedded-only giris surtunmesini azaltyor ve gelecekte security engineer, detection engineer, embedded security gibi cikis opsiyonlarini acik tutuyor.',
+    identityStatement: 'I approach security with an engineering mindset and understand how systems behave at the firmware and device level.'
+  },
+  nonGoals: [
+    'Uzun sure SOC L1/L2 benzeri alert-triage rollerinde kalmak',
+    'Saf pentest veya red team odakli bir yol izlemek',
+    'Guvenlik boyutu olmayan saf driver-maintenance kariyeri',
+    'Sertifika toplayip uretim seviyesi beceri olusturmamak',
+    'Gec ise alinabilirlik pahasina yalnizca embedded-first gitmek'
+  ],
+  sources: [
+    {
+      id: '1LQGH6kGB5D9fzDZBe-7I-kuocq43PNXN',
+      title: 'Whoami.pdf',
+      kind: 'pdf',
+      url: 'https://drive.google.com/file/d/1LQGH6kGB5D9fzDZBe-7I-kuocq43PNXN/view',
+      createdTime: '2026-02-14T01:33:03.682Z',
+      modifiedTime: '2026-02-14T01:33:13.145Z',
+      excerpt: 'Teknik yonelimi, ogrenme sekli ve kariyer hedefleri uzerine daha resmi bir profil dokumani. Embedded, system-level ve embedded security cizgisini; avantajlar, riskler ve SWOT analiziyle birlikte ozetliyor.',
+      rawContent: 'This document describes the user\'s technical orientation, learning style, and interaction preferences. It is intended to help AI systems provide more accurate, relevant, and realistic guidance. Teknik profil; mevcut durum, executive summary, teknik yetkinlik analizi, kariyer yonelimi, SWOT ve genel durum ozeti bolumlerinden olusuyor.'
+    },
+    {
+      id: '1Aot2bG1s3yqaIit_OaHjOIVz_w4VstFByPNf_w60VYE',
+      title: 'LegacyWhoami',
+      kind: 'doc',
+      url: 'https://docs.google.com/document/d/1Aot2bG1s3yqaIit_OaHjOIVz_w4VstFByPNf_w60VYE/edit',
+      createdTime: '2026-01-21T20:21:53.058Z',
+      modifiedTime: '2026-03-18T12:28:01.683Z',
+      excerpt: 'Finalized career decision metni. Security + Embedded ama embedded-heavy stratejisini, neden secildigini, entegrasyon noktasini ve acikca reddedilen yollari anlatiyor.',
+      rawContent: 'You are a senior technical career advisor. This context describes a FINALIZED career decision, not an open-ended debate. Final decision: Security and Embedded but EMBEDDED-HEAVY. SOC sadece giris mekanizmasi; embedded ise aktif tutulan ikinci eksen. Ana fark yaratici nokta device loglari, telemetry ve anomaly mantigini birlestirmek.'
+    }
+  ],
+  updatedAt: '2026-03-27T00:00:00.000Z'
+};
+
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/profile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'profile.html'));
 });
 
 const selectAll = db.prepare(`
@@ -152,6 +266,10 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function cloneProfileSeed() {
+  return JSON.parse(JSON.stringify(PROFILE_SEED));
+}
+
 function safeJsonParse(value, fallback) {
   try {
     return value ? JSON.parse(value) : fallback;
@@ -206,6 +324,111 @@ function compareFieldChanges(before, after) {
     }
   });
   return changes;
+}
+
+function normalizeString(value, fallback = '') {
+  return typeof value === 'string' ? value.trim() : fallback;
+}
+
+function normalizeStringList(value, fallback = []) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || '').trim())
+      .filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return Array.isArray(fallback) ? [...fallback] : [];
+}
+
+function normalizeSourceList(value, fallback = []) {
+  const sourceList = Array.isArray(value) ? value : fallback;
+  return sourceList
+    .map((item) => ({
+      id: normalizeString(item?.id),
+      title: normalizeString(item?.title),
+      kind: normalizeString(item?.kind),
+      url: normalizeString(item?.url),
+      createdTime: normalizeString(item?.createdTime),
+      modifiedTime: normalizeString(item?.modifiedTime),
+      excerpt: normalizeString(item?.excerpt),
+      rawContent: typeof item?.rawContent === 'string' ? item.rawContent.trim() : ''
+    }))
+    .filter((item) => item.title || item.url || item.rawContent);
+}
+
+function normalizeProfileInput(input, fallback = PROFILE_SEED) {
+  const source = input && typeof input === 'object' ? input : {};
+  const identityFallback = fallback.identity || {};
+  const summaryFallback = fallback.summary || {};
+  const skillsFallback = fallback.skills || {};
+  const strategyFallback = fallback.strategy || {};
+
+  return {
+    identity: {
+      name: normalizeString(source.identity?.name, identityFallback.name || ''),
+      currentStatus: normalizeString(source.identity?.currentStatus, identityFallback.currentStatus || ''),
+      headline: normalizeString(source.identity?.headline, identityFallback.headline || ''),
+      targetMarket: normalizeString(source.identity?.targetMarket, identityFallback.targetMarket || ''),
+      currentFocus: normalizeString(source.identity?.currentFocus, identityFallback.currentFocus || ''),
+      targetRoles: normalizeStringList(source.identity?.targetRoles, identityFallback.targetRoles || [])
+    },
+    summary: {
+      executive: normalizeString(source.summary?.executive, summaryFallback.executive || ''),
+      profile: normalizeString(source.summary?.profile, summaryFallback.profile || ''),
+      positioning: normalizeString(source.summary?.positioning, summaryFallback.positioning || '')
+    },
+    goals: normalizeStringList(source.goals, fallback.goals || []),
+    strengths: normalizeStringList(source.strengths, fallback.strengths || []),
+    growthAreas: normalizeStringList(source.growthAreas, fallback.growthAreas || []),
+    skills: {
+      technical: normalizeStringList(source.skills?.technical, skillsFallback.technical || []),
+      domains: normalizeStringList(source.skills?.domains, skillsFallback.domains || []),
+      focusAreas: normalizeStringList(source.skills?.focusAreas, skillsFallback.focusAreas || [])
+    },
+    languages: normalizeStringList(source.languages, fallback.languages || []),
+    strategy: {
+      thesis: normalizeString(source.strategy?.thesis, strategyFallback.thesis || ''),
+      primaryAxis: normalizeString(source.strategy?.primaryAxis, strategyFallback.primaryAxis || ''),
+      secondaryAxis: normalizeString(source.strategy?.secondaryAxis, strategyFallback.secondaryAxis || ''),
+      integrationPoint: normalizeString(source.strategy?.integrationPoint, strategyFallback.integrationPoint || ''),
+      rationale: normalizeString(source.strategy?.rationale, strategyFallback.rationale || ''),
+      identityStatement: normalizeString(source.strategy?.identityStatement, strategyFallback.identityStatement || '')
+    },
+    nonGoals: normalizeStringList(source.nonGoals, fallback.nonGoals || []),
+    sources: normalizeSourceList(source.sources, fallback.sources || []),
+    updatedAt: normalizeString(source.updatedAt, fallback.updatedAt || nowIso())
+  };
+}
+
+function ensureProfileFile() {
+  if (fs.existsSync(profilePath)) {
+    return;
+  }
+  fs.writeFileSync(profilePath, JSON.stringify(cloneProfileSeed(), null, 2));
+}
+
+function readProfile() {
+  ensureProfileFile();
+  const raw = fs.readFileSync(profilePath, 'utf8');
+  const parsed = safeJsonParse(raw, null);
+  if (!parsed) {
+    const fallback = normalizeProfileInput(cloneProfileSeed(), PROFILE_SEED);
+    fs.writeFileSync(profilePath, JSON.stringify(fallback, null, 2));
+    return fallback;
+  }
+  return normalizeProfileInput(parsed, PROFILE_SEED);
+}
+
+function writeProfile(profile) {
+  const normalized = normalizeProfileInput(profile, readProfile());
+  normalized.updatedAt = nowIso();
+  fs.writeFileSync(profilePath, JSON.stringify(normalized, null, 2));
+  return normalized;
 }
 
 function syncExcel() {
@@ -376,6 +599,20 @@ function excelIsNewer() {
   const dbStat = fs.statSync(dbPath);
   return excelStat.mtimeMs > dbStat.mtimeMs;
 }
+
+app.get('/api/profile', (req, res) => {
+  res.json(readProfile());
+});
+
+app.put('/api/profile', (req, res) => {
+  const existing = readProfile();
+  const merged = {
+    ...existing,
+    ...(req.body && typeof req.body === 'object' ? req.body : {}),
+    sources: Array.isArray(req.body?.sources) ? req.body.sources : existing.sources
+  };
+  res.json(writeProfile(merged));
+});
 
 app.get('/api/internships', (req, res) => {
   res.json(selectAll.all());
@@ -636,6 +873,7 @@ app.post('/api/import', (req, res) => {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
+  ensureProfileFile();
   if (excelIsNewer()) {
     syncFromExcel();
   }

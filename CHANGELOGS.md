@@ -103,3 +103,7 @@
 0.0.26
 - Applied a final shared-system polish pass across tracker and insights so spacing, radii, hover motion, focus treatment, control sizing, and surface contrast now feel consistent instead of drifting component by component.
 - Tightened the list and dashboard presentation with calmer row states, cleaner pills and icon controls, more disciplined chart/card edges, and quieter interaction feedback that makes the product feel more premium during repeated daily use.
+
+0.0.27
+- Added a new local-first `/profile` workspace that turns the CRR whoami documents into an editable, structured career profile page aligned with the existing product shell.
+- Introduced a seeded `data/profile.json` store and profile API so updates stay fast inside the app without adding Google Drive writeback complexity.
