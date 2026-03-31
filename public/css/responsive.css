@@ -43,10 +43,9 @@
     width: 260px;
     box-shadow: var(--shadow-lg);
     z-index: 200;
-    transition: transform var(--sidebar-motion), width var(--sidebar-motion), opacity var(--sidebar-motion);
+    transition: transform var(--sidebar-motion), opacity var(--sidebar-motion);
   }
   .app-shell.sidebar-collapsed .sidebar {
-    width: 260px;
     transform: translateX(-100%);
   }
   .app-shell.sidebar-open .sidebar {

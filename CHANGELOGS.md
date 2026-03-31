@@ -135,3 +135,7 @@
 0.0.34
 - Removed the leftover collapsed sidebar rail by zeroing the sidebar width in the closed state so the main workspace can fully reclaim the canvas.
 - Kept the reopen control as a fixed edge button, which preserves access without leaving a visible sidebar strip behind.
+
+0.0.35
+- Switched the closed sidebar back to a true off-canvas transform so no clipped navigation text or ghost strip can remain on screen.
+- Added a dedicated floating reopen button for the collapsed state, which keeps access obvious without reintroducing the rail.

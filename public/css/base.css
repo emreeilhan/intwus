@@ -131,14 +131,14 @@ body {
   z-index: 40;
   overflow: hidden;
   transform: translateX(0);
-  transition: width var(--sidebar-motion), transform var(--sidebar-motion), opacity var(--sidebar-motion);
+  transition: transform var(--sidebar-motion), opacity var(--sidebar-motion);
   will-change: transform;
 }
 
 .app-shell.sidebar-collapsed .sidebar {
-  width: 0;
-  overflow: hidden;
-  border-right: 0;
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sidebar-inner {
@@ -415,12 +415,38 @@ body {
 }
 
 .sidebar-toggle.is-floating {
+  box-shadow: var(--shadow);
+  background: var(--surface-2);
+}
+
+.sidebar-fab {
   position: fixed;
   left: 12px;
   top: 16px;
   z-index: 220;
-  box-shadow: var(--shadow);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   background: var(--surface-2);
+  color: var(--ink-2);
+  box-shadow: var(--shadow);
+  transition: background-color var(--ease), border-color var(--ease), color var(--ease), opacity var(--sidebar-motion);
+}
+
+.sidebar-fab:hover {
+  color: var(--ink);
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  transform: none;
+}
+
+.sidebar-fab svg {
+  width: 14px;
+  height: 14px;
 }
 
 .sidebar-toggle:hover {
@@ -487,7 +513,7 @@ body {
 
 .app-shell.sidebar-collapsed .sidebar-inner {
   padding: 8px 0 0;
-  overflow: visible;
+  overflow: hidden;
 }
 
 /* Context bar (replaces topbar + toolbar) */

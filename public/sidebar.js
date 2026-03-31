@@ -5,6 +5,7 @@ const sidebarBody = document.querySelector('.sidebar-body');
 const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
 const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 const sidebarMobileQuery = window.matchMedia('(max-width: 900px)');
+let sidebarFab = document.getElementById('sidebarFab');
 
 let sidebarOpen = false;
 
@@ -19,15 +20,14 @@ function syncSidebarUi() {
 
   sidebarShell.classList.toggle('sidebar-collapsed', !sidebarOpen);
   sidebarShell.classList.toggle('sidebar-open', sidebarOpen);
-  sidebar.setAttribute('aria-hidden', 'false');
-  sidebar.toggleAttribute('inert', false);
+  sidebar.setAttribute('aria-hidden', sidebarOpen ? 'false' : 'true');
+  sidebar.toggleAttribute('inert', !sidebarOpen);
   sidebarBody?.setAttribute('aria-hidden', sidebarOpen ? 'false' : 'true');
   sidebarBody?.toggleAttribute('inert', !sidebarOpen);
   sidebarToggleBtn.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false');
   sidebarToggleBtn.setAttribute('aria-label', sidebarOpen ? 'Hide sidebar' : 'Show sidebar');
   sidebarToggleBtn.setAttribute('title', sidebarOpen ? 'Hide sidebar' : 'Show sidebar');
   sidebarToggleBtn.classList.toggle('is-active', sidebarOpen);
-  sidebarToggleBtn.classList.toggle('is-floating', !sidebarOpen);
 
   if (sidebarBackdrop) {
     sidebarBackdrop.classList.toggle('open', sidebarMobileQuery.matches && sidebarOpen);
@@ -35,6 +35,11 @@ function syncSidebarUi() {
   }
 
   document.body.classList.toggle('sidebar-open', sidebarMobileQuery.matches && sidebarOpen);
+
+  if (sidebarFab) {
+    sidebarFab.hidden = sidebarOpen;
+    sidebarFab.setAttribute('aria-hidden', sidebarOpen ? 'true' : 'false');
+  }
 }
 
 function setSidebarOpen(nextOpen, persist = true) {
@@ -52,10 +57,22 @@ function toggleSidebar() {
 function initSidebar() {
   if (!sidebarShell || !sidebar || !sidebarToggleBtn) return;
 
+  if (!sidebarFab) {
+    sidebarFab = document.createElement('button');
+    sidebarFab.id = 'sidebarFab';
+    sidebarFab.type = 'button';
+    sidebarFab.className = 'sidebar-fab';
+    sidebarFab.setAttribute('aria-label', 'Show sidebar');
+    sidebarFab.setAttribute('title', 'Show sidebar');
+    sidebarFab.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>';
+    document.body.appendChild(sidebarFab);
+  }
+
   sidebarOpen = getSidebarDefaultOpen();
   syncSidebarUi();
 
   sidebarToggleBtn.addEventListener('click', toggleSidebar);
+  sidebarFab?.addEventListener('click', () => setSidebarOpen(true));
   sidebarBackdrop?.addEventListener('click', () => setSidebarOpen(false));
 
   sidebarMobileQuery.addEventListener('change', () => {
