@@ -309,6 +309,7 @@ function getBaseChangePayload(row) {
     notes: row.notes || '',
     website: row.website || '',
     tag: row.tag || '',
+    fit_score: row.fit_score ?? 0,
     priority: row.priority || 'Medium',
     applied_at: row.applied_at || '',
     followup_at: row.followup_at || '',
@@ -328,6 +329,15 @@ function compareFieldChanges(before, after) {
 
 function normalizeString(value, fallback = '') {
   return typeof value === 'string' ? value.trim() : fallback;
+}
+
+function normalizeFitScoreInput(value, fallback = null) {
+  if (value == null || value === '') return fallback;
+  const next = Number(value);
+  if (!Number.isFinite(next)) return fallback;
+  const rounded = Math.round(next);
+  if (rounded < 1 || rounded > 5) return fallback;
+  return rounded;
 }
 
 function normalizeStringList(value, fallback = []) {
@@ -495,7 +505,11 @@ function computeFitScore({ company, status, notes, website, tag }) {
 }
 
 function backfillFitScores() {
-  const rows = db.prepare(`SELECT id, company, status, notes, website, tag FROM internships`).all();
+  const rows = db.prepare(`
+    SELECT id, company, status, notes, website, tag
+    FROM internships
+    WHERE fit_score IS NULL OR fit_score = 0
+  `).all();
   const updateScore = db.prepare(`UPDATE internships SET fit_score = ? WHERE id = ?`);
   rows.forEach((row) => {
     const score = computeFitScore(row);
@@ -505,6 +519,136 @@ function backfillFitScores() {
 
 function backfillPriority() {
   db.prepare(`UPDATE internships SET priority = 'Medium' WHERE priority IS NULL OR priority = ''`).run();
+}
+
+function collectAnthropicContent(response) {
+  const blocks = Array.isArray(response?.content) ? response.content : [];
+  const textParts = [];
+  const citations = [];
+  const searchResults = [];
+  const toolErrors = [];
+
+  blocks.forEach((block) => {
+    if (block?.type === 'text' && typeof block.text === 'string' && block.text.trim()) {
+      textParts.push(block.text.trim());
+      if (Array.isArray(block.citations)) {
+        block.citations.forEach((citation) => {
+          if (citation?.url) citations.push(citation);
+        });
+      }
+      return;
+    }
+
+    if (block?.type !== 'web_search_tool_result') return;
+    const items = Array.isArray(block.content) ? block.content : [block.content].filter(Boolean);
+    items.forEach((item) => {
+      if (item?.type === 'web_search_result' && item.url) {
+        searchResults.push(item);
+      }
+      if (item?.type === 'web_search_tool_result_error') {
+        toolErrors.push(item.error_code || 'unknown_error');
+      }
+    });
+  });
+
+  const uniqueSources = Array.from(new Map(
+    [...citations, ...searchResults]
+      .filter((item) => item?.url)
+      .map((item) => [item.url, {
+        url: item.url,
+        title: item.title || item.url,
+        cited_text: item.cited_text || '',
+        page_age: item.page_age || ''
+      }])
+  ).values());
+
+  return {
+    rawText: textParts.join('\n\n').trim(),
+    sources: uniqueSources,
+    toolErrors
+  };
+}
+
+function parseAnalysisSections(rawText) {
+  const sections = {
+    match: [],
+    gap: [],
+    cvEdit: [],
+    mailHook: [],
+    verdict: []
+  };
+  const labels = {
+    MATCH: 'match',
+    GAP: 'gap',
+    'CV EDIT': 'cvEdit',
+    'MAIL HOOK': 'mailHook',
+    VERDICT: 'verdict'
+  };
+  let current = null;
+
+  String(rawText || '')
+    .replace(/\r/g, '')
+    .split('\n')
+    .forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      const normalizedHeader = trimmed
+        .replace(/^[#*\s]+/, '')
+        .replace(/\*\*/g, '')
+        .replace(/:$/, '')
+        .trim()
+        .toUpperCase();
+
+      if (labels[normalizedHeader]) {
+        current = labels[normalizedHeader];
+        return;
+      }
+
+      if (!current) return;
+      sections[current].push(trimmed.replace(/^[-*•]\s*/, '').trim());
+    });
+
+  return sections;
+}
+
+function extractVerdictScore(verdictItems, rawText) {
+  const verdictText = [...(verdictItems || []), rawText || ''].join(' ');
+  const exactMatch = verdictText.match(/([1-5])\s*\/\s*5/);
+  if (exactMatch) return Number(exactMatch[1]);
+  const fitMatch = verdictText.match(/\bfit\b[^0-9]*([1-5])\b/i);
+  if (fitMatch) return Number(fitMatch[1]);
+  return null;
+}
+
+const ANALYZE_SYSTEM_PROMPT = "You are an expert internship advisor. You will research a company and compare their requirements against a candidate's CV to give specific, actionable advice.";
+
+function buildAnalyzeUserPrompt({ company, location, notes, cvText }) {
+  return [
+    `Company: ${company || '-'}`,
+    `Location: ${location || '-'}`,
+    `Notes: ${notes || '-'}`,
+    '',
+    "Task: Using web search, find this company's current internship or student positions related to embedded security, hardware security, firmware, or cybersecurity. Then:",
+    '',
+    '1. MATCH: List 3-5 skills/keywords from my CV that align with what they look for',
+    '2. GAP: List 3-5 skills or keywords they want that are missing or weak in my CV',
+    '3. CV EDIT: Suggest 2-3 specific, exact wording changes to my CV for this application',
+    "4. MAIL HOOK: Write 2-3 sentences I can use as the opening of my initiative application email — specific to this company's research/work, not generic",
+    '5. VERDICT: Rate fit 1-5 and explain in one sentence',
+    '',
+    'My CV:',
+    cvText || '-',
+    '',
+    'Be concise. Use bullet points. No fluff.',
+    'Use these exact section headers and only bullet points under each:',
+    'MATCH:',
+    'GAP:',
+    'CV EDIT:',
+    'MAIL HOOK:',
+    'VERDICT:',
+    'For VERDICT, use the format: - Fit: N/5 - reason'
+  ].join('\n');
 }
 
 function syncFromExcel() {
@@ -671,18 +815,18 @@ app.delete('/api/saved-views/:id', (req, res) => {
 });
 
 app.post('/api/internships', (req, res) => {
-  const { company, status, notes, website, tag, applied_at, followup_at, priority, focus_tags } = req.body || {};
+  const { company, status, notes, website, tag, applied_at, followup_at, priority, focus_tags, fit_score } = req.body || {};
   if (!company || typeof company !== 'string') {
     return res.status(400).json({ error: 'Company is required.' });
   }
   const finalStatus = status && typeof status === 'string' ? status : 'Researching';
-  const fitScore = computeFitScore({
+  const fitScore = normalizeFitScoreInput(fit_score, computeFitScore({
     company,
     status: finalStatus,
     notes,
     website,
     tag
-  });
+  }));
   const info = insertOne.run(
     company.trim(),
     finalStatus.trim(),
@@ -701,6 +845,7 @@ app.post('/api/internships', (req, res) => {
     notes: notes ? String(notes) : '',
     website: website ? String(website) : '',
     tag: tag ? String(tag) : '',
+    fit_score: fitScore,
     priority: priority ? String(priority) : 'Medium',
     applied_at: applied_at ? String(applied_at) : '',
     followup_at: followup_at ? String(followup_at) : '',
@@ -712,7 +857,7 @@ app.post('/api/internships', (req, res) => {
 
 app.put('/api/internships/:id', (req, res) => {
   const { id } = req.params;
-  const { company, status, notes, website, tag, applied_at, followup_at, priority, focus_tags } = req.body || {};
+  const { company, status, notes, website, tag, applied_at, followup_at, priority, focus_tags, fit_score } = req.body || {};
   if (!company || typeof company !== 'string') {
     return res.status(400).json({ error: 'Company is required.' });
   }
@@ -727,18 +872,12 @@ app.put('/api/internships/:id', (req, res) => {
     notes: notes ? String(notes) : '',
     website: website ? String(website) : '',
     tag: tag ? String(tag) : '',
+    fit_score: normalizeFitScoreInput(fit_score, existing.fit_score ?? computeFitScore(existing)),
     priority: priority ? String(priority) : 'Medium',
     applied_at: applied_at ? String(applied_at) : '',
     followup_at: followup_at ? String(followup_at) : '',
     focus_tags: focus_tags ? String(focus_tags) : ''
   };
-  const fitScore = computeFitScore({
-    company: nextPayload.company,
-    status: nextPayload.status,
-    notes: nextPayload.notes,
-    website: nextPayload.website,
-    tag: nextPayload.tag
-  });
   const previousPayload = getBaseChangePayload(existing);
   const info = updateOne.run(
     nextPayload.company,
@@ -746,7 +885,7 @@ app.put('/api/internships/:id', (req, res) => {
     nextPayload.notes,
     nextPayload.website,
     nextPayload.tag,
-    fitScore,
+    nextPayload.fit_score,
     nextPayload.applied_at || null,
     nextPayload.followup_at || null,
     nextPayload.priority,
@@ -803,20 +942,13 @@ app.post('/api/internships/bulk-update', (req, res) => {
         status: status ? String(status) : row.status,
         priority: priority ? String(priority) : row.priority || 'Medium'
       };
-      const fitScore = computeFitScore({
-        company: next.company,
-        status: next.status,
-        notes: next.notes,
-        website: next.website,
-        tag: next.tag
-      });
       updateOne.run(
         next.company,
         next.status,
         next.notes,
         next.website,
         next.tag,
-        fitScore,
+        next.fit_score ?? row.fit_score ?? computeFitScore(row),
         next.applied_at || null,
         next.followup_at || null,
         next.priority,
@@ -854,6 +986,115 @@ app.post('/api/internships/bulk-delete', (req, res) => {
   deleteMany(rows);
   syncExcel();
   res.json({ ok: true, deleted: rows.length });
+});
+
+app.patch('/api/internships/:id/fit-score', (req, res) => {
+  const { id } = req.params;
+  const existing = getInternship(Number(id));
+  if (!existing) {
+    return res.status(404).json({ error: 'Not found.' });
+  }
+
+  const fitScore = normalizeFitScoreInput(req.body?.fit_score, null);
+  if (fitScore == null) {
+    return res.status(400).json({ error: 'A fit_score between 1 and 5 is required.' });
+  }
+
+  const info = db.prepare(`
+    UPDATE internships
+    SET fit_score = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `).run(fitScore, Number(id));
+
+  if (info.changes === 0) {
+    return res.status(404).json({ error: 'Not found.' });
+  }
+
+  if (Number(existing.fit_score ?? 0) !== fitScore) {
+    addActivity(Number(id), 'edited', getBaseChangePayload(existing), {
+      ...getBaseChangePayload(existing),
+      fit_score: fitScore
+    });
+  }
+
+  syncExcel();
+  res.json({ ok: true, fit_score: fitScore });
+});
+
+app.post('/api/analyze', async (req, res) => {
+  const apiKey = normalizeString(req.body?.apiKey);
+  const company = normalizeString(req.body?.company);
+  const location = normalizeString(req.body?.location, '-');
+  const notes = typeof req.body?.notes === 'string' ? req.body.notes.trim() : '-';
+  const cvText = typeof req.body?.cvText === 'string' ? req.body.cvText.trim() : '';
+
+  if (!apiKey) {
+    return res.status(400).json({ error: 'Anthropic API key is required.' });
+  }
+  if (!company) {
+    return res.status(400).json({ error: 'Company is required.' });
+  }
+  if (!cvText) {
+    return res.status(400).json({ error: 'CV text is required.' });
+  }
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        system: ANALYZE_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: buildAnalyzeUserPrompt({ company, location, notes, cvText })
+          }
+        ],
+        tools: [
+          {
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 5
+          }
+        ]
+      })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: payload?.error?.message || payload?.error || 'Anthropic request failed.'
+      });
+    }
+
+    const content = collectAnthropicContent(payload);
+    if (content.toolErrors.length) {
+      return res.status(502).json({
+        error: `Web search failed: ${content.toolErrors.join(', ')}`
+      });
+    }
+
+    const sections = parseAnalysisSections(content.rawText);
+    const verdictScore = extractVerdictScore(sections.verdict, content.rawText);
+
+    return res.json({
+      rawText: content.rawText,
+      sections,
+      verdictScore,
+      sources: content.sources,
+      usage: payload?.usage || null
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'Analysis request failed.'
+    });
+  }
 });
 
 app.get('/api/export', (req, res) => {

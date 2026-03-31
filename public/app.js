@@ -41,6 +41,14 @@ const drawerFollowupAt = el('drawerFollowupAt');
 const drawerWebsite = el('drawerWebsite');
 const drawerTag = el('drawerTag');
 const drawerNotes = el('drawerNotes');
+const drawerAnalyzeBtn = el('drawerAnalyzeBtn');
+const copyMailHookBtn = el('copyMailHookBtn');
+const analysisPanel = el('analysisPanel');
+const analysisEmpty = el('analysisEmpty');
+const analysisLoading = el('analysisLoading');
+const analysisLoadingText = el('analysisLoadingText');
+const analysisError = el('analysisError');
+const analysisResult = el('analysisResult');
 const drawerActivityList = el('activityList');
 const activityCount = el('activityCount');
 const savedViewSelect = el('savedViewSelect');
@@ -68,13 +76,64 @@ const onboarding = el('onboarding');
 const obStep = el('obStep');
 const obNext = el('obNext');
 const obSkip = el('obSkip');
+const apiKeyBtn = el('apiKeyBtn');
+const apiKeyModal = el('apiKeyModal');
+const apiKeyForm = el('apiKeyForm');
+const apiKeyInput = el('apiKeyInput');
+const apiKeyClose = el('apiKeyClose');
+const apiKeyCancel = el('apiKeyCancel');
 const statusCountEls = Array.from(document.querySelectorAll('[data-status-count]'));
 
 const themeKey = 'staj-theme';
 const onboardingKey = 'staj-onboarded';
 const viewModeKey = 'staj-viewmode';
+const apiKeyStorageKey = 'staj-apikey';
+const analysisCacheKey = 'staj-analysis-cache-v1';
 const STATUS_FLOW = ['Researching', 'Ready to Apply', 'Applied', 'Interview', 'Offer', 'Rejected', 'Paused'];
 const PRIORITY_ORDER = { High: 3, Medium: 2, Low: 1 };
+const CV_TEXT = `Emre Ilhan
+emreilhn15@gmail.com | github.com/emreeilhan | emreilhan.pages.dev | Antalya, Turkey
+Turkish & German Citizen
+
+PROFILE
+Security-oriented Computer Engineering student with a strong system-level mindset. Focused on embedded systems, cybersecurity engineering, and embedded security. Interested in real-world systems, hardware-software interaction, and defensive security roles.
+
+EDUCATION
+Antalya Bilim University 2024 - Present
+B.Sc. in Computer Engineering (English) Antalya, Turkey
+GPA: 3.01 / 4.00 Honor Student
+Relevant coursework: Data Structures, Algorithms, Operating Systems, Computer Organization, Digital Systems & Lab, Microcontrollers, Systems Programming, Databases
+
+EXPERIENCE
+Security Learning & Hands-on Labs 2024 - Present
+Detection-Oriented Cybersecurity Practice
+- Completed structured cybersecurity labs focused on defensive security, SOC workflows, and incident fundamentals
+- Performed hands-on analysis of alerts, logs, and common attack scenarios in simulated environments
+- Maintained consistent hands-on practice; ranked within the global top 3% on TryHackMe
+
+PROJECTS
+ESP32 Embedded Development
+- Configured and flashed ESP32 microcontroller; developed basic firmware using Arduino-based tooling
+- Worked with GPIO and peripheral interfaces; observed timing, memory, and resource constraints
+- Explored hardware-software interaction and execution behavior in resource-constrained embedded systems
+
+Academic System-Oriented Projects
+- Developed Java-based OOP projects with emphasis on clean architecture and modular design
+- Applied operating systems and computer organization concepts in coursework and laboratory assignments
+
+CERTIFICATIONS
+Google Cybersecurity Professional Certificate - Completed
+CompTIA Security+ - In Progress
+
+SKILLS
+Programming: Java (strong), Python
+Embedded Systems: ESP32, microcontrollers, firmware development, peripheral interaction
+Systems: Operating systems fundamentals, memory concepts, hardware-software interaction
+Security: Detection-oriented security mindset, SOC fundamentals, alert and incident analysis
+Tools: Git, Linux, Arduino IDE
+
+LANGUAGES
+Turkish (Native) English (B2) German (B1)`;
 
 /* Per-stage empty state content */
 const STAGE_EMPTY = {
@@ -105,10 +164,14 @@ let followupOnly = false;
 let lastFiltered = [];
 let activeEntryId = null;
 let activityCache = new Map();
+let analysisErrors = new Map();
 let rowMenuId = null;
 let activeViewId = null;
 let currentViewMode = localStorage.getItem(viewModeKey) || 'list';
 let onboardingStep = 0;
+let analysisLoadingId = null;
+let pendingAnalyzeId = null;
+let pendingAnalyzeForce = false;
 
 function escapeHtml(value) {
   return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -125,6 +188,49 @@ function normalizeUrl(url) {
   } catch {
     return '';
   }
+}
+
+function safeJsonParse(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function getStoredApiKey() {
+  return localStorage.getItem(apiKeyStorageKey) || '';
+}
+
+function setStoredApiKey(value) {
+  const normalized = String(value || '').trim();
+  if (!normalized) {
+    localStorage.removeItem(apiKeyStorageKey);
+    return;
+  }
+  localStorage.setItem(apiKeyStorageKey, normalized);
+}
+
+function getAnalysisCacheMap() {
+  return safeJsonParse(localStorage.getItem(analysisCacheKey), {});
+}
+
+function getCachedAnalysis(id) {
+  const cache = getAnalysisCacheMap();
+  return cache[String(id)] || null;
+}
+
+function setCachedAnalysis(id, payload) {
+  const cache = getAnalysisCacheMap();
+  cache[String(id)] = {
+    ...payload,
+    cachedAt: new Date().toISOString()
+  };
+  localStorage.setItem(analysisCacheKey, JSON.stringify(cache));
+}
+
+function getEntryById(id) {
+  return entries.find((item) => String(item.id) === String(id)) || null;
 }
 
 function statusClass(status) {
@@ -308,6 +414,7 @@ function openDrawer(entry) {
   drawerTag.value = entry.tag || '';
   drawerNotes.value = entry.notes || '';
   applyFocusTagsToFieldset(document.querySelector('#drawerTags'), String(entry.focus_tags || '').split(',').map((t) => t.trim()).filter(Boolean));
+  renderAnalysisState(entry.id);
   renderActivity(activityCache.get(String(entry.id)) || []);
   loadActivity(entry.id);
 }

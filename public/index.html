@@ -107,6 +107,10 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
               Profile
             </a>
+            <button class="sidebar-footer-link" id="apiKeyBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a2 2 0 1 1-2.83-2.83l6.5-6.5a2 2 0 1 1 2.83 2.83l-1.5 1.5"/><path d="M7.5 15.5 4 19l-1 4 4-1 3.5-3.5"/><path d="m14.5 6.5 3 3"/></svg>
+              API Key
+            </button>
             <button class="sidebar-footer-link" id="exportBtn" type="button">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
               Export
@@ -258,6 +262,31 @@
       </div>
     </div>
 
+    <!-- API KEY MODAL -->
+    <div class="overlay-panel" id="apiKeyModal" aria-hidden="true">
+      <div class="overlay-card overlay-card--form api-key-card" role="dialog" aria-modal="true" aria-labelledby="apiKeyTitle">
+        <div class="overlay-header">
+          <div>
+            <p class="overlay-title" id="apiKeyTitle">Anthropic API key</p>
+            <p class="overlay-sub">Save your key locally to unlock AI analysis for company-specific research.</p>
+          </div>
+          <button class="icon-btn" id="apiKeyClose" type="button" aria-label="Close API key modal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <form id="apiKeyForm" class="form">
+          <label>Anthropic API key
+            <input id="apiKeyInput" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" required />
+          </label>
+          <p class="api-key-note">Stored in this browser as <code>staj-apikey</code>. The key never gets written to your tracker database.</p>
+          <div class="form-actions">
+            <button class="ghost-btn" id="apiKeyCancel" type="button">Not now</button>
+            <button type="submit">Save key</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- DETAIL DRAWER -->
     <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true">
       <aside class="drawer" id="detailDrawer" aria-hidden="true">
@@ -302,6 +331,29 @@
           </fieldset>
           <label>Location <input id="drawerTag" type="text" /></label>
           <label>Notes <textarea id="drawerNotes" rows="4"></textarea></label>
+          <section class="analysis-block" aria-labelledby="analysisTitle">
+            <div class="analysis-header">
+              <div>
+                <p class="analysis-title" id="analysisTitle">AI Analysis</p>
+                <p class="analysis-sub">Research the company and compare the role fit against your CV.</p>
+              </div>
+              <div class="analysis-actions">
+                <button id="drawerAnalyzeBtn" type="button">Analyze</button>
+                <button class="ghost-btn" id="copyMailHookBtn" type="button" hidden>Copy Mail Hook</button>
+              </div>
+            </div>
+            <div class="analysis-panel" id="analysisPanel">
+              <div class="analysis-empty" id="analysisEmpty">
+                Run an analysis to see match gaps, CV edits, and a company-specific mail hook.
+              </div>
+              <div class="analysis-loading" id="analysisLoading" hidden>
+                <span class="analysis-spinner" aria-hidden="true"></span>
+                <span id="analysisLoadingText">Analyzing…</span>
+              </div>
+              <div class="analysis-error" id="analysisError" hidden></div>
+              <div class="analysis-result" id="analysisResult" hidden></div>
+            </div>
+          </section>
           <div class="timeline">
             <div class="timeline-header">
               <span class="timeline-label">Activity</span>
