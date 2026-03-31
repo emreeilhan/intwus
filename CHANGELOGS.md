@@ -115,3 +115,11 @@
 0.0.29
 - Added a shared sidebar toggle across tracker, insights, and profile so the shell can collapse into a wider working surface on desktop and slide into an off-canvas panel on mobile.
 - Kept the state persistent with local storage, added a mobile backdrop, and preserved the existing layout language so the control feels native instead of bolted on.
+
+0.0.30
+- Moved the sidebar toggle into the sidebar chrome itself and reduced it to an icon-only control so the header stays cleaner.
+- Kept the control available in the sidebar brand area while preserving the existing collapse state and mobile off-canvas behavior.
+
+0.0.31
+- Tightened the collapsed sidebar into a true icon rail so the extra navigation content no longer peeks through when the panel is closed.
+- Kept the toggle inside the sidebar brand strip and left the main workspace fully expanded beside the rail.

@@ -60,6 +60,7 @@
 
   /* Sidebar */
   --sidebar-w: 220px;
+  --sidebar-collapsed-w: 56px;
 
   /* Motion */
   --ease: 140ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -111,7 +112,7 @@ body {
 }
 
 .app-shell.sidebar-collapsed {
-  grid-template-columns: 1fr;
+  grid-template-columns: var(--sidebar-collapsed-w) minmax(0, 1fr);
 }
 
 /* ============================================================ SIDEBAR */
@@ -131,8 +132,8 @@ body {
 }
 
 .app-shell.sidebar-collapsed .sidebar {
-  transform: translateX(-100%);
-  pointer-events: none;
+  width: var(--sidebar-collapsed-w);
+  overflow: hidden;
 }
 
 .sidebar-inner {
@@ -149,10 +150,18 @@ body {
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 8px;
   padding: 0 6px 14px;
   border-bottom: 1px solid var(--line);
   margin-bottom: 14px;
+}
+
+.sidebar-brand-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .brand-icon {
@@ -375,16 +384,16 @@ body {
 
 /* Sidebar toggle + backdrop */
 .sidebar-toggle {
-  display: inline-flex;
+  display: inline-grid;
+  place-items: center;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  min-height: 32px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface);
   color: var(--ink-2);
-  font: 500 0.8125rem/1 'Inter', sans-serif;
   cursor: pointer;
   transition: background-color var(--ease), border-color var(--ease), color var(--ease);
 }
@@ -427,6 +436,39 @@ body {
 
 .app-shell.sidebar-collapsed .main-panel {
   grid-column: 1;
+}
+
+.app-shell.sidebar-collapsed .sidebar-brand {
+  justify-content: space-between;
+  padding-inline: 0;
+  margin-bottom: 10px;
+  border-bottom: 0;
+}
+
+.app-shell.sidebar-collapsed .sidebar-brand-left {
+  justify-content: flex-start;
+}
+
+.app-shell.sidebar-collapsed .brand-name,
+.app-shell.sidebar-collapsed .sidebar-add,
+.app-shell.sidebar-collapsed .sidebar-search-trigger,
+.app-shell.sidebar-collapsed .sidebar-section,
+.app-shell.sidebar-collapsed .sidebar-spacer,
+.app-shell.sidebar-collapsed .sidebar-footer {
+  display: none;
+}
+
+.app-shell.sidebar-collapsed .sidebar-inner {
+  padding-inline: 8px;
+  align-items: stretch;
+}
+
+.app-shell.sidebar-collapsed .sidebar-inner > :not(.sidebar-brand) {
+  display: none;
+}
+
+.app-shell.sidebar-collapsed .sidebar-toggle {
+  margin: 0;
 }
 
 /* Context bar (replaces topbar + toolbar) */

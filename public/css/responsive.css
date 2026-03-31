@@ -45,12 +45,17 @@
     z-index: 200;
   }
   .app-shell.sidebar-collapsed .sidebar {
+    width: 260px;
     transform: translateX(-100%);
     pointer-events: none;
   }
   .app-shell.sidebar-open .sidebar {
     transform: translateX(0);
     pointer-events: auto;
+  }
+
+  .sidebar-inner {
+    padding-inline: 10px;
   }
 
   .sidebar-backdrop.open {

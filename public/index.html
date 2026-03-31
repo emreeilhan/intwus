@@ -18,10 +18,17 @@
         <div class="sidebar-inner">
 
           <div class="sidebar-brand">
-            <div class="brand-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z" /></svg>
+            <div class="sidebar-brand-left">
+              <div class="brand-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z" /></svg>
+              </div>
+              <span class="brand-name">Tracker</span>
             </div>
-            <span class="brand-name">Tracker</span>
+            <button class="sidebar-toggle" id="sidebarToggleBtn" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide sidebar" title="Hide sidebar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M15 6l-6 6 6 6" />
+              </svg>
+            </button>
           </div>
 
           <button class="sidebar-add" id="quickAddBtn" type="button">
@@ -135,12 +142,6 @@
         <!-- Context header -->
         <header class="context-bar">
           <div class="context-left">
-            <button class="sidebar-toggle" id="sidebarToggleBtn" type="button" aria-controls="sidebar" aria-expanded="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M4 6h16M4 12h10M4 18h16" />
-              </svg>
-              <span data-sidebar-label>Hide sidebar</span>
-            </button>
             <h1 class="context-title" id="pageTitle">All entries</h1>
             <span class="context-count" id="count">0</span>
           </div>
