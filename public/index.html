@@ -135,6 +135,12 @@
         <!-- Context header -->
         <header class="context-bar">
           <div class="context-left">
+            <button class="sidebar-toggle" id="sidebarToggleBtn" type="button" aria-controls="sidebar" aria-expanded="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M4 6h16M4 12h10M4 18h16" />
+              </svg>
+              <span data-sidebar-label>Hide sidebar</span>
+            </button>
             <h1 class="context-title" id="pageTitle">All entries</h1>
             <span class="context-count" id="count">0</span>
           </div>
@@ -369,6 +375,8 @@
       </aside>
     </div>
 
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
     <!-- ONBOARDING OVERLAY -->
     <div class="onboarding-overlay" id="onboarding" aria-hidden="true">
       <div class="onboarding-card" id="onboardingCard">
@@ -387,6 +395,7 @@
       </div>
     </div>
 
+    <script src="/sidebar.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>

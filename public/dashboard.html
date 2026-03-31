@@ -56,6 +56,12 @@
       <main class="main-panel">
         <header class="context-bar">
           <div class="context-left">
+            <button class="sidebar-toggle" id="sidebarToggleBtn" type="button" aria-controls="sidebar" aria-expanded="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M4 6h16M4 12h10M4 18h16" />
+              </svg>
+              <span data-sidebar-label>Hide sidebar</span>
+            </button>
             <h1 class="context-title">Insights</h1>
             <span class="context-count" id="appliedCount">0 total</span>
           </div>
@@ -190,6 +196,9 @@
       </main>
     </div>
 
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
+    <script src="/sidebar.js"></script>
     <script src="/dashboard.js"></script>
   </body>
 </html>

@@ -111,3 +111,7 @@
 0.0.28
 - Added 15 new research-grade internship targets across Fraunhofer institutes, university labs, and applied security organizations focused on embedded and hardware security.
 - Filled the tracker spreadsheet with fit scores, location tags, focus tags, and outreach-ready notes so the shortlist is immediately usable for 2026 summer applications.
+
+0.0.29
+- Added a shared sidebar toggle across tracker, insights, and profile so the shell can collapse into a wider working surface on desktop and slide into an off-canvas panel on mobile.
+- Kept the state persistent with local storage, added a mobile backdrop, and preserved the existing layout language so the control feels native instead of bolted on.

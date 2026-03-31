@@ -597,6 +597,246 @@ async function loadActivity(id) {
   if (String(activeEntryId) === String(id)) renderActivity(items);
 }
 
+/* ============================================================ AI ANALYSIS */
+function normalizeAnalysisItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map((item) => String(item || '').trim()).filter(Boolean);
+}
+
+function normalizeAnalysisPayload(payload) {
+  const sections = payload?.sections || {};
+  const verdictScore = Number(payload?.verdictScore);
+  return {
+    sections: {
+      match: normalizeAnalysisItems(sections.match),
+      gap: normalizeAnalysisItems(sections.gap),
+      cvEdit: normalizeAnalysisItems(sections.cvEdit),
+      mailHook: normalizeAnalysisItems(sections.mailHook),
+      verdict: normalizeAnalysisItems(sections.verdict)
+    },
+    verdictScore: Number.isFinite(verdictScore) ? verdictScore : null,
+    rawText: String(payload?.rawText || '').trim(),
+    sources: Array.isArray(payload?.sources)
+      ? payload.sources
+        .filter((source) => source?.url)
+        .map((source) => ({
+          url: String(source.url),
+          title: String(source.title || source.url),
+          cited_text: String(source.cited_text || ''),
+          page_age: String(source.page_age || '')
+        }))
+      : [],
+    cachedAt: payload?.cachedAt || null
+  };
+}
+
+function hasCachedAnalysis(id) {
+  return Boolean(getCachedAnalysis(id));
+}
+
+function getMailHookText(payload) {
+  const normalized = normalizeAnalysisPayload(payload);
+  return normalized.sections.mailHook.join('\n');
+}
+
+function buildAnalysisSectionMarkup(title, items, options = {}) {
+  if (!items.length) return '';
+  const className = options.mono ? 'analysis-section mono' : 'analysis-section';
+  return `
+    <section class="${className}">
+      <div class="analysis-section-label">${escapeHtml(title)}</div>
+      <ul class="analysis-list">
+        ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+      </ul>
+    </section>
+  `;
+}
+
+function renderAnalysisResultMarkup(payload) {
+  const normalized = normalizeAnalysisPayload(payload);
+  const sectionsMarkup = [
+    buildAnalysisSectionMarkup('Match', normalized.sections.match),
+    buildAnalysisSectionMarkup('Gap', normalized.sections.gap),
+    buildAnalysisSectionMarkup('CV Edit', normalized.sections.cvEdit, { mono: true }),
+    buildAnalysisSectionMarkup('Mail Hook', normalized.sections.mailHook),
+    buildAnalysisSectionMarkup('Verdict', normalized.sections.verdict)
+  ].join('');
+  const fallbackMarkup = !sectionsMarkup && normalized.rawText
+    ? `
+      <section class="analysis-section mono">
+        <div class="analysis-section-label">Response</div>
+        <div class="analysis-raw">${escapeHtml(normalized.rawText)}</div>
+      </section>
+    `
+    : '';
+
+  const sourcesMarkup = normalized.sources.length
+    ? `
+      <section class="analysis-section analysis-sources">
+        <div class="analysis-section-label">Sources</div>
+        <div class="analysis-source-list">
+          ${normalized.sources.map((source) => `
+            <a class="analysis-source" href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer noopener">
+              <span class="analysis-source-title">${escapeHtml(source.title)}</span>
+              <span class="analysis-source-meta">${escapeHtml([source.page_age, source.cited_text].filter(Boolean).join(' • '))}</span>
+            </a>
+          `).join('')}
+        </div>
+      </section>
+    `
+    : '';
+
+  return (sectionsMarkup || fallbackMarkup) + sourcesMarkup;
+}
+
+function renderAnalysisState(entryId) {
+  if (!analysisPanel) return;
+  const entry = getEntryById(entryId);
+  const cachedPayload = entry ? getCachedAnalysis(entry.id) : null;
+  const cached = cachedPayload ? normalizeAnalysisPayload(cachedPayload) : null;
+  const error = analysisErrors.get(String(entryId)) || '';
+  const isLoading = String(analysisLoadingId) === String(entryId);
+
+  if (drawerAnalyzeBtn) {
+    drawerAnalyzeBtn.textContent = cached ? 'Re-analyze' : 'Analyze';
+    drawerAnalyzeBtn.disabled = !entry || isLoading;
+  }
+  if (copyMailHookBtn) {
+    copyMailHookBtn.textContent = 'Copy Mail Hook';
+    copyMailHookBtn.hidden = !(cached && cached.sections.mailHook.length);
+  }
+  if (analysisLoadingText) {
+    analysisLoadingText.textContent = entry ? `Analyzing ${entry.company}...` : 'Analyzing...';
+  }
+
+  if (analysisEmpty) analysisEmpty.hidden = Boolean(cached) || Boolean(error) || isLoading;
+  if (analysisLoading) analysisLoading.hidden = !isLoading;
+  if (analysisError) {
+    analysisError.hidden = !error;
+    analysisError.textContent = error;
+  }
+  if (analysisResult) {
+    analysisResult.hidden = !cached;
+    analysisResult.innerHTML = cached ? renderAnalysisResultMarkup(cached) : '';
+  }
+}
+
+async function persistFitScore(id, fitScore) {
+  if (!id || !Number.isFinite(fitScore)) return;
+  const res = await fetch(`/api/internships/${id}/fit-score`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fit_score: fitScore })
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(payload?.error || 'Could not update fit score.');
+  }
+  const entry = getEntryById(id);
+  if (entry) entry.fit_score = fitScore;
+  if (String(activeEntryId) === String(id)) {
+    await loadActivity(id);
+  }
+}
+
+async function runAnalysisForEntry(entry, options = {}) {
+  if (!entry) return;
+  const force = Boolean(options.force);
+  const cached = getCachedAnalysis(entry.id);
+  if (cached && !force) {
+    analysisErrors.delete(String(entry.id));
+    if (String(activeEntryId) === String(entry.id)) renderAnalysisState(entry.id);
+    renderAll();
+    return cached;
+  }
+
+  const apiKey = getStoredApiKey();
+  if (!apiKey) {
+    pendingAnalyzeId = entry.id;
+    pendingAnalyzeForce = force || Boolean(cached);
+    openApiKeyModal();
+    return null;
+  }
+
+  analysisErrors.delete(String(entry.id));
+  analysisLoadingId = entry.id;
+  if (String(activeEntryId) === String(entry.id)) renderAnalysisState(entry.id);
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        company: entry.company || '',
+        location: entry.tag || '',
+        notes: entry.notes || '',
+        cvText: CV_TEXT
+      })
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload?.error || 'Analysis failed.');
+    }
+
+    const normalized = normalizeAnalysisPayload(payload);
+    setCachedAnalysis(entry.id, normalized);
+    if (Number.isFinite(normalized.verdictScore)) {
+      await persistFitScore(entry.id, normalized.verdictScore);
+    }
+    renderAll();
+    return normalized;
+  } catch (error) {
+    analysisErrors.set(String(entry.id), error instanceof Error ? error.message : 'Analysis failed.');
+    if (getCachedAnalysis(entry.id)) renderAll();
+    return null;
+  } finally {
+    analysisLoadingId = null;
+    if (String(activeEntryId) === String(entry.id)) renderAnalysisState(entry.id);
+  }
+}
+
+function openApiKeyModal() {
+  if (!apiKeyModal) return;
+  apiKeyModal.classList.add('open');
+  apiKeyModal.setAttribute('aria-hidden', 'false');
+  if (apiKeyInput) {
+    apiKeyInput.value = getStoredApiKey();
+    apiKeyInput.focus();
+    apiKeyInput.select();
+  }
+}
+
+function closeApiKeyModal() {
+  apiKeyModal?.classList.remove('open');
+  apiKeyModal?.setAttribute('aria-hidden', 'true');
+}
+
+function dismissApiKeyModal() {
+  pendingAnalyzeId = null;
+  pendingAnalyzeForce = false;
+  closeApiKeyModal();
+}
+
+function maybePromptForApiKey() {
+  if (!getStoredApiKey()) openApiKeyModal();
+}
+
+async function saveApiKey(event) {
+  event.preventDefault();
+  setStoredApiKey(apiKeyInput?.value || '');
+  closeApiKeyModal();
+  if (!pendingAnalyzeId) return;
+  const nextId = pendingAnalyzeId;
+  const force = pendingAnalyzeForce;
+  pendingAnalyzeId = null;
+  pendingAnalyzeForce = false;
+  const entry = getEntryById(nextId);
+  if (!entry) return;
+  openDrawer(entry);
+  await runAnalysisForEntry(entry, { force });
+}
+
 /* ============================================================ RENDERING */
 function renderFilterChips() {
   if (!filterChips) return;
@@ -700,6 +940,7 @@ function renderList() {
     const priorityText = escapeHtml(entry.priority || 'Medium');
     const menuOpen = String(rowMenuId) === String(entry.id);
     const quickActionLabel = entry.status === 'Applied' ? 'Details' : entry.status === 'Ready to Apply' ? 'Apply' : 'Set applied';
+    const analyzeLabel = hasCachedAnalysis(entry.id) ? 'Re-analyze' : 'Analyze';
     row.innerHTML = `
       <span class="row-accent priority-${String(entry.priority || 'Medium').toLowerCase()}"></span>
       <button class="row-main" type="button" data-action="open" data-id="${entry.id}">
@@ -728,6 +969,7 @@ function renderList() {
       </div>
       <div class="row-actions">
         ${websiteUrl ? `<a class="row-icon-link" href="${escapeHtml(websiteUrl)}" target="_blank" rel="noreferrer noopener" aria-label="Open website" title="Open website">↗</a>` : ''}
+        <button class="ghost-btn" data-action="analyze" data-id="${entry.id}" style="font-size:0.6875rem;padding:3px 8px;min-height:24px;">${analyzeLabel}</button>
         <button class="ghost-btn" data-action="${entry.status === 'Applied' ? 'edit' : 'applied'}" data-id="${entry.id}" style="font-size:0.6875rem;padding:3px 8px;min-height:24px;">${quickActionLabel}</button>
         <div class="row-menu-wrap">
           <button class="ghost-btn row-menu-trigger" data-action="toggle-menu" data-id="${entry.id}" aria-expanded="${menuOpen ? 'true' : 'false'}" style="font-size:0.8125rem;padding:3px 7px;min-height:24px;">•••</button>
@@ -889,6 +1131,11 @@ async function handleListClick(event) {
   }
   if (!entry) return;
   if (action === 'open' || action === 'edit') { openDrawer(entry); return; }
+  if (action === 'analyze') {
+    openDrawer(entry);
+    await runAnalysisForEntry(entry, { force: hasCachedAnalysis(entry.id) });
+    return;
+  }
   if (action === 'applied') { await bulkUpdate([entry.id], { status: 'Applied', priority: entry.priority || 'Medium' }); openDrawer(entry); return; }
   if (action === 'delete') { if (window.confirm(`Delete ${entry.company}?`)) await bulkDelete([entry.id]); }
 }
@@ -1052,6 +1299,26 @@ emptyAddBtn?.addEventListener('click', openQuickAdd);
 exportBtn?.addEventListener('click', () => { window.location.href = '/api/export'; });
 drawerClose?.addEventListener('click', closeDrawer);
 drawerCancel?.addEventListener('click', closeDrawer);
+drawerAnalyzeBtn?.addEventListener('click', async () => {
+  const entry = getEntryById(activeEntryId);
+  if (!entry) return;
+  await runAnalysisForEntry(entry, { force: hasCachedAnalysis(entry.id) });
+});
+copyMailHookBtn?.addEventListener('click', async () => {
+  const payload = getCachedAnalysis(activeEntryId);
+  const mailHook = getMailHookText(payload);
+  if (!mailHook) return;
+  try {
+    await navigator.clipboard.writeText(mailHook);
+    copyMailHookBtn.textContent = 'Copied';
+    window.setTimeout(() => {
+      if (copyMailHookBtn) copyMailHookBtn.textContent = 'Copy Mail Hook';
+    }, 1400);
+  } catch {
+    analysisErrors.set(String(activeEntryId), 'Clipboard copy failed. Please copy the text manually.');
+    renderAnalysisState(activeEntryId);
+  }
+});
 themeToggleBtn?.addEventListener('click', toggleTheme);
 saveViewBtn?.addEventListener('click', saveView);
 applySavedViewBtn?.addEventListener('click', () => { const view = selectedSavedView(); if (view) applySavedView(view); });
@@ -1059,6 +1326,10 @@ overwriteViewBtn?.addEventListener('click', overwriteView);
 renameViewBtn?.addEventListener('click', renameView);
 deleteViewBtn?.addEventListener('click', deleteView);
 searchTrigger?.addEventListener('click', openSearch);
+apiKeyBtn?.addEventListener('click', openApiKeyModal);
+apiKeyForm?.addEventListener('submit', saveApiKey);
+apiKeyClose?.addEventListener('click', dismissApiKeyModal);
+apiKeyCancel?.addEventListener('click', dismissApiKeyModal);
 commandInput?.addEventListener('input', renderCommands);
 obNext?.addEventListener('click', advanceOnboarding);
 obSkip?.addEventListener('click', closeOnboarding);
@@ -1086,6 +1357,7 @@ document.addEventListener('keydown', (event) => {
     closeQuickAdd();
     closeDrawer();
     closeCommandPalette();
+    dismissApiKeyModal();
     closeRowMenu();
     savedViewMenu?.classList.remove('open');
   }
@@ -1102,10 +1374,15 @@ commandPalette?.addEventListener('click', (event) => {
   if (event.target === commandPalette) closeCommandPalette();
 });
 
+apiKeyModal?.addEventListener('click', (event) => {
+  if (event.target === apiKeyModal) dismissApiKeyModal();
+});
+
 async function init() {
   initTheme();
   setViewMode(currentViewMode);
   await Promise.all([loadSavedViews(), loadEntries()]);
+  maybePromptForApiKey();
   showOnboarding();
 }
 
