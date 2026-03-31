@@ -31,101 +31,103 @@
             </button>
           </div>
 
-          <button class="sidebar-add" id="quickAddBtn" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            New entry
-          </button>
+          <div class="sidebar-body">
+            <button class="sidebar-add" id="quickAddBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              New entry
+            </button>
 
-          <button class="sidebar-search-trigger" id="searchTrigger" type="button">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm8.7 12.3-3.2-3.2a1 1 0 0 0-1.4 1.4l3.2 3.2a1 1 0 0 0 1.4-1.4Z"/></svg>
-            <span>Search…</span>
-            <kbd>/</kbd>
-          </button>
+            <button class="sidebar-search-trigger" id="searchTrigger" type="button">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm8.7 12.3-3.2-3.2a1 1 0 0 0-1.4 1.4l3.2 3.2a1 1 0 0 0 1.4-1.4Z"/></svg>
+              <span>Search…</span>
+              <kbd>/</kbd>
+            </button>
 
-          <div class="sidebar-section">
-            <div class="sidebar-section-label">Pipeline</div>
-            <div class="sidebar-nav" id="statusNav" aria-label="Status filters">
-              <button class="sidebar-nav-item active" type="button" data-status="">
-                <span class="nav-dot dot-all"></span>
-                <span class="nav-label">All entries</span>
-                <span class="nav-count" data-status-count="">0</span>
+            <div class="sidebar-section">
+              <div class="sidebar-section-label">Pipeline</div>
+              <div class="sidebar-nav" id="statusNav" aria-label="Status filters">
+                <button class="sidebar-nav-item active" type="button" data-status="">
+                  <span class="nav-dot dot-all"></span>
+                  <span class="nav-label">All entries</span>
+                  <span class="nav-count" data-status-count="">0</span>
+                </button>
+                <button class="sidebar-nav-item" type="button" data-status="Researching">
+                  <span class="nav-dot dot-researching"></span>
+                  <span class="nav-label">Researching</span>
+                  <span class="nav-count" data-status-count="Researching">0</span>
+                </button>
+                <button class="sidebar-nav-item" type="button" data-status="Ready to Apply">
+                  <span class="nav-dot dot-ready"></span>
+                  <span class="nav-label">Ready to Apply</span>
+                  <span class="nav-count" data-status-count="Ready to Apply">0</span>
+                </button>
+                <button class="sidebar-nav-item" type="button" data-status="Applied">
+                  <span class="nav-dot dot-applied"></span>
+                  <span class="nav-label">Applied</span>
+                  <span class="nav-count" data-status-count="Applied">0</span>
+                </button>
+                <button class="sidebar-nav-item" type="button" data-status="Interview">
+                  <span class="nav-dot dot-interview"></span>
+                  <span class="nav-label">Interview</span>
+                  <span class="nav-count" data-status-count="Interview">0</span>
+                </button>
+                <button class="sidebar-nav-item" type="button" data-status="Offer">
+                  <span class="nav-dot dot-offer"></span>
+                  <span class="nav-label">Offer</span>
+                  <span class="nav-count" data-status-count="Offer">0</span>
+                </button>
+                <button class="sidebar-nav-item" type="button" data-status="Rejected">
+                  <span class="nav-dot dot-rejected"></span>
+                  <span class="nav-label">Rejected</span>
+                  <span class="nav-count" data-status-count="Rejected">0</span>
+                </button>
+                <button class="sidebar-nav-item" type="button" data-status="Paused">
+                  <span class="nav-dot dot-paused"></span>
+                  <span class="nav-label">Paused</span>
+                  <span class="nav-count" data-status-count="Paused">0</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="sidebar-section-label">
+                <span>Views</span>
+                <button class="sidebar-section-action" id="saveViewBtn" type="button" title="Save current view">+</button>
+              </div>
+              <div class="sidebar-nav" id="savedViewNav"></div>
+              <select id="savedViewSelect" class="sr-only" aria-hidden="true"><option value="">Views</option></select>
+              <div class="saved-view-menu" id="savedViewMenu" aria-hidden="true">
+                <button class="menu-item" id="applySavedViewBtn" type="button">Apply view</button>
+                <button class="menu-item" id="overwriteViewBtn" type="button">Overwrite</button>
+                <button class="menu-item" id="renameViewBtn" type="button">Rename</button>
+                <button class="menu-item danger" id="deleteViewBtn" type="button">Delete</button>
+              </div>
+            </div>
+
+            <div class="sidebar-spacer"></div>
+
+            <div class="sidebar-footer">
+              <a class="sidebar-footer-link" href="/dashboard">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                Insights
+              </a>
+              <a class="sidebar-footer-link" href="/profile">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                Profile
+              </a>
+              <button class="sidebar-footer-link" id="apiKeyBtn" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a2 2 0 1 1-2.83-2.83l6.5-6.5a2 2 0 1 1 2.83 2.83l-1.5 1.5"/><path d="M7.5 15.5 4 19l-1 4 4-1 3.5-3.5"/><path d="m14.5 6.5 3 3"/></svg>
+                API Key
               </button>
-              <button class="sidebar-nav-item" type="button" data-status="Researching">
-                <span class="nav-dot dot-researching"></span>
-                <span class="nav-label">Researching</span>
-                <span class="nav-count" data-status-count="Researching">0</span>
+              <button class="sidebar-footer-link" id="exportBtn" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Export
               </button>
-              <button class="sidebar-nav-item" type="button" data-status="Ready to Apply">
-                <span class="nav-dot dot-ready"></span>
-                <span class="nav-label">Ready to Apply</span>
-                <span class="nav-count" data-status-count="Ready to Apply">0</span>
-              </button>
-              <button class="sidebar-nav-item" type="button" data-status="Applied">
-                <span class="nav-dot dot-applied"></span>
-                <span class="nav-label">Applied</span>
-                <span class="nav-count" data-status-count="Applied">0</span>
-              </button>
-              <button class="sidebar-nav-item" type="button" data-status="Interview">
-                <span class="nav-dot dot-interview"></span>
-                <span class="nav-label">Interview</span>
-                <span class="nav-count" data-status-count="Interview">0</span>
-              </button>
-              <button class="sidebar-nav-item" type="button" data-status="Offer">
-                <span class="nav-dot dot-offer"></span>
-                <span class="nav-label">Offer</span>
-                <span class="nav-count" data-status-count="Offer">0</span>
-              </button>
-              <button class="sidebar-nav-item" type="button" data-status="Rejected">
-                <span class="nav-dot dot-rejected"></span>
-                <span class="nav-label">Rejected</span>
-                <span class="nav-count" data-status-count="Rejected">0</span>
-              </button>
-              <button class="sidebar-nav-item" type="button" data-status="Paused">
-                <span class="nav-dot dot-paused"></span>
-                <span class="nav-label">Paused</span>
-                <span class="nav-count" data-status-count="Paused">0</span>
+              <button class="sidebar-footer-link" id="themeToggleBtn" type="button" aria-label="Toggle theme">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <span id="themeLabel">Light mode</span>
               </button>
             </div>
-          </div>
-
-          <div class="sidebar-section">
-            <div class="sidebar-section-label">
-              <span>Views</span>
-              <button class="sidebar-section-action" id="saveViewBtn" type="button" title="Save current view">+</button>
-            </div>
-            <div class="sidebar-nav" id="savedViewNav"></div>
-            <select id="savedViewSelect" class="sr-only" aria-hidden="true"><option value="">Views</option></select>
-            <div class="saved-view-menu" id="savedViewMenu" aria-hidden="true">
-              <button class="menu-item" id="applySavedViewBtn" type="button">Apply view</button>
-              <button class="menu-item" id="overwriteViewBtn" type="button">Overwrite</button>
-              <button class="menu-item" id="renameViewBtn" type="button">Rename</button>
-              <button class="menu-item danger" id="deleteViewBtn" type="button">Delete</button>
-            </div>
-          </div>
-
-          <div class="sidebar-spacer"></div>
-
-          <div class="sidebar-footer">
-            <a class="sidebar-footer-link" href="/dashboard">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-              Insights
-            </a>
-            <a class="sidebar-footer-link" href="/profile">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
-              Profile
-            </a>
-            <button class="sidebar-footer-link" id="apiKeyBtn" type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a2 2 0 1 1-2.83-2.83l6.5-6.5a2 2 0 1 1 2.83 2.83l-1.5 1.5"/><path d="M7.5 15.5 4 19l-1 4 4-1 3.5-3.5"/><path d="m14.5 6.5 3 3"/></svg>
-              API Key
-            </button>
-            <button class="sidebar-footer-link" id="exportBtn" type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-              Export
-            </button>
-            <button class="sidebar-footer-link" id="themeToggleBtn" type="button" aria-label="Toggle theme">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-              <span id="themeLabel">Light mode</span>
-            </button>
           </div>
         </div>
       </aside>

@@ -123,3 +123,15 @@
 0.0.31
 - Tightened the collapsed sidebar into a true icon rail so the extra navigation content no longer peeks through when the panel is closed.
 - Kept the toggle inside the sidebar brand strip and left the main workspace fully expanded beside the rail.
+
+0.0.32
+- Wrapped the sidebar content in a single body container so the collapsed state can hide the full navigation stack cleanly instead of clipping individual controls.
+- Kept the icon-only toggle in the sidebar brand area so the rail still has a visible reopen control.
+
+0.0.33
+- Slowed down the sidebar collapse and expand motion so the rail feels less snappy and more deliberate.
+- Added a softer body fade and slide during collapse so the hidden navigation stack disappears with a cleaner visual handoff.
+
+0.0.34
+- Removed the leftover collapsed sidebar rail by zeroing the sidebar width in the closed state so the main workspace can fully reclaim the canvas.
+- Kept the reopen control as a fixed edge button, which preserves access without leaving a visible sidebar strip behind.

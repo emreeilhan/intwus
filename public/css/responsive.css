@@ -37,21 +37,20 @@
   :root { --sidebar-w: 260px; }
 
   .app-shell { grid-template-columns: 1fr; }
-  .app-shell.sidebar-collapsed { grid-template-columns: 1fr; }
+  .app-shell.sidebar-collapsed { grid-template-columns: 0 1fr; }
 
   .sidebar {
     width: 260px;
     box-shadow: var(--shadow-lg);
     z-index: 200;
+    transition: transform var(--sidebar-motion), width var(--sidebar-motion), opacity var(--sidebar-motion);
   }
   .app-shell.sidebar-collapsed .sidebar {
     width: 260px;
     transform: translateX(-100%);
-    pointer-events: none;
   }
   .app-shell.sidebar-open .sidebar {
     transform: translateX(0);
-    pointer-events: auto;
   }
 
   .sidebar-inner {

@@ -1,6 +1,7 @@
 const sidebarStorageKey = 'staj-sidebar-open';
 const sidebarShell = document.querySelector('.app-shell');
 const sidebar = document.getElementById('sidebar');
+const sidebarBody = document.querySelector('.sidebar-body');
 const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
 const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 const sidebarMobileQuery = window.matchMedia('(max-width: 900px)');
@@ -18,19 +19,22 @@ function syncSidebarUi() {
 
   sidebarShell.classList.toggle('sidebar-collapsed', !sidebarOpen);
   sidebarShell.classList.toggle('sidebar-open', sidebarOpen);
-  sidebar.setAttribute('aria-hidden', sidebarMobileQuery.matches && !sidebarOpen ? 'true' : 'false');
-  sidebar.toggleAttribute('inert', sidebarMobileQuery.matches && !sidebarOpen);
+  sidebar.setAttribute('aria-hidden', 'false');
+  sidebar.toggleAttribute('inert', false);
+  sidebarBody?.setAttribute('aria-hidden', sidebarOpen ? 'false' : 'true');
+  sidebarBody?.toggleAttribute('inert', !sidebarOpen);
   sidebarToggleBtn.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false');
   sidebarToggleBtn.setAttribute('aria-label', sidebarOpen ? 'Hide sidebar' : 'Show sidebar');
   sidebarToggleBtn.setAttribute('title', sidebarOpen ? 'Hide sidebar' : 'Show sidebar');
   sidebarToggleBtn.classList.toggle('is-active', sidebarOpen);
+  sidebarToggleBtn.classList.toggle('is-floating', !sidebarOpen);
 
   if (sidebarBackdrop) {
     sidebarBackdrop.classList.toggle('open', sidebarMobileQuery.matches && sidebarOpen);
     sidebarBackdrop.setAttribute('aria-hidden', sidebarMobileQuery.matches && sidebarOpen ? 'false' : 'true');
   }
 
-  document.body.classList.toggle('sidebar-open', sidebarOpen);
+  document.body.classList.toggle('sidebar-open', sidebarMobileQuery.matches && sidebarOpen);
 }
 
 function setSidebarOpen(nextOpen, persist = true) {
