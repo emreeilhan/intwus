@@ -486,7 +486,7 @@ body {
 }
 
 .app-shell.sidebar-collapsed .main-panel {
-  grid-column: 1;
+  grid-column: 1 / -1;
 }
 
 .app-shell.sidebar-collapsed .sidebar-brand {
