@@ -43,6 +43,7 @@ const routeEmptyCopy = document.getElementById('agentEmptyCopy');
 
 let reviewState = null;
 let elapsedTimer = null;
+let draftSyncTimer = null;
 
 function escapeHtml(value) {
   return String(value || '')
@@ -80,13 +81,22 @@ function setError(message = '') {
 }
 
 function readState() {
-  try {
-    const raw = sessionStorage.getItem(REVIEW_STATE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
+  const storages = [window.sessionStorage, window.localStorage];
+  for (const storage of storages) {
+    try {
+      const raw = storage.getItem(REVIEW_STATE_KEY);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch {
+      try {
+        storage.removeItem(REVIEW_STATE_KEY);
+      } catch {
+        // Ignore storage cleanup failures.
+      }
+    }
   }
+  return null;
 }
 
 function hydrateStateFromQuery() {
@@ -108,16 +118,108 @@ function hydrateStateFromQuery() {
   };
 }
 
-function persistState() {
+function normalizeReviewState(state) {
+  if (!state || typeof state !== 'object') return null;
+  const normalized = {
+    ...state,
+    entryId: Number(state.entryId || 0) || null,
+    company: String(state.company || '').trim(),
+    location: String(state.location || ''),
+    notes: String(state.notes || ''),
+    website: String(state.website || ''),
+    startedAt: state.startedAt || new Date().toISOString(),
+    stageState: {
+      ...(state.stageState && typeof state.stageState === 'object' ? state.stageState : {}),
+      timeline: Array.isArray(state?.stageState?.timeline) ? state.stageState.timeline : []
+    }
+  };
+
+  if (!normalized.stageState.status) {
+    normalized.stageState.status = normalized.draft ? 'ready' : 'queued';
+  }
+  if (!normalized.stageState.currentStep) {
+    normalized.stageState.currentStep = normalized.draft ? 'ready' : 'queued';
+  }
+  if (!normalized.stageState.startedAt) {
+    normalized.stageState.startedAt = normalized.startedAt;
+  }
+
+  if (normalized.draft && typeof normalized.draft === 'object') {
+    normalized.draft = {
+      ...normalized.draft,
+      companyName: normalized.draft.companyName || normalized.company,
+      cc: String(normalized.draft.cc || ''),
+      subject: String(normalized.draft.subject || ''),
+      body: String(normalized.draft.body || '')
+    };
+    if (!normalized.draft.recommendedAttachments || typeof normalized.draft.recommendedAttachments !== 'object') {
+      normalized.draft.recommendedAttachments = {
+        resume: true,
+        transcript: false,
+        portfolioLink: false,
+        combinationLabel: '',
+        rationale: ''
+      };
+    }
+  }
+
+  return normalized;
+}
+
+function mergeQueryState(baseState) {
+  const params = new URLSearchParams(window.location.search);
+  const company = params.get('company') || '';
+  if (!company) return baseState;
+
+  const nextState = baseState && typeof baseState === 'object' ? { ...baseState } : {};
+  const queryEntryId = Number(params.get('entryId') || 0) || null;
+  const storedCompany = String(nextState.company || '');
+  const storedEntryId = Number(nextState.entryId || 0) || null;
+  const companyChanged = storedCompany && storedCompany !== company;
+  const entryChanged = Boolean(queryEntryId && (!storedEntryId || storedEntryId !== queryEntryId));
+
+  nextState.entryId = companyChanged || entryChanged ? queryEntryId : (queryEntryId ?? nextState.entryId ?? null);
+  nextState.company = company;
+  nextState.location = params.get('location') || nextState.location || '';
+  nextState.notes = params.get('notes') || nextState.notes || '';
+  nextState.website = params.get('website') || nextState.website || '';
+
+  if (companyChanged || entryChanged || !nextState.draft) {
+    nextState.draft = null;
+    nextState.researchedDraft = null;
+    nextState.assets = null;
+    nextState.profileContext = {};
+    nextState.sources = [];
+    nextState.smtpConfigured = false;
+    nextState.searchFeed = [];
+    nextState.stageState = {
+      status: 'queued',
+      currentStep: 'queued',
+      timeline: [],
+      summary: ''
+    };
+    nextState.startedAt = new Date().toISOString();
+  }
+
+  return nextState;
+}
+
+function saveStateTo(storage) {
+  if (!storage) return;
   try {
     if (!reviewState) {
-      sessionStorage.removeItem(REVIEW_STATE_KEY);
+      storage.removeItem(REVIEW_STATE_KEY);
       return;
     }
-    sessionStorage.setItem(REVIEW_STATE_KEY, JSON.stringify(reviewState));
+    storage.setItem(REVIEW_STATE_KEY, JSON.stringify(reviewState));
   } catch {
-    // Ignore storage failures and keep going.
+    // Keep going if storage is unavailable.
   }
+}
+
+function persistState() {
+  saveStateTo(window.sessionStorage);
+  saveStateTo(window.localStorage);
 }
 
 function ensureStageState() {
@@ -227,13 +329,15 @@ function refreshElapsedLabel() {
     return;
   }
   if (status === 'ready') {
-    routeStageElapsed.textContent = `Completed in ${formatDuration(elapsed)}`;
+    const completedAt = new Date(reviewState.stageState.lastEventAt || reviewState.stageState.startedAt).getTime();
+    const completedElapsed = Number.isNaN(completedAt) ? elapsed : Math.max(0, completedAt - startedAt);
+    routeStageElapsed.textContent = `Completed in ${formatDuration(completedElapsed)}`;
     return;
   }
   if (staleFor > 20000 && status === 'running') {
     reviewState.stageState.status = 'stuck';
     persistState();
-    renderStageList();
+    renderState();
     routeStageElapsed.textContent = `Still on ${currentLabel} after ${formatDuration(elapsed)}`;
     return;
   }
@@ -388,6 +492,43 @@ function renderState() {
   renderAssetList();
   updateSafetyUi();
   syncActionUi();
+}
+
+function scheduleDraftSync() {
+  if (!reviewState?.draft) return;
+  window.clearTimeout(draftSyncTimer);
+  draftSyncTimer = window.setTimeout(() => {
+    persistState();
+  }, 120);
+}
+
+function syncDraftFieldsFromUi() {
+  if (!reviewState?.draft) return;
+  reviewState.draft = {
+    ...reviewState.draft,
+    contactEmail: routeTo?.value.trim() || '',
+    cc: routeCc?.value.trim() || '',
+    subject: routeSubject?.value || '',
+    body: routeBody?.value || ''
+  };
+  persistState();
+}
+
+function syncAttachmentChoices() {
+  if (!reviewState?.draft) return;
+  reviewState.draft.recommendedAttachments = {
+    ...(reviewState.draft.recommendedAttachments || {}),
+    resume: Boolean(routeIncludeResume?.checked),
+    transcript: Boolean(routeIncludeTranscript?.checked),
+    portfolioLink: Boolean(routeIncludePortfolioLink?.checked)
+  };
+  persistState();
+}
+
+function shouldAutoResume() {
+  if (!reviewState?.company || reviewState?.draft) return false;
+  const status = reviewState?.stageState?.status;
+  return ['queued', 'running', 'stuck'].includes(status);
 }
 
 async function logAction(action, meta = {}) {
@@ -776,21 +917,35 @@ function bindEvents() {
     input?.addEventListener('change', () => {
       renderAssetList();
       syncActionUi();
+      syncAttachmentChoices();
     });
+  });
+  [routeTo, routeCc, routeSubject, routeBody].forEach((input) => {
+    input?.addEventListener('input', () => {
+      syncDraftFieldsFromUi();
+      scheduleDraftSync();
+    });
+    input?.addEventListener('change', syncDraftFieldsFromUi);
   });
   routeRetryBtn?.addEventListener('click', () => {
     runPreparationPipeline({ retry: true });
+  });
+  window.addEventListener('beforeunload', persistState);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') persistState();
   });
 }
 
 function boot() {
   initTheme();
-  reviewState = readState() || hydrateStateFromQuery();
+  reviewState = normalizeReviewState(mergeQueryState(readState() || hydrateStateFromQuery()));
   if (reviewState) persistState();
   bindEvents();
   renderState();
-  if (reviewState?.company && !reviewState?.draft) {
-    runPreparationPipeline();
+  if (shouldAutoResume()) {
+    runPreparationPipeline({
+      retry: ['running', 'stuck'].includes(reviewState?.stageState?.status)
+    });
   }
   window.requestAnimationFrame(() => {
     document.body.classList.add('is-ready');

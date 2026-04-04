@@ -243,3 +243,12 @@
 0.0.59
 - Replaced the brittle web-search research JSON contract with a labeled text protocol plus deterministic parsing, so company research no longer falls over when the model refuses prompt-only JSON during search-enabled runs.
 - This materially improves the new live stage flow because the research step now completes reliably enough to expose real progress instead of failing at the first parsing edge case.
+
+0.0.60
+- Fixed the agent review elapsed timer so the `Completed in ...` label now freezes at the actual completion time instead of continuing to grow every second after the draft is ready.
+- Fixed the stalled-preparation fallback so when the flow flips to `stuck`, the page re-renders and exposes the Retry action and updated status UI instead of only changing internal state.
+
+0.0.61
+- Hardened the agent review state lifecycle so refresh now restores the right company, resumes queued or in-progress prep, and clears stale data when the query or stored state conflicts.
+- Persisted live draft edits, attachment toggles, and page visibility changes so typed changes survive refresh instead of disappearing mid-review.
+- Added safer storage recovery for broken session data and localStorage fallback so the route can still reopen cleanly when one storage path is unavailable.
