@@ -863,6 +863,94 @@ async function callOpenAIResponses({
   return payload;
 }
 
+async function* streamOpenAIResponses({
+  apiKey,
+  model,
+  instructions,
+  input,
+  maxOutputTokens,
+  tools,
+  textFormat,
+  reasoningEffort,
+  include
+}) {
+  const hasWebSearchTool = Array.isArray(tools) && tools.some((tool) => {
+    const type = normalizeString(tool?.type);
+    return type === 'web_search' || type === 'web_search_preview' || type === 'web_search_2025_08_26';
+  });
+  const effectiveReasoningEffort = hasWebSearchTool && reasoningEffort === 'minimal' ? 'low' : reasoningEffort;
+  const effectiveTextFormat = hasWebSearchTool && textFormat?.type === 'json_object' ? null : textFormat;
+
+  const body = {
+    model,
+    instructions,
+    input,
+    store: false,
+    stream: true
+  };
+  if (Number.isFinite(maxOutputTokens)) body.max_output_tokens = maxOutputTokens;
+  if (Array.isArray(tools) && tools.length) body.tools = tools;
+  if (effectiveTextFormat) body.text = { format: effectiveTextFormat };
+  if (effectiveReasoningEffort) body.reasoning = { effort: effectiveReasoningEffort };
+  if (Array.isArray(include) && include.length) body.include = include;
+
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    const errPayload = await response.json().catch(() => ({}));
+    throw new Error(errPayload?.error?.message || errPayload?.error || 'OpenAI stream request failed.');
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  for await (const chunk of response.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const parts = buffer.split('\n\n');
+    buffer = parts.pop() ?? '';
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (!trimmed || trimmed === '[DONE]') continue;
+      const eventLineMatch = trimmed.match(/^event:\s*(.+)$/m);
+      const dataLineMatch = trimmed.match(/^data:\s*(.+)$/m);
+      if (!dataLineMatch) continue;
+      const rawData = dataLineMatch[1].trim();
+      if (rawData === '[DONE]') continue;
+      let data;
+      try {
+        data = JSON.parse(rawData);
+      } catch {
+        continue;
+      }
+      const type = eventLineMatch ? eventLineMatch[1].trim() : (data?.type || 'unknown');
+      yield { type, data };
+    }
+  }
+  // flush remaining buffer
+  const remaining = buffer.trim();
+  if (remaining && remaining !== '[DONE]') {
+    const eventLineMatch = remaining.match(/^event:\s*(.+)$/m);
+    const dataLineMatch = remaining.match(/^data:\s*(.+)$/m);
+    if (dataLineMatch) {
+      const rawData = dataLineMatch[1].trim();
+      if (rawData && rawData !== '[DONE]') {
+        try {
+          const data = JSON.parse(rawData);
+          const type = eventLineMatch ? eventLineMatch[1].trim() : (data?.type || 'unknown');
+          yield { type, data };
+        } catch { /* ignore */ }
+      }
+    }
+  }
+}
+
 function buildAnalyzeUserPrompt({ company, location, notes, cvText }) {
   return [
     `Company: ${company || '-'}`,
@@ -1851,6 +1939,152 @@ app.post('/api/application-agent/polish', async (req, res) => {
     return res.status(502).json({
       error: error instanceof Error ? error.message : 'Polish request failed.'
     });
+  }
+});
+
+app.post('/api/application-agent/stream-research', async (req, res) => {
+  const apiKey = normalizeString(req.body?.apiKey);
+  const company = normalizeString(req.body?.company);
+  const location = normalizeString(req.body?.location, '-');
+  const notes = typeof req.body?.notes === 'string' ? req.body.notes.trim() : '-';
+  const website = normalizeString(req.body?.website, '-');
+
+  if (!apiKey) {
+    return res.status(400).json({ error: 'OpenAI API key is required.' });
+  }
+  if (!company) {
+    return res.status(400).json({ error: 'Company is required.' });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  let aborted = false;
+  req.on('close', () => { aborted = true; });
+
+  function send(eventType, data) {
+    if (aborted) return;
+    res.write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
+  }
+
+  try {
+    send('stage', { type: 'stage', step: 'research', status: 'running', summary: `Researching ${company} across public web sources.` });
+
+    const profile = readProfile();
+    const streamParams = {
+      apiKey,
+      model: OPENAI_RESEARCH_MODEL,
+      instructions: APPLICATION_AGENT_SYSTEM_PROMPT,
+      input: buildApplicationAgentPrompt({
+        company,
+        location,
+        notes,
+        website,
+        profile: pickProfileSummary(profile)
+      }),
+      maxOutputTokens: 1500,
+      tools: [{ type: 'web_search_preview' }],
+      textFormat: { type: 'json_object' },
+      reasoningEffort: 'minimal'
+    };
+
+    let accumulatedText = '';
+    let completedResponse = null;
+
+    for await (const event of streamOpenAIResponses(streamParams)) {
+      if (aborted) break;
+      const { type, data } = event;
+
+      if (type === 'response.web_search_call.in_progress') {
+        send('search', { type: 'search', status: 'in_progress' });
+      } else if (type === 'response.web_search_call.completed') {
+        send('search', { type: 'search', status: 'completed' });
+      } else if (type === 'response.output_item.added') {
+        const item = data?.item || data?.output_item;
+        if (item?.type === 'web_search_call' || item?.action?.type === 'web_search') {
+          const query = item?.action?.query || item?.query || '';
+          send('search', { type: 'search', status: 'in_progress', query });
+        }
+      } else if (type === 'response.output_text.delta') {
+        const delta = data?.delta || '';
+        accumulatedText += delta;
+        send('text_delta', { type: 'text_delta', delta });
+      } else if (type === 'response.completed') {
+        completedResponse = data?.response || data;
+      }
+    }
+
+    if (aborted) {
+      res.end();
+      return;
+    }
+
+    // Extract final text from completed response if available
+    let finalText = accumulatedText;
+    if (completedResponse) {
+      const completedContent = collectOpenAIContent(completedResponse);
+      if (completedContent.rawText) {
+        finalText = completedContent.rawText;
+      }
+      // Also try output_text property
+      if (completedResponse.output_text) {
+        finalText = completedResponse.output_text;
+      }
+    }
+
+    send('stage', { type: 'stage', step: 'shape', status: 'running', summary: 'Structuring the raw research into a usable first-pass draft.' });
+
+    const researchedDraft = parseAgentResearchText(finalText || accumulatedText);
+
+    // Build research result sources from completed response or fallback
+    let researchSources = [];
+    if (completedResponse) {
+      researchSources = collectOpenAIContent(completedResponse).sources;
+    }
+    const researchResult = buildAgentResearchResult({
+      researchedDraft,
+      company,
+      website,
+      profile,
+      researchContent: { sources: researchSources },
+      researchPayload: completedResponse || {}
+    });
+
+    send('stage', { type: 'stage', step: 'polish', status: 'running', summary: 'Polishing the message into a cleaner final outreach email.' });
+
+    const polishResult = await runApplicationAgentPolish({
+      apiKey,
+      company: researchedDraft?.companyName || company,
+      draftInput: researchedDraft,
+      tonePreset: 'balanced',
+      includePortfolioLink: Boolean(researchResult.recommendedAttachments?.portfolioLink)
+    });
+
+    const draft = buildAgentFinalDraft({
+      researchedDraft,
+      polishedDraft: polishResult.polishedDraft,
+      company,
+      website,
+      profile,
+      recommendedAttachments: researchResult.recommendedAttachments
+    });
+
+    send('stage', { type: 'stage', step: 'ready', status: 'ready', summary: `Draft ready for ${draft.companyName || company}.` });
+    send('draft', {
+      type: 'draft',
+      draft,
+      sources: researchResult.sources,
+      assets: researchResult.assets,
+      smtpConfigured: researchResult.smtpConfigured,
+      profileContext: researchResult.profileContext
+    });
+
+    res.end();
+  } catch (err) {
+    send('error', { type: 'error', message: err instanceof Error ? err.message : 'Streaming preparation failed.' });
+    res.end();
   }
 });
 

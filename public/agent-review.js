@@ -23,7 +23,7 @@ const routeBody = document.getElementById('agentRouteBody');
 const routeFlowStatus = document.getElementById('agentFlowStatus');
 const routeHeroTitle = document.getElementById('agentHeroTitle');
 const routeHeroSub = document.getElementById('agentHeroSub');
-const routeFlowSummary = document.getElementById('agentFlowSummary');
+const routeFlowSummary = null; // removed from layout
 const routeAttachmentReason = document.getElementById('agentRouteAttachmentReason');
 const routeAssetList = document.getElementById('agentRouteAssetList');
 const routeIncludeResume = document.getElementById('agentRouteIncludeResume');
@@ -195,14 +195,22 @@ function renderStageList() {
     return `
       <div class="agent-stage-row" data-status="${escapeHtml(status)}">
         <span class="agent-stage-dot" aria-hidden="true"></span>
-        <div>
-          <div class="agent-stage-title">${escapeHtml(stage.label)}</div>
-          <div class="agent-stage-copy">${escapeHtml(stage.copy)}</div>
-        </div>
-        <div class="agent-stage-meta">${escapeHtml(status)}</div>
+        <div class="agent-stage-title">${escapeHtml(stage.label)}</div>
+        <div class="agent-stage-meta">${status === 'running' ? '●' : status === 'done' ? '✓' : ''}</div>
       </div>
     `;
   }).join('');
+
+  // Update horizontal stepper
+  const stepperEl = document.getElementById('agentStepper');
+  if (!stepperEl) return;
+  const parts = [];
+  PREP_STAGES.forEach((stage, i) => {
+    const status = stageStatusFor(stage.key);
+    parts.push(`<div class="agent-stepper-step" data-status="${escapeHtml(status)}"><span class="agent-stepper-dot"></span><span class="agent-stepper-label">${escapeHtml(stage.label)}</span></div>`);
+    if (i < PREP_STAGES.length - 1) parts.push('<div class="agent-stepper-line"></div>');
+  });
+  stepperEl.innerHTML = parts.join('');
 }
 
 function renderTimeline() {
@@ -527,6 +535,40 @@ async function markEntryApplied() {
   });
 }
 
+function handleSearchEvent({ status, query }) {
+  if (!reviewState) return;
+  if (!Array.isArray(reviewState.searchFeed)) reviewState.searchFeed = [];
+  if (query) {
+    reviewState.searchFeed.push({ status, query });
+  } else if (status === 'completed') {
+    // Mark last searching chip as done
+    const last = reviewState.searchFeed.findLast
+      ? reviewState.searchFeed.findLast((c) => c.status === 'in_progress')
+      : [...reviewState.searchFeed].reverse().find((c) => c.status === 'in_progress');
+    if (last) last.status = 'completed';
+  }
+  renderSearchFeed();
+}
+
+function renderSearchFeed() {
+  const feedEl = document.getElementById('agentSearchFeed');
+  if (!feedEl || !reviewState) return;
+  const chips = reviewState.searchFeed || [];
+  if (!chips.length) {
+    feedEl.innerHTML = '';
+    return;
+  }
+  feedEl.innerHTML = chips.map((chip) => {
+    const stateClass = chip.status === 'completed' ? 'is-done' : 'is-searching';
+    return `
+      <div class="agent-search-chip ${stateClass}">
+        <span class="agent-search-chip-dot" aria-hidden="true"></span>
+        <span>${escapeHtml(chip.query || 'Searching…')}</span>
+      </div>
+    `;
+  }).join('');
+}
+
 async function runPreparationPipeline({ retry = false } = {}) {
   if (!reviewState?.company) return;
   const apiKey = getStoredApiKey();
@@ -540,6 +582,7 @@ async function runPreparationPipeline({ retry = false } = {}) {
   if (retry) {
     reviewState.draft = null;
     reviewState.researchedDraft = null;
+    reviewState.searchFeed = [];
     appendTimeline('Retry requested', `Restarting the preparation flow for ${reviewState.company}.`);
   } else if (reviewState.draft || reviewState.stageState?.status === 'running') {
     return;
@@ -547,16 +590,21 @@ async function runPreparationPipeline({ retry = false } = {}) {
 
   ensureStageState();
   reviewState.stageState.startedAt = new Date().toISOString();
+  reviewState.searchFeed = [];
   setStage('queued', 'queued', `Opening the workspace for ${reviewState.company}.`, { clearError: true });
   appendTimeline('Workspace ready', `Loaded ${reviewState.company} into the agent review route.`);
   renderState();
+
+  // Add researching class to compose panel for animated gradient mesh
+  const composeEl = document.querySelector('.agent-compose');
+  if (composeEl) composeEl.classList.add('is-researching');
 
   try {
     setStage('research', 'running', `Researching ${reviewState.company} across public web sources.`, { clearError: true });
     appendTimeline('Research started', 'Looking for the best company signals, contact path, and credible public links.');
     renderState();
 
-    const researchRes = await fetch('/api/application-agent/research', {
+    const response = await fetch('/api/application-agent/stream-research', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -567,89 +615,99 @@ async function runPreparationPipeline({ retry = false } = {}) {
         website: reviewState.website || ''
       })
     });
-    const researchPayload = await researchRes.json().catch(() => ({}));
-    if (!researchRes.ok) throw new Error(researchPayload?.error || 'Research failed.');
 
-    reviewState.researchedDraft = researchPayload.draft || {};
-    reviewState.assets = researchPayload.assets || {};
-    reviewState.recommendedAttachments = researchPayload.recommendedAttachments || {};
-    reviewState.smtpConfigured = Boolean(researchPayload.smtpConfigured);
-    reviewState.sources = researchPayload.sources || [];
-    reviewState.profileContext = researchPayload.profileContext || {};
-    reviewState.meta = {
-      companyName: researchPayload.companyName || reviewState.company,
-      companyWebsite: researchPayload.companyWebsite || reviewState.website || '',
-      careersUrl: researchPayload.careersUrl || '',
-      contactEmail: researchPayload.contactEmail || '',
-      contactReason: researchPayload.contactReason || '',
-      confidence: researchPayload.confidence || 'low',
-      hookType: researchPayload.hookType || 'general',
-      companySignals: researchPayload.companySignals || [],
-      personalAngles: researchPayload.personalAngles || [],
-      warnings: researchPayload.warnings || []
+    if (!response.ok) {
+      const errPayload = await response.json().catch(() => ({}));
+      throw new Error(errPayload?.error || 'Streaming research failed.');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    const processEvent = (eventType, data) => {
+      switch (eventType) {
+        case 'stage': {
+          const step = data.step || 'research';
+          const status = data.status || 'running';
+          const summary = data.summary || '';
+          setStage(step, status, summary);
+          if (step === 'research' && status === 'running') {
+            appendTimeline('Research running', summary);
+          } else if (step === 'shape' && status === 'running') {
+            appendTimeline('Research finished', 'Structuring the raw research into a first-pass draft.');
+          } else if (step === 'polish' && status === 'running') {
+            appendTimeline('Polish started', 'Turning the researched structure into a readable final draft.');
+          } else if (step === 'ready' && status === 'ready') {
+            appendTimeline('Draft ready', 'The route finished research and polish successfully. You can review the draft now.');
+          }
+          renderState();
+          break;
+        }
+        case 'search':
+          handleSearchEvent({ status: data.status, query: data.query || '' });
+          break;
+        case 'text_delta':
+          // Accumulate silently — no UI needed for raw text
+          break;
+        case 'draft':
+          reviewState.draft = data.draft || null;
+          reviewState.sources = data.sources || [];
+          reviewState.assets = data.assets || {};
+          reviewState.smtpConfigured = Boolean(data.smtpConfigured);
+          reviewState.profileContext = data.profileContext || {};
+          persistState();
+          if (composeEl) composeEl.classList.remove('is-researching');
+          renderSearchFeed();
+          renderState();
+          break;
+        case 'error':
+          throw new Error(data.message || 'Streaming preparation failed.');
+        default:
+          break;
+      }
     };
-    persistState();
 
-    setStage('shape', 'running', 'Structuring the raw research into a usable first-pass draft.');
-    appendTimeline('Research finished', `Found ${reviewState.sources.length} source${reviewState.sources.length === 1 ? '' : 's'} and built the first outreach structure.`);
-    renderState();
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() ?? '';
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed) continue;
+        const eventLineMatch = trimmed.match(/^event:\s*(.+)$/m);
+        const dataLineMatch = trimmed.match(/^data:\s*(.+)$/m);
+        if (!dataLineMatch) continue;
+        let data;
+        try {
+          data = JSON.parse(dataLineMatch[1].trim());
+        } catch {
+          continue;
+        }
+        const eventType = eventLineMatch ? eventLineMatch[1].trim() : (data?.type || 'unknown');
+        processEvent(eventType, data);
+      }
+    }
 
-    setStage('polish', 'running', 'Polishing the message into a cleaner final outreach email.');
-    appendTimeline('Polish started', 'Turning the researched structure into a readable final draft.');
-    renderState();
+    // Handle any remaining buffer
+    if (buffer.trim()) {
+      const trimmed = buffer.trim();
+      const eventLineMatch = trimmed.match(/^event:\s*(.+)$/m);
+      const dataLineMatch = trimmed.match(/^data:\s*(.+)$/m);
+      if (dataLineMatch) {
+        try {
+          const data = JSON.parse(dataLineMatch[1].trim());
+          const eventType = eventLineMatch ? eventLineMatch[1].trim() : (data?.type || 'unknown');
+          processEvent(eventType, data);
+        } catch { /* ignore */ }
+      }
+    }
 
-    const polishRes = await fetch('/api/application-agent/polish', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        apiKey,
-        company: reviewState.meta.companyName || reviewState.company || '',
-        draft: reviewState.researchedDraft,
-        tonePreset: 'balanced',
-        includePortfolioLink: Boolean(reviewState.recommendedAttachments?.portfolioLink)
-      })
-    });
-    const polishPayload = await polishRes.json().catch(() => ({}));
-    if (!polishRes.ok) throw new Error(polishPayload?.error || 'Polish failed.');
-
-    const warnings = Array.isArray(polishPayload.warnings) ? polishPayload.warnings : (reviewState.meta.warnings || []);
-    const allowDirectSend = Boolean(reviewState.smtpConfigured) && Boolean(reviewState.meta.contactEmail) && warnings.length === 0;
-    const reasons = [
-      !reviewState.smtpConfigured ? 'SMTP is not configured.' : null,
-      !reviewState.meta.contactEmail ? 'No public contact email found.' : null,
-      ...warnings
-    ].filter(Boolean);
-
-    reviewState.draft = {
-      companyName: reviewState.meta.companyName || reviewState.company,
-      companyWebsite: reviewState.meta.companyWebsite || reviewState.website || '',
-      careersUrl: reviewState.meta.careersUrl || '',
-      contactEmail: reviewState.meta.contactEmail || '',
-      contactReason: reviewState.meta.contactReason || '',
-      confidence: reviewState.meta.confidence || 'low',
-      subject: polishPayload.subject || reviewState.researchedDraft.subject || `Internship Application - ${reviewState.company}`,
-      introLines: Array.isArray(polishPayload.introLines) ? polishPayload.introLines : (reviewState.researchedDraft.introLines || []),
-      bodyLines: Array.isArray(polishPayload.bodyLines) ? polishPayload.bodyLines : (reviewState.researchedDraft.bodyLines || []),
-      signatureLines: Array.isArray(polishPayload.signatureLines) ? polishPayload.signatureLines : [],
-      body: polishPayload.body || reviewState.researchedDraft.body || '',
-      hookType: reviewState.meta.hookType || 'general',
-      companySignals: reviewState.meta.companySignals || [],
-      personalAngles: reviewState.meta.personalAngles || [],
-      warnings,
-      recommendedAttachments: reviewState.recommendedAttachments || {},
-      safety: {
-        allowDirectSend,
-        reasons
-      },
-      tonePreset: polishPayload.tonePreset || 'balanced',
-      cc: reviewState.researchedDraft.cc || ''
-    };
-    persistState();
-
-    setStage('ready', 'ready', `Draft ready for ${reviewState.draft.companyName || reviewState.company}.`);
-    appendTimeline('Draft ready', 'The route finished research and polish successfully. You can review the draft now.');
-    renderState();
   } catch (error) {
+    if (composeEl) composeEl.classList.remove('is-researching');
     const message = error instanceof Error ? error.message : 'Preparation failed.';
     setStage(reviewState?.stageState?.currentStep || 'queued', 'error', message, { error: message });
     appendTimeline('Preparation failed', message, 'error');
@@ -700,6 +758,12 @@ async function submitReview(event) {
 
   try {
     if (action === 'draft') {
+      // Open window synchronously before any await — popup blockers only allow
+      // window.open() directly within a user gesture, not after async work.
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${escapeMailtoValue(to)}&su=${escapeMailtoValue(subject)}&body=${escapeMailtoValue(body)}${cc ? `&cc=${escapeMailtoValue(cc)}` : ''}`;
+      const gmailWin = window.open(gmailUrl, '_blank');
+      if (!gmailWin) window.location.href = gmailUrl; // fallback if still blocked
+      appendTimeline('Gmail draft opened', 'Opened the prepared email in Gmail compose.');
       await logAction('draft-opened', {
         to,
         subject,
@@ -710,9 +774,6 @@ async function submitReview(event) {
           includePortfolioLink ? 'Portfolio link' : null
         ].filter(Boolean).join(' + ') || 'None'
       });
-      appendTimeline('Gmail draft opened', 'Opened the prepared email in Gmail compose.');
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${escapeMailtoValue(to)}&su=${escapeMailtoValue(subject)}&body=${escapeMailtoValue(body)}${cc ? `&cc=${escapeMailtoValue(cc)}` : ''}`;
-      window.open(gmailUrl, '_blank');
       return;
     }
 
