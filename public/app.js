@@ -64,6 +64,12 @@ const saveViewBtn = el('saveViewBtn');
 const commandPalette = el('commandPalette');
 const commandInput = el('commandInput');
 const commandList = el('commandList');
+const apiKeyBtn = el('apiKeyBtn');
+const apiKeyModal = el('apiKeyModal');
+const apiKeyForm = el('apiKeyForm');
+const apiKeyInput = el('apiKeyInput');
+const apiKeyClose = el('apiKeyClose');
+const apiKeyCancel = el('apiKeyCancel');
 const themeToggleBtn = el('themeToggleBtn');
 const searchTrigger = el('searchTrigger');
 const inlineSearch = el('inlineSearch');
@@ -256,6 +262,29 @@ function setCachedAnalysis(id, payload) {
     cachedAt: new Date().toISOString()
   };
   localStorage.setItem(analysisCacheKey, JSON.stringify(cache));
+}
+
+function openApiKeyModal() {
+  if (!apiKeyModal) return;
+  apiKeyModal.classList.add('open');
+  apiKeyModal.setAttribute('aria-hidden', 'false');
+  if (apiKeyInput) {
+    apiKeyInput.value = getStoredApiKey();
+    apiKeyInput.focus();
+    apiKeyInput.select();
+  }
+}
+
+function dismissApiKeyModal() {
+  apiKeyModal?.classList.remove('open');
+  apiKeyModal?.setAttribute('aria-hidden', 'true');
+}
+
+async function saveApiKey(event) {
+  event.preventDefault();
+  setStoredApiKey(apiKeyInput?.value || '');
+  dismissApiKeyModal();
+  await resumePendingAnalysisAfterKey();
 }
 
 function getEntryById(id) {
@@ -1015,7 +1044,7 @@ async function runAnalysisForEntry(entry, options = {}) {
     } catch {
       // TODO: sessionStorage blocked (private mode) — user must re-run analyze after saving key
     }
-    window.location.href = '/api-key';
+    openApiKeyModal();
     return null;
   }
 
@@ -1061,7 +1090,7 @@ async function prepareAgentMail(entry) {
   if (!entry) return;
   const apiKey = getStoredApiKey();
   if (!apiKey) {
-    window.location.href = '/api-key';
+    openApiKeyModal();
     return;
   }
 
@@ -1127,7 +1156,7 @@ async function applyTonePreset(tonePreset) {
   if (!agentDraftState) return;
   const apiKey = getStoredApiKey();
   if (!apiKey) {
-    window.location.href = '/api-key';
+    openApiKeyModal();
     return;
   }
 
@@ -1473,17 +1502,16 @@ function renderBoard() {
     const col = document.createElement('div');
     col.className = 'board-column';
     col.dataset.status = status;
-    const dotClass = statusClass(status);
     const emptyInfo = BOARD_EMPTY[status] || { icon: '📌', msg: 'No entries here.' };
 
+    const sc = statusClass(status);
     col.innerHTML = `
       <div class="board-col-header">
-        <div class="board-col-title">
-          <span class="nav-dot ${dotClass.replace('status-', 'dot-').replace('-to-apply','')}"
-                style="width:7px;height:7px;border-radius:50%;background:var(--${dotClass.replace('status-','status-').replace('-to-apply','-ready')});"></span>
-          ${escapeHtml(status)}
+        <div class="board-col-pill ${sc}" role="group" aria-label="${escapeHtml(status)} — ${items.length} entries">
+          <span class="board-col-pill-dot" aria-hidden="true"></span>
+          <span class="board-col-pill-label">${escapeHtml(status)}</span>
+          <span class="board-col-pill-count">${items.length}</span>
         </div>
-        <span class="board-col-count">${items.length}</span>
       </div>
       <div class="board-col-cards">
         ${items.length === 0 ? `<div class="board-col-empty"><div class="board-col-empty-icon">${emptyInfo.icon}</div>${escapeHtml(emptyInfo.msg)}</div>` : ''}
@@ -1713,7 +1741,7 @@ function renderCommands() {
   const items = [
     { label: 'Add internship', action: () => { closeCommandPalette(); openQuickAdd(); } },
     { label: 'Open search', action: () => { closeCommandPalette(); openSearch(); } },
-    { label: 'Open API key page', action: () => { closeCommandPalette(); window.location.href = '/api-key'; } },
+    { label: 'Open API key', action: () => { closeCommandPalette(); openApiKeyModal(); } },
     {
       label: 'Import spreadsheet…',
       action: () => {
@@ -1892,6 +1920,10 @@ copyMailHookBtn?.addEventListener('click', async () => {
 });
 themeToggleBtn?.addEventListener('click', toggleTheme);
 saveViewBtn?.addEventListener('click', saveView);
+apiKeyBtn?.addEventListener('click', openApiKeyModal);
+apiKeyForm?.addEventListener('submit', saveApiKey);
+apiKeyClose?.addEventListener('click', dismissApiKeyModal);
+apiKeyCancel?.addEventListener('click', dismissApiKeyModal);
 searchTrigger?.addEventListener('click', openSearch);
 agentReviewForm?.addEventListener('submit', submitAgentReview);
 agentReviewClose?.addEventListener('click', closeAgentReview);
@@ -1936,6 +1968,7 @@ document.addEventListener('keydown', (event) => {
     closeQuickAdd();
     closeDrawer();
     closeCommandPalette();
+    dismissApiKeyModal();
     closeAgentReview();
     closeRowMenu();
     closeSavedViewMenu();
@@ -1964,6 +1997,10 @@ document.addEventListener('click', (event) => {
 
 commandPalette?.addEventListener('click', (event) => {
   if (event.target === commandPalette) closeCommandPalette();
+});
+
+apiKeyModal?.addEventListener('click', (event) => {
+  if (event.target === apiKeyModal) dismissApiKeyModal();
 });
 
 agentReviewModal?.addEventListener('click', (event) => {

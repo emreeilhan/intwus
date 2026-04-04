@@ -193,6 +193,15 @@
 - This removes a trust-breaking dead-end around API key setup while preserving the canonical `/api-key` route.
 
 0.0.49
+- Brought API key setup back into the main tracker UI as an in-app modal, so users no longer get kicked out to a detached page for a simple local setting.
+- Replaced missing-key redirects during analysis flows with the same modal, which keeps the workflow visible and materially reduces “nothing showed up” confusion.
+
+0.0.49
 - Introduced a dedicated `--main-canvas` surface for the main column so light mode reads as a white workspace on a soft grey shell, closer to the calm Productivity UI references without turning the app into a marketing page.
 - Retuned the sticky context bar to frost against the canvas color and added a reduced-transparency fallback so the header stays solid when the OS discourages blur.
 - Loosened light-theme sidebar padding and nav item targets, strengthened the wordmark weight, and upgraded the API key route’s back/skip controls to pill ghost buttons for a more intentional personal-tool feel.
+
+0.0.50
+- Reworked the kanban board column chrome into a single pastel status pill with dot, label, and count, plus soft per-column tinting and white cards in light mode so the board reads closer to modern Notion-style boards without changing pipeline logic.
+- Added a “Workspace” sidebar group for New entry and Search, promoted New entry to a full primary pill CTA, and expanded the empty list state with more whitespace and a matching primary “Add first entry” button.
+- Tuned light mode list header and context bar backgrounds to track the main canvas and added a gentle list-head hover gradient for clearer table separation.

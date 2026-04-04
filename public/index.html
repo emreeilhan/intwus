@@ -32,16 +32,19 @@
           </div>
 
           <div class="sidebar-body">
-            <button class="sidebar-add" id="quickAddBtn" type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-              New entry
-            </button>
+            <div class="sidebar-section sidebar-section--tight">
+              <div class="sidebar-section-label">Workspace</div>
+              <button class="sidebar-add" id="quickAddBtn" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                New entry
+              </button>
 
-            <button class="sidebar-search-trigger" id="searchTrigger" type="button">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm8.7 12.3-3.2-3.2a1 1 0 0 0-1.4 1.4l3.2 3.2a1 1 0 0 0 1.4-1.4Z"/></svg>
-              <span>Search…</span>
-              <kbd>/</kbd>
-            </button>
+              <button class="sidebar-search-trigger" id="searchTrigger" type="button">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm8.7 12.3-3.2-3.2a1 1 0 0 0-1.4 1.4l3.2 3.2a1 1 0 0 0 1.4-1.4Z"/></svg>
+                <span>Search…</span>
+                <kbd>/</kbd>
+              </button>
+            </div>
 
             <div class="sidebar-section">
               <div class="sidebar-section-label">Pipeline</div>
@@ -109,10 +112,10 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
                 Profile
               </a>
-              <a class="sidebar-footer-link" href="/api-key">
+              <button class="sidebar-footer-link" id="apiKeyBtn" type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a2 2 0 1 1-2.83-2.83l6.5-6.5a2 2 0 1 1 2.83 2.83l-1.5 1.5"/><path d="M7.5 15.5 4 19l-1 4 4-1 3.5-3.5"/><path d="m14.5 6.5 3 3"/></svg>
                 API key
-              </a>
+              </button>
               <button class="sidebar-footer-link" id="importBtn" type="button" title="Import .xlsx (same columns as Export). Shift+click to replace all entries.">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
                 Import
@@ -191,11 +194,11 @@
               <div class="lh-cell lh-status">Status</div>
             </div>
             <div id="list" class="list-body"></div>
-            <div class="empty-state" id="emptyState">
+            <div class="empty-state empty-state--hero" id="emptyState">
               <div class="empty-icon" id="emptyIcon">📌</div>
               <div class="empty-title" id="emptyTitle">No applications yet</div>
               <div class="empty-sub" id="emptySub">Add your first internship to start tracking your pipeline.</div>
-              <button class="ghost-btn" id="emptyAddBtn" type="button">Add first entry</button>
+              <button class="empty-state-cta" id="emptyAddBtn" type="button">Add first entry</button>
             </div>
           </div>
         </section>
@@ -241,6 +244,30 @@
           <input id="commandInput" type="text" placeholder="Type a command…" autocomplete="off" />
         </div>
         <div class="command-list" id="commandList"></div>
+      </div>
+    </div>
+
+    <div class="overlay-panel" id="apiKeyModal" aria-hidden="true">
+      <div class="overlay-card overlay-card--form" role="dialog" aria-modal="true" aria-labelledby="apiKeyTitle">
+        <div class="overlay-header">
+          <div>
+            <p class="overlay-title" id="apiKeyTitle">OpenAI API key</p>
+            <p class="overlay-sub">Save the key here and continue analysis without leaving the tracker.</p>
+          </div>
+          <button class="icon-btn" id="apiKeyClose" type="button" aria-label="Close API key modal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <form id="apiKeyForm" class="form">
+          <label>OpenAI API key
+            <input id="apiKeyInput" type="password" placeholder="sk-proj-..." autocomplete="off" spellcheck="false" />
+          </label>
+          <p class="api-key-note">Stored only in this browser as <code>staj-apikey</code>. Never written to the tracker database.</p>
+          <div class="form-actions">
+            <button class="ghost-btn" id="apiKeyCancel" type="button">Cancel</button>
+            <button type="submit">Save key</button>
+          </div>
+        </form>
       </div>
     </div>
 
