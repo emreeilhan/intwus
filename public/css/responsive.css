@@ -101,3 +101,8 @@
   .context-right { flex-direction: column; align-items: stretch; }
   .filter-controls { gap: 4px; }
 }
+
+/* Purpose: sidebar FAB stays fixed when collapsed; reserve space so the title/count never sit underneath it */
+.app-shell.sidebar-collapsed .context-bar {
+  padding-left: calc(var(--sidebar-fab-left) + var(--sidebar-fab-size) + var(--sidebar-fab-gap));
+}

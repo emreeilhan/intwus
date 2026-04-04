@@ -61,6 +61,11 @@
   /* Sidebar */
   --sidebar-w: 220px;
   --sidebar-collapsed-w: 56px;
+  /* Purpose: align context header padding with fixed .sidebar-fab when rail is hidden */
+  --sidebar-fab-left: 12px;
+  --sidebar-fab-top: 16px;
+  --sidebar-fab-size: 30px;
+  --sidebar-fab-gap: 12px;
 
   /* Motion */
   --ease: 140ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -535,13 +540,13 @@ body {
 
 .sidebar-fab {
   position: fixed;
-  left: 12px;
-  top: 16px;
+  left: var(--sidebar-fab-left);
+  top: var(--sidebar-fab-top);
   z-index: 220;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: var(--sidebar-fab-size);
+  height: var(--sidebar-fab-size);
   padding: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
