@@ -167,3 +167,11 @@
 0.0.42
 - Added one-click mail personalization presets, attachment recommendations, and portfolio-link support to the agent review modal so outreach can be tuned without rewriting prompts by hand.
 - Added human-safe direct-send rules plus outreach outcome analytics for hook types, attachment mixes, tone presets, and company types so the system can stay safer while learning what actually converts.
+
+0.0.43
+- Added real reply tracking fields to internships plus drawer controls for reply date and reply outcome, so outreach performance can be measured from actual responses instead of status proxies.
+- Updated the insights dashboard to report true reply counts and positive reply rates from logged outreach data, which makes conversion analysis materially more trustworthy.
+
+0.0.44
+- Simplified each list row down to one clear `Open` action and turned the inline status control into a read-only badge, which reduces accidental clicks and makes the primary path obvious.
+- Moved destructive management into the detail drawer by keeping analysis there and adding a drawer-level delete control, so high-risk actions no longer compete for attention in the list.

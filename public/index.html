@@ -413,6 +413,17 @@
             <label>Applied at <input id="drawerAppliedAt" type="date" /></label>
             <label>Follow-up at <input id="drawerFollowupAt" type="date" /></label>
           </div>
+          <div class="form-row-2">
+            <label>Reply received at <input id="drawerReplyReceivedAt" type="date" /></label>
+            <label>Reply outcome
+              <select id="drawerReplyOutcome">
+                <option value="">No reply logged</option>
+                <option value="positive">Positive reply</option>
+                <option value="neutral">Neutral reply</option>
+                <option value="negative">Negative reply</option>
+              </select>
+            </label>
+          </div>
           <label>Website <input id="drawerWebsite" type="url" /></label>
           <fieldset class="tag-fieldset" id="drawerTags">
             <legend>Focus tags</legend>
@@ -457,6 +468,7 @@
             <div id="activityList" class="timeline-list"></div>
           </div>
           <div class="form-actions">
+            <button class="ghost-btn danger-btn" id="drawerDeleteBtn" type="button">Delete entry</button>
             <button class="ghost-btn" id="drawerCancel" type="button">Close</button>
             <button type="submit">Save changes</button>
           </div>

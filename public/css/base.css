@@ -789,12 +789,58 @@ body {
 /* Status wrap */
 .status-wrap {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
   justify-content: flex-end;
   padding: 12px 24px 12px 8px;
   min-width: 0;
 }
 .status-label { display: none; }
+
+.row-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
+  min-height: 26px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: 500 0.75rem/1 'Inter', sans-serif;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  text-align: center;
+}
+
+.row-primary-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 110px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: right;
+  transform: none;
+  box-shadow: none;
+}
+
+.row-primary-btn:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+  transform: none;
+  box-shadow: none;
+}
+
+.row-primary-detail {
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
 
 .status-pill {
   appearance: none;
@@ -1012,6 +1058,16 @@ label {
 .form { display: grid; gap: 12px; }
 .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; }
+.danger-btn {
+  margin-right: auto;
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.24);
+}
+.danger-btn:hover {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.36);
+}
 .api-key-note {
   margin: 0;
   color: var(--muted);

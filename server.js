@@ -29,6 +29,8 @@ db.exec(`
     fit_score INTEGER DEFAULT 0,
     applied_at TEXT,
     followup_at TEXT,
+    reply_received_at TEXT,
+    reply_outcome TEXT DEFAULT '',
     priority TEXT DEFAULT 'Medium',
     focus_tags TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
@@ -47,6 +49,14 @@ if (!hasAppliedAt) {
 const hasFollowupAt = columns.some((col) => col.name === 'followup_at');
 if (!hasFollowupAt) {
   db.exec(`ALTER TABLE internships ADD COLUMN followup_at TEXT;`);
+}
+const hasReplyReceivedAt = columns.some((col) => col.name === 'reply_received_at');
+if (!hasReplyReceivedAt) {
+  db.exec(`ALTER TABLE internships ADD COLUMN reply_received_at TEXT;`);
+}
+const hasReplyOutcome = columns.some((col) => col.name === 'reply_outcome');
+if (!hasReplyOutcome) {
+  db.exec(`ALTER TABLE internships ADD COLUMN reply_outcome TEXT DEFAULT '';`);
 }
 const hasPriority = columns.some((col) => col.name === 'priority');
 if (!hasPriority) {
@@ -193,30 +203,30 @@ app.get('/profile', (req, res) => {
 });
 
 const selectAll = db.prepare(`
-  SELECT id, company, status, notes, website, tag, fit_score, applied_at, followup_at, priority, focus_tags, created_at, updated_at
+  SELECT id, company, status, notes, website, tag, fit_score, applied_at, followup_at, reply_received_at, reply_outcome, priority, focus_tags, created_at, updated_at
   FROM internships
   ORDER BY id DESC
 `);
 
 const insertOne = db.prepare(`
-  INSERT INTO internships (company, status, notes, website, tag, fit_score, applied_at, followup_at, priority, focus_tags, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+  INSERT INTO internships (company, status, notes, website, tag, fit_score, applied_at, followup_at, reply_received_at, reply_outcome, priority, focus_tags, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 `);
 
 const insertWithId = db.prepare(`
-  INSERT INTO internships (id, company, status, notes, website, tag, fit_score, applied_at, followup_at, priority, focus_tags, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO internships (id, company, status, notes, website, tag, fit_score, applied_at, followup_at, reply_received_at, reply_outcome, priority, focus_tags, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 const updateOne = db.prepare(`
   UPDATE internships
-  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, fit_score = ?, applied_at = ?, followup_at = ?, priority = ?, focus_tags = ?, updated_at = datetime('now')
+  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, fit_score = ?, applied_at = ?, followup_at = ?, reply_received_at = ?, reply_outcome = ?, priority = ?, focus_tags = ?, updated_at = datetime('now')
   WHERE id = ?
 `);
 
 const updateWithTimestamps = db.prepare(`
   UPDATE internships
-  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, fit_score = ?, applied_at = ?, followup_at = ?, priority = ?, focus_tags = ?, created_at = ?, updated_at = ?
+  SET company = ?, status = ?, notes = ?, website = ?, tag = ?, fit_score = ?, applied_at = ?, followup_at = ?, reply_received_at = ?, reply_outcome = ?, priority = ?, focus_tags = ?, created_at = ?, updated_at = ?
   WHERE id = ?
 `);
 
@@ -317,7 +327,7 @@ function addActivity(internshipId, eventType, oldValue, newValue) {
 
 function getInternship(id) {
   return db.prepare(`
-    SELECT id, company, status, notes, website, tag, fit_score, applied_at, followup_at, priority, focus_tags, created_at, updated_at
+    SELECT id, company, status, notes, website, tag, fit_score, applied_at, followup_at, reply_received_at, reply_outcome, priority, focus_tags, created_at, updated_at
     FROM internships
     WHERE id = ?
   `).get(id);
@@ -334,6 +344,8 @@ function getBaseChangePayload(row) {
     priority: row.priority || 'Medium',
     applied_at: row.applied_at || '',
     followup_at: row.followup_at || '',
+    reply_received_at: row.reply_received_at || '',
+    reply_outcome: row.reply_outcome || '',
     focus_tags: row.focus_tags || ''
   };
 }
@@ -552,6 +564,8 @@ function syncExcel() {
     'Fit Score',
     'Applied At',
     'Follow-up At',
+    'Reply Received At',
+    'Reply Outcome',
     'Priority',
     'Focus Tags',
     'Created At',
@@ -567,6 +581,8 @@ function syncExcel() {
     row.fit_score ?? 0,
     row.applied_at || '',
     row.followup_at || '',
+    row.reply_received_at || '',
+    row.reply_outcome || '',
     row.priority || 'Medium',
     row.focus_tags || '',
     row.created_at,
@@ -987,6 +1003,8 @@ function syncFromExcel() {
       const tag = String(item.Tag || '').trim();
       const appliedAt = String(item['Applied At'] || item.AppliedAt || '').trim();
       const followupAt = String(item['Follow-up At'] || item['Followup At'] || item.FollowupAt || '').trim();
+      const replyReceivedAt = String(item['Reply Received At'] || item.ReplyReceivedAt || '').trim();
+      const replyOutcome = String(item['Reply Outcome'] || item.ReplyOutcome || '').trim();
       const priority = String(item.Priority || 'Medium').trim() || 'Medium';
       const focusTags = String(item['Focus Tags'] || item.FocusTags || '').trim();
       const fitScore = Number(item['Fit Score'] || item.FitScore || 0) || computeFitScore({
@@ -1011,6 +1029,8 @@ function syncFromExcel() {
             fitScore,
             appliedAt || null,
             followupAt || null,
+            replyReceivedAt || null,
+            replyOutcome || '',
             priority || 'Medium',
             focusTags || '',
             createdAt,
@@ -1028,6 +1048,8 @@ function syncFromExcel() {
             fitScore,
             appliedAt || null,
             followupAt || null,
+            replyReceivedAt || null,
+            replyOutcome || '',
             priority || 'Medium',
             focusTags || '',
             createdAt,
@@ -1044,6 +1066,8 @@ function syncFromExcel() {
           fitScore,
           appliedAt || null,
           followupAt || null,
+          replyReceivedAt || null,
+          replyOutcome || '',
           priority || 'Medium',
           focusTags || ''
         );
@@ -1133,7 +1157,7 @@ app.delete('/api/saved-views/:id', (req, res) => {
 });
 
 app.post('/api/internships', (req, res) => {
-  const { company, status, notes, website, tag, applied_at, followup_at, priority, focus_tags, fit_score } = req.body || {};
+  const { company, status, notes, website, tag, applied_at, followup_at, reply_received_at, reply_outcome, priority, focus_tags, fit_score } = req.body || {};
   if (!company || typeof company !== 'string') {
     return res.status(400).json({ error: 'Company is required.' });
   }
@@ -1154,6 +1178,8 @@ app.post('/api/internships', (req, res) => {
     fitScore,
     applied_at ? String(applied_at) : null,
     followup_at ? String(followup_at) : null,
+    reply_received_at ? String(reply_received_at) : null,
+    reply_outcome ? String(reply_outcome) : '',
     priority ? String(priority) : 'Medium',
     focus_tags ? String(focus_tags) : ''
   );
@@ -1167,6 +1193,8 @@ app.post('/api/internships', (req, res) => {
     priority: priority ? String(priority) : 'Medium',
     applied_at: applied_at ? String(applied_at) : '',
     followup_at: followup_at ? String(followup_at) : '',
+    reply_received_at: reply_received_at ? String(reply_received_at) : '',
+    reply_outcome: reply_outcome ? String(reply_outcome) : '',
     focus_tags: focus_tags ? String(focus_tags) : ''
   }));
   syncExcel();
@@ -1175,7 +1203,7 @@ app.post('/api/internships', (req, res) => {
 
 app.put('/api/internships/:id', (req, res) => {
   const { id } = req.params;
-  const { company, status, notes, website, tag, applied_at, followup_at, priority, focus_tags, fit_score } = req.body || {};
+  const { company, status, notes, website, tag, applied_at, followup_at, reply_received_at, reply_outcome, priority, focus_tags, fit_score } = req.body || {};
   if (!company || typeof company !== 'string') {
     return res.status(400).json({ error: 'Company is required.' });
   }
@@ -1194,6 +1222,8 @@ app.put('/api/internships/:id', (req, res) => {
     priority: priority ? String(priority) : 'Medium',
     applied_at: applied_at ? String(applied_at) : '',
     followup_at: followup_at ? String(followup_at) : '',
+    reply_received_at: reply_received_at ? String(reply_received_at) : '',
+    reply_outcome: reply_outcome ? String(reply_outcome) : '',
     focus_tags: focus_tags ? String(focus_tags) : ''
   };
   const previousPayload = getBaseChangePayload(existing);
@@ -1206,6 +1236,8 @@ app.put('/api/internships/:id', (req, res) => {
     nextPayload.fit_score,
     nextPayload.applied_at || null,
     nextPayload.followup_at || null,
+    nextPayload.reply_received_at || null,
+    nextPayload.reply_outcome || '',
     nextPayload.priority,
     nextPayload.focus_tags,
     Number(id)
@@ -1221,6 +1253,15 @@ app.put('/api/internships/:id', (req, res) => {
     }
     if (changes.followup_at) {
       addActivity(Number(id), 'follow-up changed', previousPayload.followup_at, nextPayload.followup_at);
+    }
+    if (changes.reply_received_at || changes.reply_outcome) {
+      addActivity(Number(id), 'reply updated', {
+        reply_received_at: previousPayload.reply_received_at,
+        reply_outcome: previousPayload.reply_outcome
+      }, {
+        reply_received_at: nextPayload.reply_received_at,
+        reply_outcome: nextPayload.reply_outcome
+      });
     }
   }
   syncExcel();
@@ -1269,6 +1310,8 @@ app.post('/api/internships/bulk-update', (req, res) => {
         next.fit_score ?? row.fit_score ?? computeFitScore(row),
         next.applied_at || null,
         next.followup_at || null,
+        next.reply_received_at || null,
+        next.reply_outcome || '',
         next.priority,
         next.focus_tags,
         row.id
@@ -1682,16 +1725,19 @@ app.get('/api/dashboard/outcomes', (req, res) => {
     const map = new Map();
     sentEvents.forEach((event) => {
       const keys = getter(event).filter(Boolean);
-      const outcomeStatus = normalizeString(event.entry?.status);
-      const positive = outcomeStatus === 'Interview' || outcomeStatus === 'Offer';
+      const replyOutcome = normalizeString(event.entry?.reply_outcome);
+      const replyReceived = Boolean(normalizeString(event.entry?.reply_received_at));
+      const positive = replyOutcome === 'positive';
       keys.forEach((key) => {
         if (!map.has(key)) {
-          map.set(key, { label: key, sent: 0, positive: 0, rejected: 0, pending: 0 });
+          map.set(key, { label: key, sent: 0, positive: 0, negative: 0, neutral: 0, pending: 0 });
         }
         const bucket = map.get(key);
         bucket.sent += 1;
         if (positive) bucket.positive += 1;
-        else if (outcomeStatus === 'Rejected') bucket.rejected += 1;
+        else if (replyOutcome === 'negative') bucket.negative += 1;
+        else if (replyOutcome === 'neutral') bucket.neutral += 1;
+        else if (!replyReceived) bucket.pending += 1;
         else bucket.pending += 1;
       });
     });
@@ -1722,7 +1768,8 @@ app.get('/api/dashboard/outcomes', (req, res) => {
   return res.json({
     totals: {
       sent: sentEvents.length,
-      positive: sentEvents.filter((event) => ['Interview', 'Offer'].includes(normalizeString(event.entry?.status))).length,
+      replied: sentEvents.filter((event) => Boolean(normalizeString(event.entry?.reply_received_at))).length,
+      positive: sentEvents.filter((event) => normalizeString(event.entry?.reply_outcome) === 'positive').length,
       blocked,
       drafts,
       cancelled

@@ -140,7 +140,7 @@ function renderOutcomeBars(container, data, limit = 6) {
     const row = document.createElement('div');
     row.className = 'bar-row';
     row.innerHTML = `<div>${item.label}</div><div>${item.successRate}%</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(item.successRate, item.sent ? 8 : 0)}%; background:${colorFromString(item.label, 0.56)}"></div></div>`;
-    row.title = `${item.positive}/${item.sent} positive, ${item.pending} pending, ${item.rejected} rejected`;
+    row.title = `${item.positive}/${item.sent} positive, ${item.neutral || 0} neutral, ${item.negative || 0} negative, ${item.pending} pending`;
     container.appendChild(row);
   });
 }
@@ -444,6 +444,7 @@ async function init() {
   if (outreachTotals) {
     outreachTotals.innerHTML = [
       { label: 'Direct sends', value: outcomes?.totals?.sent || 0 },
+      { label: 'Replies logged', value: outcomes?.totals?.replied || 0 },
       { label: 'Positive outcomes', value: outcomes?.totals?.positive || 0 },
       { label: 'Blocked by safety', value: outcomes?.totals?.blocked || 0 },
       { label: 'Draft openings', value: outcomes?.totals?.drafts || 0 },

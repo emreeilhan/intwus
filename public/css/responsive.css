@@ -76,16 +76,8 @@
 
   .row-main { padding: 10px 14px 6px; }
   .next-step-cell { padding: 0 14px 6px; }
-  .status-wrap { padding: 0 14px 10px; justify-content: flex-start; }
-  .row-actions {
-    position: static;
-    opacity: 1;
-    visibility: visible;
-    transform: none;
-    padding: 0 14px 10px;
-    flex-wrap: wrap;
-    max-width: none;
-  }
+  .status-wrap { padding: 0 14px 10px; justify-content: flex-start; align-items: flex-start; }
+  .row-primary-btn { align-items: flex-start; text-align: left; }
 
   .drawer {
     width: 100%;
