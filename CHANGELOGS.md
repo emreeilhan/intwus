@@ -210,3 +210,7 @@
 - Realigned the light theme tokens with a Notion-style workspace: `#f7f7f7` shell, `#ffffff` canvas, `#2383E2` primary actions, hairline borders, and softer status/priority pastels while keeping list, board, filters, and sidebar behavior unchanged.
 - Refined the board view in light mode to use neutral grey column tracks, white cards with 6px corners and subtle hover lift, and a segmented list/board toggle that reads like Notion’s inline tabs.
 - Tightened typography and spacing on the context header (bolder page title, muted count pill), improved sidebar contrast for search and navigation, and simplified the list header strip for a calmer table chrome.
+
+0.0.52
+- Fixed sidebar footer links that are `<button>` elements appearing centered instead of left-aligned: the global `button { justify-content: center }` rule was winning where `.sidebar-footer-link` did not set `justify-content`, while `<a class="sidebar-footer-link">` rows stayed left-aligned.
+- Set `justify-content: flex-start` and `text-align: left` on `.sidebar-footer-link`, and the same flex justification on `.sidebar-nav-item` and `.sidebar-search-trigger` so all sidebar buttons match anchor alignment.
