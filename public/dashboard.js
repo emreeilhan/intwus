@@ -35,6 +35,7 @@ const hookTypeBars = document.getElementById('hookTypeBars');
 const attachmentMixBars = document.getElementById('attachmentMixBars');
 const companyTypeBars = document.getElementById('companyTypeBars');
 const tonePresetBars = document.getElementById('tonePresetBars');
+const trendChartSummary = document.getElementById('trendChartSummary');
 
 const themeKey = 'staj-theme';
 const STATUS_FLOW = ['Researching', 'Ready to Apply', 'Applied', 'Interview', 'Offer', 'Rejected', 'Paused'];
@@ -159,6 +160,21 @@ function renderProgressMix(container, data, total) {
     `;
     container.appendChild(row);
   });
+}
+
+/** Purpose: Screen-reader text for the SVG trend chart (WCAG text alternative). */
+function setTrendChartAccessibilitySummary(monthRows) {
+  if (!trendChartSummary) return;
+  if (!monthRows || !monthRows.length) {
+    trendChartSummary.textContent = 'No monthly application data yet. Add applied dates to see the trend.';
+    return;
+  }
+  const parts = monthRows.map(([key, count]) => {
+    const label = formatMonthLabel(key);
+    const noun = count === 1 ? 'application' : 'applications';
+    return `${label}: ${count} ${noun}`;
+  });
+  trendChartSummary.textContent = `Pipeline trend — ${parts.join('; ')}.`;
 }
 
 function renderTrendChart(container, series) {
@@ -303,6 +319,7 @@ function renderAppliedByMonth(entries) {
   const total = limited.reduce((sum, [, count]) => sum + count, 0);
   if (appliedCount) appliedCount.textContent = `${total} total`;
   renderTrendChart(trendChart, limited.map(([label, count]) => ({ label: label.slice(5), count })));
+  setTrendChartAccessibilitySummary(limited);
 
   return limited;
 }
@@ -354,8 +371,13 @@ async function init() {
     tonePresets: []
   }));
 
-  if (!entries.length && dashboardEmpty) dashboardEmpty.classList.add('show');
-  else if (dashboardEmpty) dashboardEmpty.classList.remove('show');
+  if (!entries.length && dashboardEmpty) {
+    dashboardEmpty.classList.add('show');
+    const emptyIconEl = dashboardEmpty.querySelector('.empty-icon');
+    if (emptyIconEl && window.StajIcons?.chartBar) emptyIconEl.innerHTML = window.StajIcons.chartBar();
+  } else if (dashboardEmpty) {
+    dashboardEmpty.classList.remove('show');
+  }
 
   const cityCounts = countBy(entries, (entry) => parseCity(entry.tag));
   const countryCounts = countBy(entries, (entry) => parseCountry(entry.tag));

@@ -218,3 +218,8 @@
 0.0.53
 - Moved the AI Analysis block out of `#drawerForm` so it is a sibling section under `#detailDrawer`, separating form submit scope from AI tooling while keeping the same controls and IDs.
 - Adjusted drawer layout flex so the analysis block stacks below the form with consistent spacing.
+
+0.0.54
+- Unified user-facing copy to English across the agent review flow and related JS messages; replaced emoji empty states with shared stroke SVG icons (`/js/ui-icons.js`).
+- Added Insights screen reader summary for the pipeline trend chart, wired `aria-labelledby` to a hidden data summary, and exposed the dashboard focus summary in the layout with a sticky “Jump to” nav for major sections.
+- Added profile page sticky section navigation with anchor targets and scroll-margin; aligned the standalone API key page with Inter and system monospace for secrets.

@@ -151,7 +151,7 @@ function renderSources(sources) {
           </details>
         </article>
       `).join('')
-    : '<div class="empty-state show"><div class="empty-icon">📄</div><div class="empty-title">No source docs</div><div class="empty-sub">Attach or seed source documents to keep context visible.</div></div>';
+    : `<div class="empty-state show"><div class="empty-icon" aria-hidden="true">${window.StajIcons?.fileText ? window.StajIcons.fileText() : ''}</div><div class="empty-title">No source docs</div><div class="empty-sub">Attach or seed source documents to keep context visible.</div></div>`;
 }
 
 function hydrateForm(profile) {

@@ -72,7 +72,7 @@
         </header>
 
         <div class="profile-page">
-          <section class="profile-hero">
+          <section class="profile-hero" id="profile-hero">
             <div class="profile-hero-card profile-hero-card--wide">
               <div class="profile-hero-top">
                 <span class="profile-badge">CRR Profile</span>
@@ -99,9 +99,19 @@
             </div>
           </section>
 
+          <nav class="profile-toc" id="profileToc" aria-label="On this page">
+            <span class="profile-toc-label">Jump to</span>
+            <a class="profile-toc-link" href="#profile-identity">Identity</a>
+            <a class="profile-toc-link" href="#profile-narrative">Narrative</a>
+            <a class="profile-toc-link" href="#profile-strategy">Strategy</a>
+            <a class="profile-toc-link" href="#profile-execution">Execution</a>
+            <a class="profile-toc-link" href="#profile-agent">Application Agent</a>
+            <a class="profile-toc-link" href="#profile-sources">Sources</a>
+          </nav>
+
           <div class="profile-layout">
             <form id="profileForm" class="profile-form">
-              <section class="table-card profile-section">
+              <section class="table-card profile-section" id="profile-identity">
                 <div class="table-header">
                   <div>
                     <div class="table-title">Identity</div>
@@ -122,7 +132,7 @@
                 </div>
               </section>
 
-              <section class="table-card profile-section">
+              <section class="table-card profile-section" id="profile-narrative">
                 <div class="table-header">
                   <div>
                     <div class="table-title">Narrative</div>
@@ -136,7 +146,7 @@
                 </div>
               </section>
 
-              <section class="table-card profile-section">
+              <section class="table-card profile-section" id="profile-strategy">
                 <div class="table-header">
                   <div>
                     <div class="table-title">Strategy</div>
@@ -153,7 +163,7 @@
                 </div>
               </section>
 
-              <section class="table-card profile-section">
+              <section class="table-card profile-section" id="profile-execution">
                 <div class="table-header">
                   <div>
                     <div class="table-title">Execution Lists</div>
@@ -176,7 +186,7 @@
                 </div>
               </section>
 
-              <section class="table-card profile-section">
+              <section class="table-card profile-section" id="profile-agent">
                 <div class="table-header">
                   <div>
                     <div class="table-title">Application Agent</div>
@@ -224,7 +234,7 @@
             </aside>
           </div>
 
-          <section class="table-card profile-section">
+          <section class="table-card profile-section" id="profile-sources">
             <div class="table-header">
               <div>
                 <div class="table-title">Source documents</div>
@@ -239,6 +249,7 @@
 
     <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
+    <script src="/js/ui-icons.js"></script>
     <script src="/sidebar.js"></script>
     <script src="/profile.js"></script>
   </body>

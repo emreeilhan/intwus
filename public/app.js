@@ -168,28 +168,35 @@ Tools: Git, Linux, Arduino IDE
 LANGUAGES
 Turkish (Native) English (B2) German (B1)`;
 
-/* Per-stage empty state content */
+/* Per-stage empty state content — icon keys map to StajIcons (see /js/ui-icons.js) */
 const STAGE_EMPTY = {
-  '': { icon: '📌', title: 'No applications yet', sub: 'Add your first internship to start tracking your pipeline.' },
-  'Researching': { icon: '🔍', title: 'No companies being researched', sub: 'Start exploring roles and companies — add them here as you discover opportunities.' },
-  'Ready to Apply': { icon: '✅', title: 'Nothing ready to apply', sub: 'When you\'ve done your research & prep, move entries here to submit.' },
-  'Applied': { icon: '📬', title: 'No applications sent yet', sub: 'Once you submit, track them here. Good luck!' },
-  'Interview': { icon: '🎯', title: 'No interviews scheduled', sub: 'Keep applying — interviews will come. Prepare notes when they do.' },
-  'Offer': { icon: '🎉', title: 'No offers yet', sub: 'Stay focused on the pipeline. Your offer is coming!' },
-  'Rejected': { icon: '📝', title: 'No rejections yet', sub: 'Every "no" is one step closer to a "yes." Keep going.' },
-  'Paused': { icon: '⏸️', title: 'Nothing paused', sub: 'Use this stage for opportunities you want to revisit later.' }
+  '': { icon: 'pin', title: 'No applications yet', sub: 'Add your first internship to start tracking your pipeline.' },
+  'Researching': { icon: 'search', title: 'No companies being researched', sub: 'Start exploring roles and companies — add them here as you discover opportunities.' },
+  'Ready to Apply': { icon: 'clipboardCheck', title: 'Nothing ready to apply', sub: 'When you\'ve done your research & prep, move entries here to submit.' },
+  'Applied': { icon: 'mail', title: 'No applications sent yet', sub: 'Once you submit, track them here. Good luck!' },
+  'Interview': { icon: 'calendar', title: 'No interviews scheduled', sub: 'Keep applying — interviews will come. Prepare notes when they do.' },
+  'Offer': { icon: 'star', title: 'No offers yet', sub: 'Stay focused on the pipeline. Your offer is coming!' },
+  'Rejected': { icon: 'fileX', title: 'No rejections yet', sub: 'Every "no" is one step closer to a "yes." Keep going.' },
+  'Paused': { icon: 'pauseCircle', title: 'Nothing paused', sub: 'Use this stage for opportunities you want to revisit later.' }
 };
 
 /* Board-level empty messages */
 const BOARD_EMPTY = {
-  'Researching':    { icon: '🔍', msg: 'Start by adding companies to research.' },
-  'Ready to Apply': { icon: '📋', msg: 'Move researched companies here when ready.' },
-  'Applied':        { icon: '📬', msg: 'Applications will appear here.' },
-  'Interview':      { icon: '🎯', msg: 'Interview invites show up here.' },
-  'Offer':          { icon: '🎉', msg: 'Offers land here.' },
-  'Rejected':       { icon: '📝', msg: 'Rejections tracked here.' },
-  'Paused':         { icon: '⏸️', msg: 'Paused items rest here.' }
+  'Researching': { icon: 'search', msg: 'Start by adding companies to research.' },
+  'Ready to Apply': { icon: 'clipboardCheck', msg: 'Move researched companies here when ready.' },
+  'Applied': { icon: 'mail', msg: 'Applications will appear here.' },
+  'Interview': { icon: 'calendar', msg: 'Interview invites show up here.' },
+  'Offer': { icon: 'star', msg: 'Offers land here.' },
+  'Rejected': { icon: 'fileX', msg: 'Rejections tracked here.' },
+  'Paused': { icon: 'pauseCircle', msg: 'Paused items rest here.' }
 };
+
+/** Purpose: Resolve shared SVG markup for empty states (falls back if script order is wrong). */
+function emptyIconMarkup(key) {
+  const icons = typeof window !== 'undefined' ? window.StajIcons : null;
+  const fn = icons && typeof icons[key] === 'function' ? icons[key] : null;
+  return fn ? fn() : (icons && icons.pin ? icons.pin() : '');
+}
 
 let entries = [];
 let savedViews = [];
@@ -845,10 +852,10 @@ function updateSafetyUI(draft, smtpConfigured) {
   const reasons = Array.isArray(safety.reasons) ? safety.reasons.filter(Boolean) : [];
   if (safety.allowDirectSend) {
     agentSafetyNote.textContent = smtpConfigured
-      ? 'Direct send serbest. Bulunan alici ve warning seviyesi guvenli gorunuyor.'
-      : 'Direct send guvenli ama SMTP kapali oldugu icin draft akisi kullanilacak.';
+      ? 'Direct send is allowed. Recipient and warning level look safe.'
+      : 'Direct send is allowed, but SMTP is off — the draft flow will be used.';
   } else {
-    agentSafetyNote.textContent = `Direct send kilitli: ${reasons.join(' | ') || 'Insan onayli draft gerekli.'}`;
+    agentSafetyNote.textContent = `Direct send locked: ${reasons.join(' | ') || 'Human-reviewed draft required.'}`;
   }
 }
 
@@ -875,10 +882,10 @@ function renderAgentReview() {
   if (agentBodyInput) agentBodyInput.value = draft.body || '';
   if (agentContactReason) agentContactReason.textContent = draft.contactReason || 'No reason captured';
   if (agentConfidence) agentConfidence.textContent = draft.confidence || '-';
-  if (agentDecisionQuestion) agentDecisionQuestion.textContent = `${companyName} icin hazirlanan bu maille ne yapalim?`;
-  if (agentSendLabel) agentSendLabel.textContent = `${companyName} icin hemen gonder`;
-  if (agentDraftLabel) agentDraftLabel.textContent = `${companyName} icin draft ac, son bir kez ben bakayim`;
-  if (agentCancelLabel) agentCancelLabel.textContent = `${companyName} icin simdilik durdur`;
+  if (agentDecisionQuestion) agentDecisionQuestion.textContent = `What should we do with the email drafted for ${companyName}?`;
+  if (agentSendLabel) agentSendLabel.textContent = `Send to ${companyName} now`;
+  if (agentDraftLabel) agentDraftLabel.textContent = `Open as draft for ${companyName} for a final review`;
+  if (agentCancelLabel) agentCancelLabel.textContent = `Pause outreach to ${companyName} for now`;
   if (agentSignals) agentSignals.innerHTML = buildAgentListMarkup(draft.companySignals, 'No company signal captured.');
   if (agentAngles) agentAngles.innerHTML = buildAgentListMarkup(draft.personalAngles, 'No personal angle captured.');
   if (agentWarnings) agentWarnings.innerHTML = buildAgentListMarkup(draft.warnings, 'No warnings.');
@@ -886,7 +893,7 @@ function renderAgentReview() {
   if (agentIncludeResume) agentIncludeResume.checked = draft.recommendedAttachments?.resume !== false && Boolean(assets?.resume?.exists);
   if (agentIncludeTranscript) agentIncludeTranscript.checked = Boolean(draft.recommendedAttachments?.transcript) && Boolean(assets?.transcript?.exists);
   if (agentIncludePortfolioLink) agentIncludePortfolioLink.checked = Boolean(draft.recommendedAttachments?.portfolioLink) && Boolean(agentDraftState?.profileContext?.portfolioUrl);
-  if (agentToneStatus) agentToneStatus.textContent = `Aktif ton: ${draft.tonePreset || 'balanced'}`;
+  if (agentToneStatus) agentToneStatus.textContent = `Active tone: ${draft.tonePreset || 'balanced'}`;
   updateTonePresetButtons(draft.tonePreset || 'balanced');
   updateSafetyUI(draft, smtpConfigured);
   syncAgentActionWithSafety();
@@ -1160,7 +1167,7 @@ async function applyTonePreset(tonePreset) {
     return;
   }
 
-  if (agentToneStatus) agentToneStatus.textContent = 'Ton guncelleniyor...';
+  if (agentToneStatus) agentToneStatus.textContent = 'Updating tone…';
   updateTonePresetButtons(tonePreset);
 
   try {
@@ -1221,14 +1228,14 @@ async function submitAgentReview(event) {
   if (!to || !subject || !body.trim()) {
     if (agentReviewError) {
       agentReviewError.hidden = false;
-      agentReviewError.textContent = 'Gonderim karari icin alici, konu ve govde dolu olmali.';
+      agentReviewError.textContent = 'Recipient, subject, and body must be filled before sending.';
     }
     return;
   }
 
   if (agentReviewSubmit) {
     agentReviewSubmit.disabled = true;
-    agentReviewSubmit.textContent = action === 'send' ? 'Gonderiliyor...' : 'Aciliyor...';
+    agentReviewSubmit.textContent = action === 'send' ? 'Sending…' : 'Opening…';
   }
 
   try {
@@ -1254,7 +1261,7 @@ async function submitAgentReview(event) {
         reasons: safety.reasons || [],
         confidence: agentDraftState?.draft?.confidence || 'low'
       });
-      throw new Error(`Direct send kilitli: ${(safety.reasons || []).join(' | ') || 'Insan onayli draft gerekli.'}`);
+      throw new Error(`Direct send locked: ${(safety.reasons || []).join(' | ') || 'Human-reviewed draft required.'}`);
     }
 
     const res = await fetch('/api/application-agent/send', {
@@ -1303,16 +1310,16 @@ async function submitAgentReview(event) {
     }
 
     closeAgentReview();
-    window.alert(`Mail gonderildi. Message ID: ${payload.messageId || 'n/a'}`);
+    window.alert(`Message sent. Message ID: ${payload.messageId || 'n/a'}`);
   } catch (error) {
     if (agentReviewError) {
       agentReviewError.hidden = false;
-      agentReviewError.textContent = error instanceof Error ? error.message : 'Agent aksiyonu basarisiz oldu.';
+      agentReviewError.textContent = error instanceof Error ? error.message : 'Agent action failed.';
     }
   } finally {
     if (agentReviewSubmit) {
       agentReviewSubmit.disabled = false;
-      agentReviewSubmit.textContent = 'Karari uygula';
+      agentReviewSubmit.textContent = 'Apply decision';
     }
   }
 }
@@ -1397,7 +1404,7 @@ function getFilteredEntries() {
 function updateEmptyState(filtered) {
   const statusVal = el('statusFilter')?.value?.trim() || '';
   const stage = STAGE_EMPTY[statusVal] || STAGE_EMPTY[''];
-  if (emptyIcon) emptyIcon.textContent = stage.icon;
+  if (emptyIcon) emptyIcon.innerHTML = emptyIconMarkup(stage.icon);
   if (emptyTitle) emptyTitle.textContent = stage.title;
   if (emptySub) emptySub.textContent = stage.sub;
   if (!filtered.length) {
@@ -1502,7 +1509,10 @@ function renderBoard() {
     const col = document.createElement('div');
     col.className = 'board-column';
     col.dataset.status = status;
-    const emptyInfo = BOARD_EMPTY[status] || { icon: '📌', msg: 'No entries here.' };
+    const emptyInfo = BOARD_EMPTY[status] || { icon: 'inbox', msg: 'No entries here.' };
+    const emptyIconInner = items.length === 0
+      ? `<div class="board-col-empty"><div class="board-col-empty-icon">${emptyIconMarkup(emptyInfo.icon)}</div>${escapeHtml(emptyInfo.msg)}</div>`
+      : '';
 
     const sc = statusClass(status);
     col.innerHTML = `
@@ -1514,7 +1524,7 @@ function renderBoard() {
         </div>
       </div>
       <div class="board-col-cards">
-        ${items.length === 0 ? `<div class="board-col-empty"><div class="board-col-empty-icon">${emptyInfo.icon}</div>${escapeHtml(emptyInfo.msg)}</div>` : ''}
+        ${emptyIconInner}
       </div>
     `;
 
@@ -1770,17 +1780,17 @@ function renderCommands() {
 /* ============================================================ ONBOARDING */
 const ONBOARDING_STEPS = [
   {
-    emoji: '👋',
+    icon: 'sun',
     title: 'Welcome to Internship Tracker',
     desc: 'Track your entire internship pipeline — from initial research to offer. Let\'s get you oriented in 30 seconds.'
   },
   {
-    emoji: '📌',
+    icon: 'pin',
     title: 'Add entries to your pipeline',
     desc: 'Click the blue "New entry" button in the sidebar, or press Ctrl+K to open the command palette. Each entry moves through stages: Researching → Ready → Applied → Interview → Offer.'
   },
   {
-    emoji: '⚡',
+    icon: 'zap',
     title: 'Power-user shortcuts',
     desc: 'Press / to search instantly. Use the sidebar to filter by stage. Switch to Board view to see your pipeline as a kanban. Saved views now expose a visible three-dot menu for apply, overwrite, rename, and delete.'
   }
@@ -1796,8 +1806,9 @@ function showOnboarding() {
 function renderOnboardingStep() {
   if (!obStep) return;
   const step = ONBOARDING_STEPS[onboardingStep];
+  const obIcon = emptyIconMarkup(step.icon || 'pin');
   obStep.innerHTML = `
-    <div class="ob-emoji">${step.emoji}</div>
+    <div class="ob-icon">${obIcon}</div>
     <h2 class="ob-title">${step.title}</h2>
     <p class="ob-desc">${step.desc}</p>
   `;
@@ -1933,7 +1944,7 @@ agentIncludeTranscript?.addEventListener('change', () => renderAgentAssets(agent
 agentIncludePortfolioLink?.addEventListener('change', () => {
   renderAgentAssets(agentDraftState?.assets);
   if (agentToneStatus) {
-    agentToneStatus.textContent = 'Portfolio tercihi guncellendi. Isterseniz tona tekrar tiklayip maili repolish edin.';
+    agentToneStatus.textContent = 'Portfolio preference updated. Click a tone again to re-polish the email.';
   }
 });
 agentToneGrid?.addEventListener('click', async (event) => {

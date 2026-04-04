@@ -8,6 +8,58 @@
   padding: 20px 24px 32px;
 }
 
+/* Purpose: In-page navigation for long profile forms — sticky below the viewport top on scroll */
+.profile-toc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--main-canvas, var(--bg)) 92%, var(--surface) 8%);
+  backdrop-filter: blur(8px);
+}
+
+.profile-toc-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.profile-toc-link {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ink-2);
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+}
+
+.profile-toc-link:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+#profile-hero,
+#profile-identity,
+#profile-narrative,
+#profile-strategy,
+#profile-execution,
+#profile-agent,
+#profile-sources {
+  scroll-margin-top: 88px;
+}
+
 .profile-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) repeat(3, minmax(0, 0.6fr));
@@ -204,6 +256,13 @@
 @media (max-width: 700px) {
   .profile-page {
     padding: 16px 14px 24px;
+  }
+
+  .profile-toc {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
   }
 
   .profile-hero {

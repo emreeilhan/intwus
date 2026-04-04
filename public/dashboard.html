@@ -70,7 +70,9 @@
           </div>
         </header>
 
-        <div style="padding: 20px 24px 32px;">
+        <p class="dashboard-focus-summary" id="dashboardFocusSummary" role="region" aria-label="Insights summary"></p>
+
+        <div class="dashboard-page-padding">
 
           <!-- KPIs -->
           <div class="dashboard dashboard-kpis">
@@ -101,6 +103,14 @@
             </div>
           </div>
 
+          <nav class="dashboard-toc" aria-label="Report sections">
+            <span class="dashboard-toc-label">Jump to</span>
+            <a class="dashboard-toc-link" href="#insight-trend">Trend</a>
+            <a class="dashboard-toc-link" href="#insight-stages">Stages &amp; priority</a>
+            <a class="dashboard-toc-link" href="#insight-outreach">Outreach</a>
+            <a class="dashboard-toc-link" href="#insight-markets">Markets</a>
+          </nav>
+
           <!-- Analytics grid -->
           <div class="layout dashboard-layout">
             <section class="table-card analytics-shell">
@@ -110,14 +120,15 @@
                   <div class="table-description">Submissions over time.</div>
                 </div>
               </div>
-              <div class="chart-wrap">
+              <div class="chart-wrap" id="insight-trend">
                 <div class="chart-surface">
-                  <svg id="trendChart" class="trend-chart" viewBox="0 0 640 200" preserveAspectRatio="none" aria-label="Trend" role="img"></svg>
+                  <svg id="trendChart" class="trend-chart" viewBox="0 0 640 200" preserveAspectRatio="none" aria-labelledby="trendChartSummary" role="img"></svg>
                 </div>
+                <div id="trendChartSummary" class="sr-only"></div>
                 <div class="chart-caption" id="trendCaption">Monthly application entries.</div>
               </div>
 
-              <div class="chart-grid">
+              <div class="chart-grid" id="insight-stages">
                 <div class="chart-panel">
                   <div class="panel-head">
                     <div><div class="side-title">Stages</div><div class="panel-caption">Distribution.</div></div>
@@ -156,7 +167,7 @@
                 <div class="bar-list" id="appliedBars"></div>
               </div>
 
-              <div class="chart-grid chart-grid-two">
+              <div class="chart-grid chart-grid-two" id="insight-outreach">
                 <div class="chart-panel">
                   <div class="panel-head">
                     <div><div class="side-title">Outreach safety</div><div class="panel-caption">Send, draft, block mix.</div></div>
@@ -173,14 +184,14 @@
               </div>
 
               <div class="empty-state" id="dashboardEmpty">
-                <div class="empty-icon">📊</div>
+                <div class="empty-icon" aria-hidden="true"></div>
                 <div class="empty-title">No data yet</div>
                 <div class="empty-sub">Add internships to unlock insights.</div>
-                <a class="ghost-btn" href="/" style="display:inline-flex;text-decoration:none;border:1px solid var(--line);padding:5px 10px;font-size:0.75rem;border-radius:var(--radius-sm);color:var(--ink-2);background:var(--surface-2);">Go to Tracker</a>
+                <a class="dashboard-empty-cta" href="/">Go to Tracker</a>
               </div>
             </section>
 
-            <aside class="side">
+            <aside class="side" id="insight-markets">
               <div class="side-card">
                 <div class="panel-head">
                   <div><div class="side-title">Markets</div><div class="panel-caption">Concentration.</div></div>
@@ -235,6 +246,7 @@
 
     <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
+    <script src="/js/ui-icons.js"></script>
     <script src="/sidebar.js"></script>
     <script src="/dashboard.js"></script>
   </body>

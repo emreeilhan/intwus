@@ -195,7 +195,7 @@
             </div>
             <div id="list" class="list-body"></div>
             <div class="empty-state empty-state--hero" id="emptyState">
-              <div class="empty-icon" id="emptyIcon">📌</div>
+              <div class="empty-icon" id="emptyIcon" aria-hidden="true"></div>
               <div class="empty-title" id="emptyTitle">No applications yet</div>
               <div class="empty-sub" id="emptySub">Add your first internship to start tracking your pipeline.</div>
               <button class="empty-state-cta" id="emptyAddBtn" type="button">Add first entry</button>
@@ -276,7 +276,7 @@
         <div class="overlay-header">
           <div>
             <p class="overlay-title" id="agentReviewTitle">Final approval</p>
-            <p class="overlay-sub">Agent her şeyi hazırladı. Son karar sizde: gönder, taslak aç ya da iptal et.</p>
+            <p class="overlay-sub">The agent prepared everything. You decide: send, open as draft, or cancel.</p>
           </div>
           <button class="icon-btn" id="agentReviewClose" type="button" aria-label="Close agent review">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -302,13 +302,13 @@
           <div class="agent-choice-block">
             <div class="agent-choice-title">Quick polish</div>
             <div class="agent-tone-grid" id="agentToneGrid">
-              <button type="button" class="tone-chip" data-tone-preset="balanced">Dengeli</button>
-              <button type="button" class="tone-chip" data-tone-preset="technical">Daha teknik</button>
-              <button type="button" class="tone-chip" data-tone-preset="concise">Daha kisa</button>
-              <button type="button" class="tone-chip" data-tone-preset="warm">Daha sicak</button>
-              <button type="button" class="tone-chip" data-tone-preset="corporate">Daha kurumsal</button>
+              <button type="button" class="tone-chip" data-tone-preset="balanced">Balanced</button>
+              <button type="button" class="tone-chip" data-tone-preset="technical">More technical</button>
+              <button type="button" class="tone-chip" data-tone-preset="concise">More concise</button>
+              <button type="button" class="tone-chip" data-tone-preset="warm">Warmer tone</button>
+              <button type="button" class="tone-chip" data-tone-preset="corporate">More formal</button>
             </div>
-            <div class="agent-tone-status" id="agentToneStatus">Hazir draft dengeli tonla acildi.</div>
+            <div class="agent-tone-status" id="agentToneStatus">Draft opened with balanced tone.</div>
           </div>
           <div class="agent-choice-block">
             <div class="agent-choice-title">Attachments</div>
@@ -324,10 +324,10 @@
           </div>
           <div class="agent-choice-block">
             <div class="agent-choice-title">Decision</div>
-            <div class="agent-decision-question" id="agentDecisionQuestion">Bu mail için ne yapalım?</div>
-            <label class="tag-option"><input type="radio" name="agentAction" value="send" checked /> <span id="agentSendLabel">Bu şirkete gönder</span></label>
-            <label class="tag-option"><input type="radio" name="agentAction" value="draft" /> <span id="agentDraftLabel">Maili düzenleyip draft aç</span></label>
-            <label class="tag-option"><input type="radio" name="agentAction" value="cancel" /> <span id="agentCancelLabel">Şimdilik gönderme</span></label>
+            <div class="agent-decision-question" id="agentDecisionQuestion">What should we do with this email?</div>
+            <label class="tag-option"><input type="radio" name="agentAction" value="send" checked /> <span id="agentSendLabel">Send to this company</span></label>
+            <label class="tag-option"><input type="radio" name="agentAction" value="draft" /> <span id="agentDraftLabel">Edit and open as draft</span></label>
+            <label class="tag-option"><input type="radio" name="agentAction" value="cancel" /> <span id="agentCancelLabel">Do not send for now</span></label>
           </div>
           <div class="agent-review-panels">
             <section class="analysis-section">
@@ -349,8 +349,8 @@
           </div>
           <div class="analysis-error" id="agentReviewError" hidden></div>
           <div class="form-actions">
-            <button class="ghost-btn" id="agentReviewCancel" type="button">Kapat</button>
-            <button type="submit" id="agentReviewSubmit">Kararı uygula</button>
+            <button class="ghost-btn" id="agentReviewCancel" type="button">Close</button>
+            <button type="submit" id="agentReviewSubmit">Apply decision</button>
           </div>
         </form>
       </div>
@@ -473,6 +473,7 @@
       </div>
     </div>
 
+    <script src="/js/ui-icons.js"></script>
     <script src="/sidebar.js"></script>
     <script src="/app.js"></script>
   </body>
