@@ -325,10 +325,27 @@
             </div>
           </div>
           <div class="agent-choice-block">
+            <div class="agent-choice-title">Quick polish</div>
+            <div class="agent-tone-grid" id="agentToneGrid">
+              <button type="button" class="tone-chip" data-tone-preset="balanced">Dengeli</button>
+              <button type="button" class="tone-chip" data-tone-preset="technical">Daha teknik</button>
+              <button type="button" class="tone-chip" data-tone-preset="concise">Daha kisa</button>
+              <button type="button" class="tone-chip" data-tone-preset="warm">Daha sicak</button>
+              <button type="button" class="tone-chip" data-tone-preset="corporate">Daha kurumsal</button>
+            </div>
+            <div class="agent-tone-status" id="agentToneStatus">Hazir draft dengeli tonla acildi.</div>
+          </div>
+          <div class="agent-choice-block">
             <div class="agent-choice-title">Attachments</div>
+            <div class="agent-meta-copy" id="agentAttachmentReason">-</div>
             <label class="tag-option"><input id="agentIncludeResume" type="checkbox" checked /> Include resume</label>
             <label class="tag-option"><input id="agentIncludeTranscript" type="checkbox" /> Include transcript</label>
+            <label class="tag-option"><input id="agentIncludePortfolioLink" type="checkbox" /> Include portfolio link in body</label>
             <div class="agent-asset-list" id="agentAssetList"></div>
+          </div>
+          <div class="agent-choice-block" id="agentSafetyBlock">
+            <div class="agent-choice-title">Human-safe sending</div>
+            <div class="agent-safety-note" id="agentSafetyNote">-</div>
           </div>
           <div class="agent-choice-block">
             <div class="agent-choice-title">Decision</div>

@@ -1628,6 +1628,35 @@ label {
   gap: 8px;
 }
 
+.agent-tone-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tone-chip {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font: 600 0.76rem/1 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+.tone-chip.active {
+  background: color-mix(in srgb, var(--accent-blue) 18%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--accent-blue) 48%, var(--line));
+  color: var(--text);
+}
+
+.agent-tone-status,
+.agent-safety-note {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 .agent-decision-question {
   font-size: 0.95rem;
   line-height: 1.45;

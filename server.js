@@ -256,6 +256,12 @@ const selectActivity = db.prepare(`
   ORDER BY id DESC
 `);
 
+const selectAllActivity = db.prepare(`
+  SELECT id, internship_id, event_type, old_value, new_value, created_at
+  FROM activity_log
+  ORDER BY id DESC
+`);
+
 const selectSavedViews = db.prepare(`
   SELECT id, name, filters_json, sort_key, created_at, updated_at
   FROM saved_views
@@ -836,9 +842,17 @@ function buildApplicationAgentPrompt({ company, location, notes, website, profil
     '  "subject": "string",',
     '  "introLines": ["string"],',
     '  "bodyLines": ["string"],',
+    '  "hookType": "mission|technical|product|team|general",',
     '  "companySignals": ["string"],',
     '  "personalAngles": ["string"],',
-    '  "warnings": ["string"]',
+    '  "warnings": ["string"],',
+    '  "recommendedAttachments": {',
+    '    "resume": true,',
+    '    "transcript": false,',
+    '    "portfolioLink": false,',
+    '    "combinationLabel": "Resume only",',
+    '    "rationale": "string"',
+    '  }',
     '}',
     '',
     `Target company: ${company || '-'}`,
@@ -853,12 +867,21 @@ function buildApplicationAgentPrompt({ company, location, notes, website, profil
     '- Subject should sound like a concise internship outreach mail.',
     '- Intro lines should be the opening paragraph, specific to the company and their work.',
     '- Body lines should mention fit, relevant background, and that resume plus transcript are attached.',
+    '- hookType should describe what makes the opening strongest: mission, technical, product, team, or general.',
     '- contactEmail should be empty if you cannot find a credible public address.',
+    '- recommendedAttachments should prefer resume for most cases, transcript when student proof matters, and portfolioLink when a project-heavy profile will help.',
     '- warnings should include cases like "No public internship email found" or "Use careers form instead".'
   ].join('\n');
 }
 
-function buildPolishMailPrompt({ company, draft, profile }) {
+function buildPolishMailPrompt({ company, draft, profile, tonePreset = 'balanced', includePortfolioLink = false }) {
+  const toneInstructionMap = {
+    balanced: 'Keep the tone balanced: confident, clear, and natural.',
+    technical: 'Lean more technical and concrete. Emphasize systems, firmware, security, and engineering depth without sounding stiff.',
+    concise: 'Make it shorter and sharper. Remove filler and keep only the strongest points.',
+    warm: 'Make it warmer and more human while staying professional.',
+    corporate: 'Make it more formal and corporate without sounding generic.'
+  };
   return [
     'Return JSON matching this schema exactly:',
     '{',
@@ -880,10 +903,60 @@ function buildPolishMailPrompt({ company, draft, profile }) {
     '- Keep the message short enough for a real recruiter or hiring manager to read fast.',
     '- Preserve specific company signals that make the outreach feel researched.',
     '- Mention attached resume and transcript naturally in the body.',
+    includePortfolioLink && profile.application?.portfolioUrl
+      ? `- Naturally include the portfolio link ${profile.application.portfolioUrl} in the body.`
+      : '- Do not mention a portfolio link unless explicitly requested.',
     '- Do not invent achievements or claims that are not in the profile or draft.',
     '- Keep tone warm, sharp, and professional, not robotic.',
+    `- ${toneInstructionMap[tonePreset] || toneInstructionMap.balanced}`,
     '- warnings should only contain real risks or caveats that still matter after polishing.'
   ].join('\n');
+}
+
+function normalizeAttachmentPlan(value, profile) {
+  const plan = value && typeof value === 'object' ? value : {};
+  const hasPortfolio = Boolean(normalizeString(profile?.application?.portfolioUrl));
+  const resume = plan.resume !== false;
+  const transcript = Boolean(plan.transcript);
+  const portfolioLink = hasPortfolio && Boolean(plan.portfolioLink);
+  const enabled = [
+    resume ? 'Resume' : null,
+    transcript ? 'Transcript' : null,
+    portfolioLink ? 'Portfolio link' : null
+  ].filter(Boolean);
+  return {
+    resume,
+    transcript,
+    portfolioLink,
+    combinationLabel: normalizeString(plan.combinationLabel, enabled.join(' + ') || 'No attachments'),
+    rationale: normalizeString(plan.rationale, 'No recommendation reason returned.')
+  };
+}
+
+function evaluateSendSafety({ contactEmail, confidence, warnings }) {
+  const normalizedWarnings = normalizeStringList(warnings, []);
+  const normalizedConfidence = normalizeString(confidence, 'low').toLowerCase();
+  const reasons = [];
+
+  if (!normalizeString(contactEmail)) {
+    reasons.push('No recipient email was found.');
+  }
+  if (normalizedConfidence === 'low') {
+    reasons.push('Contact confidence is low.');
+  }
+  normalizedWarnings.forEach((warning) => {
+    const lowered = warning.toLowerCase();
+    if (lowered.includes('no public') || lowered.includes('use careers form') || lowered.includes('uncertain') || lowered.includes('not verified')) {
+      reasons.push(warning);
+    }
+  });
+
+  const uniqueReasons = Array.from(new Set(reasons));
+  return {
+    allowDirectSend: uniqueReasons.length === 0,
+    level: uniqueReasons.length === 0 ? 'safe' : 'draft_only',
+    reasons: uniqueReasons
+  };
 }
 
 function parseAgentJson(rawText) {
@@ -1348,6 +1421,7 @@ app.post('/api/application-agent/prepare', async (req, res) => {
     });
     const researchContent = collectOpenAIContent(researchPayload);
     const researchedDraft = parseAgentJson(researchPayload.output_text || researchContent.rawText);
+    const recommendedAttachments = normalizeAttachmentPlan(researchedDraft?.recommendedAttachments, profile);
 
     const polishPayload = await callOpenAIResponses({
       apiKey,
@@ -1356,7 +1430,8 @@ app.post('/api/application-agent/prepare', async (req, res) => {
       input: buildPolishMailPrompt({
         company,
         draft: researchedDraft,
-        profile
+        profile,
+        includePortfolioLink: recommendedAttachments.portfolioLink
       }),
       maxOutputTokens: 900,
       textFormat: { type: 'json_object' },
@@ -1367,6 +1442,11 @@ app.post('/api/application-agent/prepare', async (req, res) => {
     const introLines = normalizeStringList(polishedDraft?.introLines, researchedDraft?.introLines || []);
     const bodyLines = normalizeStringList(polishedDraft?.bodyLines, researchedDraft?.bodyLines || []);
     const cc = normalizeString(profile.application?.cc);
+    const safety = evaluateSendSafety({
+      contactEmail: normalizeString(researchedDraft?.contactEmail),
+      confidence: normalizeString(researchedDraft?.confidence, 'low'),
+      warnings: normalizeStringList(polishedDraft?.warnings, normalizeStringList(researchedDraft?.warnings, []))
+    });
 
     return res.json({
       draft: {
@@ -1381,14 +1461,24 @@ app.post('/api/application-agent/prepare', async (req, res) => {
         bodyLines,
         signatureLines,
         body: buildDraftBody({ introLines, bodyLines, signatureLines }),
+        hookType: normalizeString(researchedDraft?.hookType, 'general'),
         companySignals: normalizeStringList(researchedDraft?.companySignals, []),
         personalAngles: normalizeStringList(researchedDraft?.personalAngles, []),
         warnings: normalizeStringList(polishedDraft?.warnings, normalizeStringList(researchedDraft?.warnings, [])),
+        recommendedAttachments,
+        safety,
+        tonePreset: 'balanced',
         cc
       },
       assets,
       smtpConfigured: Boolean(getSmtpConfig()),
       sources: researchContent.sources,
+      profileContext: {
+        portfolioUrl: normalizeString(profile.application?.portfolioUrl)
+      },
+      defaults: {
+        tonePreset: 'balanced'
+      },
       usage: {
         research: researchPayload?.usage || null,
         polish: polishPayload?.usage || null
@@ -1399,6 +1489,75 @@ app.post('/api/application-agent/prepare', async (req, res) => {
       error: error instanceof Error ? error.message : 'Application agent failed.'
     });
   }
+});
+
+app.post('/api/application-agent/polish', async (req, res) => {
+  const apiKey = normalizeString(req.body?.apiKey);
+  const company = normalizeString(req.body?.company);
+  const tonePreset = normalizeString(req.body?.tonePreset, 'balanced').toLowerCase();
+  const includePortfolioLink = Boolean(req.body?.includePortfolioLink);
+  const draftInput = req.body?.draft;
+
+  if (!apiKey) {
+    return res.status(400).json({ error: 'OpenAI API key is required.' });
+  }
+  if (!draftInput || typeof draftInput !== 'object') {
+    return res.status(400).json({ error: 'Draft payload is required.' });
+  }
+
+  const profile = readProfile();
+  const signatureLines = normalizeStringList(profile.application?.emailSignature, []);
+
+  try {
+    const polishPayload = await callOpenAIResponses({
+      apiKey,
+      model: OPENAI_POLISH_MODEL,
+      instructions: POLISH_MAIL_SYSTEM_PROMPT,
+      input: buildPolishMailPrompt({
+        company,
+        draft: draftInput,
+        profile,
+        tonePreset,
+        includePortfolioLink
+      }),
+      maxOutputTokens: 900,
+      textFormat: { type: 'json_object' },
+      reasoningEffort: 'low'
+    });
+    const polishedDraft = parseAgentJson(polishPayload.output_text || collectOpenAIContent(polishPayload).rawText);
+    const introLines = normalizeStringList(polishedDraft?.introLines, draftInput?.introLines || []);
+    const bodyLines = normalizeStringList(polishedDraft?.bodyLines, draftInput?.bodyLines || []);
+    return res.json({
+      subject: normalizeString(polishedDraft?.subject, normalizeString(draftInput?.subject, company ? `Internship Application - ${company}` : 'Internship Application')),
+      introLines,
+      bodyLines,
+      signatureLines,
+      body: buildDraftBody({ introLines, bodyLines, signatureLines }),
+      warnings: normalizeStringList(polishedDraft?.warnings, normalizeStringList(draftInput?.warnings, [])),
+      tonePreset,
+      usage: polishPayload?.usage || null
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'Polish request failed.'
+    });
+  }
+});
+
+app.post('/api/application-agent/log-action', async (req, res) => {
+  const internshipId = Number(req.body?.internshipId || 0) || null;
+  const action = normalizeString(req.body?.action);
+  const meta = req.body?.meta && typeof req.body?.meta === 'object' ? req.body.meta : {};
+
+  if (!internshipId) {
+    return res.status(400).json({ error: 'internshipId is required.' });
+  }
+  if (!action) {
+    return res.status(400).json({ error: 'action is required.' });
+  }
+
+  addActivity(internshipId, `agent ${action}`, null, meta);
+  return res.json({ ok: true });
 });
 
 app.post('/api/application-agent/send', async (req, res) => {
@@ -1416,9 +1575,14 @@ app.post('/api/application-agent/send', async (req, res) => {
   const internshipId = Number(req.body?.internshipId || 0) || null;
   const includeResume = req.body?.includeResume !== false;
   const includeTranscript = Boolean(req.body?.includeTranscript);
+  const includePortfolioLink = Boolean(req.body?.includePortfolioLink);
   const cc = normalizeString(req.body?.cc || profile.application?.cc);
   const from = normalizeString(profile.application?.senderEmail || smtpConfig.auth.user || process.env.SMTP_FROM);
   const senderName = normalizeString(profile.application?.senderName);
+  const confidence = normalizeString(req.body?.confidence, 'low');
+  const warnings = normalizeStringList(req.body?.warnings, []);
+  const tonePreset = normalizeString(req.body?.tonePreset, 'balanced');
+  const hookType = normalizeString(req.body?.hookType, 'general');
 
   if (!to) {
     return res.status(400).json({ error: 'Recipient email is required.' });
@@ -1428,6 +1592,13 @@ app.post('/api/application-agent/send', async (req, res) => {
   }
   if (!body) {
     return res.status(400).json({ error: 'Body is required.' });
+  }
+
+  const safety = evaluateSendSafety({ contactEmail: to, confidence, warnings });
+  if (!safety.allowDirectSend) {
+    return res.status(400).json({
+      error: `Direct send is locked: ${safety.reasons.join(' | ') || 'Review required.'}`
+    });
   }
 
   const assets = getApplicationAssets(profile);
@@ -1463,7 +1634,16 @@ app.post('/api/application-agent/send', async (req, res) => {
           to,
           cc,
           subject,
-          attachments: attachments.map((item) => item.filename)
+          attachments: attachments.map((item) => item.filename),
+          attachmentCombo: [
+            includeResume ? 'Resume' : null,
+            includeTranscript ? 'Transcript' : null,
+            includePortfolioLink ? 'Portfolio link' : null
+          ].filter(Boolean).join(' + ') || 'None',
+          tonePreset,
+          hookType,
+          confidence,
+          safetyLevel: safety.level
         });
       }
     }
@@ -1479,6 +1659,79 @@ app.post('/api/application-agent/send', async (req, res) => {
       error: error instanceof Error ? error.message : 'Send failed.'
     });
   }
+});
+
+app.get('/api/dashboard/outcomes', (req, res) => {
+  const internships = selectAll.all();
+  const activities = selectAllActivity.all();
+  const internshipMap = new Map(internships.map((item) => [Number(item.id), item]));
+
+  const sentEvents = activities
+    .filter((item) => item.event_type === 'email sent')
+    .map((item) => {
+      const payload = safeJsonParse(item.new_value, {});
+      return {
+        internshipId: Number(item.internship_id),
+        createdAt: item.created_at,
+        payload: payload && typeof payload === 'object' ? payload : {},
+        entry: internshipMap.get(Number(item.internship_id)) || null
+      };
+    });
+
+  const summarizeBy = (getter) => {
+    const map = new Map();
+    sentEvents.forEach((event) => {
+      const keys = getter(event).filter(Boolean);
+      const outcomeStatus = normalizeString(event.entry?.status);
+      const positive = outcomeStatus === 'Interview' || outcomeStatus === 'Offer';
+      keys.forEach((key) => {
+        if (!map.has(key)) {
+          map.set(key, { label: key, sent: 0, positive: 0, rejected: 0, pending: 0 });
+        }
+        const bucket = map.get(key);
+        bucket.sent += 1;
+        if (positive) bucket.positive += 1;
+        else if (outcomeStatus === 'Rejected') bucket.rejected += 1;
+        else bucket.pending += 1;
+      });
+    });
+    return Array.from(map.values())
+      .map((item) => ({
+        ...item,
+        successRate: item.sent ? Math.round((item.positive / item.sent) * 100) : 0
+      }))
+      .sort((a, b) => {
+        if (b.successRate !== a.successRate) return b.successRate - a.successRate;
+        return b.sent - a.sent;
+      })
+      .slice(0, 6);
+  };
+
+  const companyTypes = summarizeBy((event) => normalizeString(event.entry?.focus_tags)
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean));
+  const hookTypes = summarizeBy((event) => [normalizeString(event.payload?.hookType, 'general')]);
+  const attachmentMixes = summarizeBy((event) => [normalizeString(event.payload?.attachmentCombo, 'None')]);
+  const tonePresets = summarizeBy((event) => [normalizeString(event.payload?.tonePreset, 'balanced')]);
+
+  const blocked = activities.filter((item) => item.event_type === 'agent send-blocked').length;
+  const drafts = activities.filter((item) => item.event_type === 'agent draft-opened').length;
+  const cancelled = activities.filter((item) => item.event_type === 'agent cancelled').length;
+
+  return res.json({
+    totals: {
+      sent: sentEvents.length,
+      positive: sentEvents.filter((event) => ['Interview', 'Offer'].includes(normalizeString(event.entry?.status))).length,
+      blocked,
+      drafts,
+      cancelled
+    },
+    companyTypes,
+    hookTypes,
+    attachmentMixes,
+    tonePresets
+  });
 });
 
 app.get('/api/export', (req, res) => {

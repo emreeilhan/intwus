@@ -100,7 +100,13 @@ const agentDraftLabel = el('agentDraftLabel');
 const agentCancelLabel = el('agentCancelLabel');
 const agentIncludeResume = el('agentIncludeResume');
 const agentIncludeTranscript = el('agentIncludeTranscript');
+const agentIncludePortfolioLink = el('agentIncludePortfolioLink');
+const agentAttachmentReason = el('agentAttachmentReason');
 const agentAssetList = el('agentAssetList');
+const agentToneGrid = el('agentToneGrid');
+const agentToneStatus = el('agentToneStatus');
+const agentSafetyBlock = el('agentSafetyBlock');
+const agentSafetyNote = el('agentSafetyNote');
 const agentSignals = el('agentSignals');
 const agentAngles = el('agentAngles');
 const agentWarnings = el('agentWarnings');
@@ -614,6 +620,12 @@ function renderActivity(items) {
             ? 'Follow-up changed'
             : item.event_type === 'email sent'
               ? 'Email sent'
+              : item.event_type === 'agent draft-opened'
+                ? 'Draft opened'
+                : item.event_type === 'agent send-blocked'
+                  ? 'Direct send blocked'
+                  : item.event_type === 'agent cancelled'
+                    ? 'Review cancelled'
               : 'Edited';
     const details = diffs.length
       ? `<div class="timeline-diff-list">${diffs.map((diff) => `<div class="timeline-diff-row"><span class="timeline-field">${escapeHtml(formatFieldLabel(diff.field))}</span><span class="timeline-old">${escapeHtml(formatActivityValue(diff.before))}</span><span class="timeline-arrow">→</span><span class="timeline-new">${escapeHtml(formatActivityValue(diff.after))}</span></div>`).join('')}</div>`
@@ -695,7 +707,8 @@ function renderAgentAssets(assets) {
   if (!agentAssetList) return;
   const rows = [
     { label: 'Resume', item: assets?.resume, checked: agentIncludeResume?.checked !== false },
-    { label: 'Transcript', item: assets?.transcript, checked: Boolean(agentIncludeTranscript?.checked) }
+    { label: 'Transcript', item: assets?.transcript, checked: Boolean(agentIncludeTranscript?.checked) },
+    { label: 'Portfolio', item: { exists: Boolean(agentDraftState?.profileContext?.portfolioUrl), name: agentDraftState?.profileContext?.portfolioUrl || '', error: 'Missing portfolio URL' }, checked: Boolean(agentIncludePortfolioLink?.checked) }
   ];
   agentAssetList.innerHTML = rows.map((row) => {
     const status = row.item?.exists ? 'Ready' : row.item?.error || 'Missing';
@@ -710,9 +723,42 @@ function renderAgentAssets(assets) {
   }).join('');
 }
 
+function updateTonePresetButtons(activeTone) {
+  agentToneGrid?.querySelectorAll('[data-tone-preset]').forEach((button) => {
+    const isActive = button.getAttribute('data-tone-preset') === activeTone;
+    button.classList.toggle('active', isActive);
+  });
+}
+
+function updateSafetyUI(draft, smtpConfigured) {
+  if (!agentSafetyNote) return;
+  const safety = draft?.safety || {};
+  const reasons = Array.isArray(safety.reasons) ? safety.reasons.filter(Boolean) : [];
+  if (safety.allowDirectSend) {
+    agentSafetyNote.textContent = smtpConfigured
+      ? 'Direct send serbest. Bulunan alici ve warning seviyesi guvenli gorunuyor.'
+      : 'Direct send guvenli ama SMTP kapali oldugu icin draft akisi kullanilacak.';
+  } else {
+    agentSafetyNote.textContent = `Direct send kilitli: ${reasons.join(' | ') || 'Insan onayli draft gerekli.'}`;
+  }
+}
+
+function syncAgentActionWithSafety() {
+  if (!agentDraftState) return;
+  const sendInput = document.querySelector('input[name="agentAction"][value="send"]');
+  const draftInput = document.querySelector('input[name="agentAction"][value="draft"]');
+  const allowDirectSend = Boolean(agentDraftState?.draft?.safety?.allowDirectSend) && Boolean(agentDraftState?.smtpConfigured);
+  if (sendInput) {
+    sendInput.disabled = !allowDirectSend;
+  }
+  if (!allowDirectSend && draftInput) {
+    draftInput.checked = true;
+  }
+}
+
 function renderAgentReview() {
   if (!agentDraftState) return;
-  const { draft, assets, sources } = agentDraftState;
+  const { draft, assets, sources, smtpConfigured } = agentDraftState;
   const companyName = draft.companyName || 'this company';
   if (agentToInput) agentToInput.value = draft.contactEmail || '';
   if (agentCcInput) agentCcInput.value = draft.cc || '';
@@ -727,6 +773,14 @@ function renderAgentReview() {
   if (agentSignals) agentSignals.innerHTML = buildAgentListMarkup(draft.companySignals, 'No company signal captured.');
   if (agentAngles) agentAngles.innerHTML = buildAgentListMarkup(draft.personalAngles, 'No personal angle captured.');
   if (agentWarnings) agentWarnings.innerHTML = buildAgentListMarkup(draft.warnings, 'No warnings.');
+  if (agentAttachmentReason) agentAttachmentReason.textContent = draft.recommendedAttachments?.rationale || 'No attachment recommendation returned.';
+  if (agentIncludeResume) agentIncludeResume.checked = draft.recommendedAttachments?.resume !== false && Boolean(assets?.resume?.exists);
+  if (agentIncludeTranscript) agentIncludeTranscript.checked = Boolean(draft.recommendedAttachments?.transcript) && Boolean(assets?.transcript?.exists);
+  if (agentIncludePortfolioLink) agentIncludePortfolioLink.checked = Boolean(draft.recommendedAttachments?.portfolioLink) && Boolean(agentDraftState?.profileContext?.portfolioUrl);
+  if (agentToneStatus) agentToneStatus.textContent = `Aktif ton: ${draft.tonePreset || 'balanced'}`;
+  updateTonePresetButtons(draft.tonePreset || 'balanced');
+  updateSafetyUI(draft, smtpConfigured);
+  syncAgentActionWithSafety();
   if (agentSources) {
     agentSources.innerHTML = (sources || []).length
       ? sources.map((source) => `
@@ -949,10 +1003,9 @@ async function prepareAgentMail(entry) {
     }
 
     agentDraftState = { ...payload, entryId: entry.id };
-    if (agentIncludeResume) agentIncludeResume.checked = Boolean(payload?.assets?.resume?.exists);
-    if (agentIncludeTranscript) agentIncludeTranscript.checked = Boolean(payload?.assets?.transcript?.exists);
     document.querySelectorAll('input[name="agentAction"]').forEach((input) => {
-      input.checked = input.value === (payload.smtpConfigured ? 'send' : 'draft');
+      const defaultAction = payload?.draft?.safety?.allowDirectSend && payload.smtpConfigured ? 'send' : 'draft';
+      input.checked = input.value === defaultAction;
     });
     openAgentReview();
   } catch (error) {
@@ -967,12 +1020,76 @@ async function prepareAgentMail(entry) {
   }
 }
 
+async function logAgentAction(action, meta = {}) {
+  if (!agentDraftState?.entryId) return;
+  try {
+    await fetch('/api/application-agent/log-action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        internshipId: agentDraftState.entryId,
+        action,
+        meta
+      })
+    });
+  } catch {
+    // Non-blocking analytics signal
+  }
+}
+
+async function applyTonePreset(tonePreset) {
+  if (!agentDraftState) return;
+  const apiKey = getStoredApiKey();
+  if (!apiKey) {
+    openApiKeyModal();
+    return;
+  }
+
+  if (agentToneStatus) agentToneStatus.textContent = 'Ton guncelleniyor...';
+  updateTonePresetButtons(tonePreset);
+
+  try {
+    const res = await fetch('/api/application-agent/polish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        company: agentDraftState?.draft?.companyName || '',
+        draft: agentDraftState?.draft,
+        tonePreset,
+        includePortfolioLink: Boolean(agentIncludePortfolioLink?.checked)
+      })
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error || 'Tone update failed.');
+
+    agentDraftState.draft = {
+      ...agentDraftState.draft,
+      subject: payload.subject || agentDraftState.draft.subject,
+      introLines: Array.isArray(payload.introLines) ? payload.introLines : agentDraftState.draft.introLines,
+      bodyLines: Array.isArray(payload.bodyLines) ? payload.bodyLines : agentDraftState.draft.bodyLines,
+      body: payload.body || agentDraftState.draft.body,
+      warnings: Array.isArray(payload.warnings) ? payload.warnings : agentDraftState.draft.warnings,
+      tonePreset: payload.tonePreset || tonePreset
+    };
+    renderAgentReview();
+  } catch (error) {
+    if (agentToneStatus) {
+      agentToneStatus.textContent = error instanceof Error ? error.message : 'Tone update failed.';
+    }
+  }
+}
+
 async function submitAgentReview(event) {
   event.preventDefault();
   if (!agentDraftState) return;
 
   const action = selectedAgentAction();
   if (action === 'cancel') {
+    await logAgentAction('cancelled', {
+      confidence: agentDraftState?.draft?.confidence || 'low',
+      reasons: agentDraftState?.draft?.safety?.reasons || []
+    });
     closeAgentReview();
     return;
   }
@@ -983,6 +1100,8 @@ async function submitAgentReview(event) {
   const body = agentBodyInput?.value || '';
   const includeResume = Boolean(agentIncludeResume?.checked);
   const includeTranscript = Boolean(agentIncludeTranscript?.checked);
+  const includePortfolioLink = Boolean(agentIncludePortfolioLink?.checked);
+  const safety = agentDraftState?.draft?.safety || { allowDirectSend: false, reasons: [] };
 
   if (!to || !subject || !body.trim()) {
     if (agentReviewError) {
@@ -999,10 +1118,28 @@ async function submitAgentReview(event) {
 
   try {
     if (action === 'draft') {
+      await logAgentAction('draft-opened', {
+        to,
+        subject,
+        tonePreset: agentDraftState?.draft?.tonePreset || 'balanced',
+        attachmentCombo: [
+          includeResume ? 'Resume' : null,
+          includeTranscript ? 'Transcript' : null,
+          includePortfolioLink ? 'Portfolio link' : null
+        ].filter(Boolean).join(' + ') || 'None'
+      });
       const mailto = `mailto:${escapeMailtoValue(to)}?subject=${escapeMailtoValue(subject)}&body=${escapeMailtoValue(body)}${cc ? `&cc=${escapeMailtoValue(cc)}` : ''}`;
       window.location.href = mailto;
       closeAgentReview();
       return;
+    }
+
+    if (!safety.allowDirectSend) {
+      await logAgentAction('send-blocked', {
+        reasons: safety.reasons || [],
+        confidence: agentDraftState?.draft?.confidence || 'low'
+      });
+      throw new Error(`Direct send kilitli: ${(safety.reasons || []).join(' | ') || 'Insan onayli draft gerekli.'}`);
     }
 
     const res = await fetch('/api/application-agent/send', {
@@ -1015,7 +1152,12 @@ async function submitAgentReview(event) {
         subject,
         body,
         includeResume,
-        includeTranscript
+        includeTranscript,
+        includePortfolioLink,
+        confidence: agentDraftState?.draft?.confidence || 'low',
+        warnings: agentDraftState?.draft?.warnings || [],
+        tonePreset: agentDraftState?.draft?.tonePreset || 'balanced',
+        hookType: agentDraftState?.draft?.hookType || 'general'
       })
     });
     const payload = await res.json().catch(() => ({}));
@@ -1602,6 +1744,17 @@ agentReviewClose?.addEventListener('click', closeAgentReview);
 agentReviewCancel?.addEventListener('click', closeAgentReview);
 agentIncludeResume?.addEventListener('change', () => renderAgentAssets(agentDraftState?.assets));
 agentIncludeTranscript?.addEventListener('change', () => renderAgentAssets(agentDraftState?.assets));
+agentIncludePortfolioLink?.addEventListener('change', () => {
+  renderAgentAssets(agentDraftState?.assets);
+  if (agentToneStatus) {
+    agentToneStatus.textContent = 'Portfolio tercihi guncellendi. Isterseniz tona tekrar tiklayip maili repolish edin.';
+  }
+});
+agentToneGrid?.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-tone-preset]');
+  if (!button) return;
+  await applyTonePreset(button.getAttribute('data-tone-preset') || 'balanced');
+});
 commandInput?.addEventListener('input', renderCommands);
 obNext?.addEventListener('click', advanceOnboarding);
 obSkip?.addEventListener('click', closeOnboarding);

@@ -29,6 +29,12 @@ const priorityMixTotal = document.getElementById('priorityMixTotal');
 const momentumBars = document.getElementById('momentumBars');
 const leadTimeBars = document.getElementById('leadTimeBars');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
+const outreachTotals = document.getElementById('outreachTotals');
+const outreachSentTotal = document.getElementById('outreachSentTotal');
+const hookTypeBars = document.getElementById('hookTypeBars');
+const attachmentMixBars = document.getElementById('attachmentMixBars');
+const companyTypeBars = document.getElementById('companyTypeBars');
+const tonePresetBars = document.getElementById('tonePresetBars');
 
 const themeKey = 'staj-theme';
 const STATUS_FLOW = ['Researching', 'Ready to Apply', 'Applied', 'Interview', 'Offer', 'Rejected', 'Paused'];
@@ -122,6 +128,19 @@ function renderBars(container, data, limit = 6) {
     const row = document.createElement('div');
     row.className = 'bar-row';
     row.innerHTML = `<div>${label}</div><div>${count}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round((count / max) * 100)}%; background:${colorFromString(label, 0.5)}"></div></div>`;
+    container.appendChild(row);
+  });
+}
+
+function renderOutcomeBars(container, data, limit = 6) {
+  if (!container) return;
+  container.innerHTML = '';
+  const max = data[0]?.successRate || 1;
+  data.slice(0, limit).forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `<div>${item.label}</div><div>${item.successRate}%</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(item.successRate, item.sent ? 8 : 0)}%; background:${colorFromString(item.label, 0.56)}"></div></div>`;
+    row.title = `${item.positive}/${item.sent} positive, ${item.pending} pending, ${item.rejected} rejected`;
     container.appendChild(row);
   });
 }
@@ -322,8 +341,18 @@ function renderFollowups(entries) {
 
 async function init() {
   initTheme();
-  const res = await fetch('/api/internships');
-  const entries = await res.json();
+  const [entriesRes, outcomesRes] = await Promise.all([
+    fetch('/api/internships'),
+    fetch('/api/dashboard/outcomes')
+  ]);
+  const entries = await entriesRes.json();
+  const outcomes = await outcomesRes.json().catch(() => ({
+    totals: { sent: 0, positive: 0, blocked: 0, drafts: 0, cancelled: 0 },
+    companyTypes: [],
+    hookTypes: [],
+    attachmentMixes: [],
+    tonePresets: []
+  }));
 
   if (!entries.length && dashboardEmpty) dashboardEmpty.classList.add('show');
   else if (dashboardEmpty) dashboardEmpty.classList.remove('show');
@@ -406,6 +435,21 @@ async function init() {
     }));
   renderMomentum(momentumBars, momentumData);
   renderLeadTime(leadTimeBars, entries);
+  renderOutcomeBars(hookTypeBars, outcomes.hookTypes || []);
+  renderOutcomeBars(attachmentMixBars, outcomes.attachmentMixes || []);
+  renderOutcomeBars(companyTypeBars, outcomes.companyTypes || []);
+  renderOutcomeBars(tonePresetBars, outcomes.tonePresets || []);
+
+  if (outreachSentTotal) outreachSentTotal.textContent = String(outcomes?.totals?.sent || 0);
+  if (outreachTotals) {
+    outreachTotals.innerHTML = [
+      { label: 'Direct sends', value: outcomes?.totals?.sent || 0 },
+      { label: 'Positive outcomes', value: outcomes?.totals?.positive || 0 },
+      { label: 'Blocked by safety', value: outcomes?.totals?.blocked || 0 },
+      { label: 'Draft openings', value: outcomes?.totals?.drafts || 0 },
+      { label: 'Cancelled reviews', value: outcomes?.totals?.cancelled || 0 }
+    ].map((item) => `<div class="mini-row"><span>${item.label}</span><span>${item.value}</span><span></span></div>`).join('');
+  }
 }
 
 themeToggleBtn?.addEventListener('click', toggleTheme);
