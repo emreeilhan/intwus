@@ -11,6 +11,9 @@ const list = el('list');
 const count = el('count');
 const search = el('search');
 const exportBtn = el('exportBtn');
+const importBtn = el('importBtn');
+const importFileInput = el('importFileInput');
+const importFeedback = el('importFeedback');
 const cancelBtn = el('cancelBtn');
 const filterChips = el('filterChips');
 const followupChip = el('followupChip');
@@ -1673,6 +1676,23 @@ function closeCommandPalette() {
   commandPalette?.setAttribute('aria-hidden', 'true');
 }
 
+// Purpose: Shift+Import = replace-all mode (confirmed); normal = merge / upsert by Id
+let importReplaceNext = false;
+let importFeedbackClearTimer = 0;
+
+function showImportFeedback(message, isError) {
+  if (!importFeedback) return;
+  importFeedback.hidden = false;
+  importFeedback.textContent = message;
+  importFeedback.classList.toggle('is-error', Boolean(isError));
+  window.clearTimeout(importFeedbackClearTimer);
+  importFeedbackClearTimer = window.setTimeout(() => {
+    importFeedback.hidden = true;
+    importFeedback.textContent = '';
+    importFeedback.classList.remove('is-error');
+  }, 6000);
+}
+
 function renderCommands() {
   if (!commandList) return;
   const q = (commandInput?.value || '').toLowerCase().trim();
@@ -1681,6 +1701,14 @@ function renderCommands() {
     { label: 'Add internship', action: () => { closeCommandPalette(); openQuickAdd(); } },
     { label: 'Open search', action: () => { closeCommandPalette(); openSearch(); } },
     { label: 'Open API key page', action: () => { closeCommandPalette(); window.location.href = '/api-key'; } },
+    {
+      label: 'Import spreadsheet…',
+      action: () => {
+        closeCommandPalette();
+        importReplaceNext = false;
+        importFileInput?.click();
+      }
+    },
     ...countries.map((country) => ({
       label: `Filter: ${country}`,
       action: () => { if (countryFilter) countryFilter.value = country; renderList(); closeCommandPalette(); }
@@ -1778,6 +1806,44 @@ quickAddClose?.addEventListener('click', closeQuickAdd);
 cancelBtn?.addEventListener('click', resetForm);
 emptyAddBtn?.addEventListener('click', openQuickAdd);
 exportBtn?.addEventListener('click', () => { window.location.href = '/api/export'; });
+importBtn?.addEventListener('click', (event) => {
+  importReplaceNext = event.shiftKey;
+  importFileInput?.click();
+});
+importFileInput?.addEventListener('change', async () => {
+  const file = importFileInput.files?.[0];
+  importFileInput.value = '';
+  if (!file) {
+    importReplaceNext = false;
+    return;
+  }
+  let replace = false;
+  if (importReplaceNext) {
+    if (!window.confirm('Replace ALL internship entries with this file? This cannot be undone.')) {
+      importReplaceNext = false;
+      return;
+    }
+    replace = true;
+  }
+  importReplaceNext = false;
+  const fd = new FormData();
+  fd.append('file', file);
+  if (replace) fd.append('replace', 'true');
+  try {
+    const res = await fetch('/api/import', { method: 'POST', body: fd });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload?.error || 'Import failed.');
+    }
+    await loadEntries();
+    renderAll();
+    const n = payload.rowCount ?? 0;
+    const msg = (payload.message && String(payload.message)) || '';
+    showImportFeedback(msg ? `Imported ${n} row(s). ${msg}` : `Imported ${n} row(s).`);
+  } catch (err) {
+    showImportFeedback(err instanceof Error ? err.message : 'Import failed.', true);
+  }
+});
 drawerClose?.addEventListener('click', closeDrawer);
 drawerCancel?.addEventListener('click', closeDrawer);
 drawerDeleteBtn?.addEventListener('click', async () => {

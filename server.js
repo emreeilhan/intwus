@@ -4,6 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import Database from 'better-sqlite3';
 import nodemailer from 'nodemailer';
+import multer from 'multer';
 import xlsx from 'xlsx';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -193,6 +194,20 @@ const PROFILE_SEED = {
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Purpose: accept .xlsx uploads for /api/import (field name: file)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const nameOk = /\.(xlsx|xls)$/i.test(file.originalname || '');
+    const mimeOk =
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype === 'application/vnd.ms-excel' ||
+      file.mimetype === 'application/octet-stream';
+    cb(null, nameOk || mimeOk);
+  }
+});
 
 app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
@@ -989,37 +1004,71 @@ function parseAgentJson(rawText) {
   return JSON.parse(trimmed.slice(jsonStart, jsonEnd + 1));
 }
 
-function syncFromExcel() {
-  if (!fs.existsSync(excelPath)) return;
-  const workbook = xlsx.readFile(excelPath);
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
-  if (!rows.length) return;
+// Purpose: map varied spreadsheet headers (export format + Turkish aliases) to canonical row shape
+function normalizeImportRow(raw) {
+  const pick = (...keys) => {
+    for (const key of keys) {
+      if (key in raw && raw[key] !== undefined && raw[key] !== null && String(raw[key]).trim() !== '') {
+        return raw[key];
+      }
+    }
+    return '';
+  };
+  const idRaw = pick('Id', 'ID', 'id');
+  const idNum = idRaw === '' ? 0 : Number(idRaw);
+  return {
+    Id: Number.isFinite(idNum) ? idNum : 0,
+    Company: String(pick('Company', 'company', 'Şirket', 'Sirket')).trim(),
+    Status: String(pick('Status', 'status', 'Durum') || 'Researching').trim(),
+    Notes: String(pick('Notes', 'notes', 'Açıklama', 'Aciklama')).trim(),
+    Website: String(pick('Website', 'website', 'URL', 'url')).trim(),
+    Tag: String(pick('Tag', 'tag', 'Şehir', 'Sehir', 'Location')).trim(),
+    'Fit Score': pick('Fit Score', 'FitScore', 'fit_score'),
+    'Applied At': String(pick('Applied At', 'AppliedAt', 'applied_at')).trim(),
+    'Follow-up At': String(pick('Follow-up At', 'Followup At', 'FollowupAt', 'followup_at')).trim(),
+    'Reply Received At': String(pick('Reply Received At', 'ReplyReceivedAt')).trim(),
+    'Reply Outcome': String(pick('Reply Outcome', 'ReplyOutcome')).trim(),
+    Priority: String(pick('Priority', 'priority') || 'Medium').trim() || 'Medium',
+    'Focus Tags': String(pick('Focus Tags', 'FocusTags')).trim(),
+    'Created At': String(pick('Created At', 'CreatedAt')).trim(),
+    'Updated At': String(pick('Updated At', 'UpdatedAt')).trim()
+  };
+}
+
+// Purpose: upsert rows from sheet_to_json; optional replace wipes table first (dangerous; UI confirms)
+function importInternshipRows(rawRows, options = {}) {
+  const replace = Boolean(options.replace);
+  const rows = rawRows.map(normalizeImportRow).filter((r) => r.Company);
+  if (!rows.length) {
+    return { rowCount: 0, message: 'No rows with a company name found.' };
+  }
 
   const upsert = db.transaction((items) => {
     items.forEach((item) => {
-      const id = Number(item.Id || item.ID || item.id || 0);
+      const id = Number(item.Id || 0);
       const company = String(item.Company || '').trim();
       if (!company) return;
       const status = String(item.Status || 'Researching').trim();
       const notes = String(item.Notes || '').trim();
       const website = String(item.Website || '').trim();
       const tag = String(item.Tag || '').trim();
-      const appliedAt = String(item['Applied At'] || item.AppliedAt || '').trim();
-      const followupAt = String(item['Follow-up At'] || item['Followup At'] || item.FollowupAt || '').trim();
-      const replyReceivedAt = String(item['Reply Received At'] || item.ReplyReceivedAt || '').trim();
-      const replyOutcome = String(item['Reply Outcome'] || item.ReplyOutcome || '').trim();
+      const appliedAt = String(item['Applied At'] || '').trim();
+      const followupAt = String(item['Follow-up At'] || '').trim();
+      const replyReceivedAt = String(item['Reply Received At'] || '').trim();
+      const replyOutcome = String(item['Reply Outcome'] || '').trim();
       const priority = String(item.Priority || 'Medium').trim() || 'Medium';
-      const focusTags = String(item['Focus Tags'] || item.FocusTags || '').trim();
-      const fitScore = Number(item['Fit Score'] || item.FitScore || 0) || computeFitScore({
-        company,
-        status,
-        notes,
-        website,
-        tag
-      });
-      const createdAt = String(item['Created At'] || item.CreatedAt || '').trim() || new Date().toISOString();
-      const updatedAt = String(item['Updated At'] || item.UpdatedAt || '').trim() || new Date().toISOString();
+      const focusTags = String(item['Focus Tags'] || '').trim();
+      const fitScore =
+        Number(item['Fit Score'] || 0) ||
+        computeFitScore({
+          company,
+          status,
+          notes,
+          website,
+          tag
+        });
+      const createdAt = String(item['Created At'] || '').trim() || new Date().toISOString();
+      const updatedAt = String(item['Updated At'] || '').trim() || new Date().toISOString();
 
       if (id) {
         const exists = db.prepare('SELECT 1 FROM internships WHERE id = ?').get(id);
@@ -1079,7 +1128,21 @@ function syncFromExcel() {
     });
   });
 
+  if (replace) {
+    db.exec('DELETE FROM internships');
+  }
   upsert(rows);
+  return { rowCount: rows.length, message: replace ? 'Replaced dataset.' : 'Merged into tracker.' };
+}
+
+function syncFromExcel() {
+  if (!fs.existsSync(excelPath)) return;
+  const workbook = xlsx.readFile(excelPath);
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!sheet) return;
+  const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+  if (!rows.length) return;
+  importInternshipRows(rows, { replace: false });
 }
 
 function excelIsNewer() {
@@ -1792,12 +1855,40 @@ app.get('/api/export', (req, res) => {
   res.download(excelPath, 'internships.xlsx');
 });
 
-app.post('/api/import', (req, res) => {
-  if (!fs.existsSync(excelPath)) {
-    return res.status(404).json({ error: 'Excel file not found.' });
+app.post('/api/import', (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE' ? 'File too large (max 15 MB).' : err.message || 'Upload failed.';
+      return res.status(400).json({ error: msg });
+    }
+    next();
+  });
+}, (req, res) => {
+  try {
+    const replace =
+      req.query.replace === '1' ||
+      req.query.replace === 'true' ||
+      req.body?.replace === 'true' ||
+      req.body?.replace === true;
+    if (!req.file?.buffer?.length) {
+      return res.status(400).json({ error: 'No file uploaded. Use form field name \"file\" (.xlsx).' });
+    }
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      return res.status(400).json({ error: 'Workbook has no sheets.' });
+    }
+    const sheet = workbook.Sheets[sheetName];
+    const rawRows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+    if (!rawRows.length) {
+      return res.status(400).json({ error: 'Sheet is empty.' });
+    }
+    const result = importInternshipRows(rawRows, { replace });
+    syncExcel();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(400).json({ error: e instanceof Error ? e.message : 'Import failed.' });
   }
-  syncFromExcel();
-  res.json({ ok: true });
 });
 
 const port = process.env.PORT || 3000;

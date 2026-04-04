@@ -530,6 +530,21 @@ body {
 }
 .sidebar-footer-link:hover { color: var(--ink-2); background: var(--surface-2); transform: none; box-shadow: none; }
 
+/* Purpose: ephemeral message under Import (merge / replace result) */
+.sidebar-footer-hint {
+  display: block;
+  padding: 4px 8px 2px;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.sidebar-footer-hint.is-error {
+  color: #fca5a5;
+}
+:root[data-theme="light"] .sidebar-footer-hint.is-error {
+  color: #dc2626;
+}
+
 /* Sidebar toggle + backdrop */
 .sidebar-toggle {
   display: inline-grid;
