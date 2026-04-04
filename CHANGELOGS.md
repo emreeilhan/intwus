@@ -205,3 +205,8 @@
 - Reworked the kanban board column chrome into a single pastel status pill with dot, label, and count, plus soft per-column tinting and white cards in light mode so the board reads closer to modern Notion-style boards without changing pipeline logic.
 - Added a “Workspace” sidebar group for New entry and Search, promoted New entry to a full primary pill CTA, and expanded the empty list state with more whitespace and a matching primary “Add first entry” button.
 - Tuned light mode list header and context bar backgrounds to track the main canvas and added a gentle list-head hover gradient for clearer table separation.
+
+0.0.51
+- Realigned the light theme tokens with a Notion-style workspace: `#f7f7f7` shell, `#ffffff` canvas, `#2383E2` primary actions, hairline borders, and softer status/priority pastels while keeping list, board, filters, and sidebar behavior unchanged.
+- Refined the board view in light mode to use neutral grey column tracks, white cards with 6px corners and subtle hover lift, and a segmented list/board toggle that reads like Notion’s inline tabs.
+- Tightened typography and spacing on the context header (bolder page title, muted count pill), improved sidebar contrast for search and navigation, and simplified the list header strip for a calmer table chrome.
