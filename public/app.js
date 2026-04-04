@@ -58,11 +58,6 @@ const activityCount = el('activityCount');
 const savedViewSelect = el('savedViewSelect');
 const savedViewNav = el('savedViewNav');
 const saveViewBtn = el('saveViewBtn');
-const applySavedViewBtn = el('applySavedViewBtn');
-const overwriteViewBtn = el('overwriteViewBtn');
-const renameViewBtn = el('renameViewBtn');
-const deleteViewBtn = el('deleteViewBtn');
-const savedViewMenu = el('savedViewMenu');
 const commandPalette = el('commandPalette');
 const commandInput = el('commandInput');
 const commandList = el('commandList');
@@ -200,6 +195,8 @@ let activityCache = new Map();
 let analysisErrors = new Map();
 let rowMenuId = null;
 let activeViewId = null;
+let openSavedViewMenuId = null;
+let editingSavedViewId = null;
 let currentViewMode = localStorage.getItem(viewModeKey) || 'list';
 let onboardingStep = 0;
 let analysisLoadingId = null;
@@ -268,8 +265,10 @@ function getEntryById(id) {
   return entries.find((item) => String(item.id) === String(id)) || null;
 }
 
+// Purpose: Pipeline status → CSS modifier (shared by list pills, board dots, and filters).
 function statusClass(status) {
   const value = (status || '').toLowerCase().replace(/\s+/g, '-');
+  if (value.includes('complete')) return 'status-offer';
   if (value.includes('offer')) return 'status-offer';
   if (value.includes('interview')) return 'status-interview';
   if (value.includes('rejected')) return 'status-rejected';
@@ -415,14 +414,14 @@ function closeSearch() {
 function resetForm() {
   entryId.value = '';
   companyInput.value = '';
-  statusInput.value = 'Researching';
-  notesInput.value = '';
   websiteInput.value = '';
   tagInput.value = '';
+  if (statusInput) statusInput.value = 'Researching';
+  if (notesInput) notesInput.value = '';
   if (priorityInput) priorityInput.value = 'Medium';
   if (appliedAtInput) appliedAtInput.value = '';
   if (followupAtInput) followupAtInput.value = '';
-  applyFocusTagsToFieldset(tagFieldset, []);
+  if (tagFieldset) applyFocusTagsToFieldset(tagFieldset, []);
 }
 
 function openQuickAdd() {
@@ -517,9 +516,29 @@ function selectedSavedView() {
   return savedViews.find((item) => String(item.id) === String(activeViewId));
 }
 
+function getSavedViewById(id) {
+  return savedViews.find((item) => String(item.id) === String(id));
+}
+
+function closeSavedViewMenu() {
+  openSavedViewMenuId = null;
+}
+
+function startSavedViewRename(viewId) {
+  editingSavedViewId = viewId == null ? null : String(viewId);
+  openSavedViewMenuId = null;
+  renderSavedViewsInSidebar();
+  if (!editingSavedViewId) return;
+  const input = savedViewNav?.querySelector(`[data-view-rename-input="${editingSavedViewId}"]`);
+  input?.focus();
+  input?.select();
+}
+
 function applySavedView(view) {
   if (!view) return;
   activeViewId = view.id;
+  editingSavedViewId = null;
+  closeSavedViewMenu();
   const filters = view.filters || {};
   if (search) search.value = filters.search || '';
   el('statusFilter').value = filters.status || '';
@@ -541,17 +560,57 @@ function renderSavedViewsInSidebar() {
     return;
   }
   savedViews.forEach((view) => {
-    const btn = document.createElement('button');
-    btn.className = 'saved-view-item' + (String(activeViewId) === String(view.id) ? ' active' : '');
-    btn.type = 'button';
-    btn.innerHTML = `<span class="view-icon">◇</span><span class="nav-label">${escapeHtml(view.name)}</span>`;
-    btn.addEventListener('click', () => applySavedView(view));
-    btn.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      activeViewId = view.id;
-      savedViewMenu?.classList.toggle('open');
-    });
-    savedViewNav.appendChild(btn);
+    const row = document.createElement('div');
+    const isActive = String(activeViewId) === String(view.id);
+    const isEditing = String(editingSavedViewId) === String(view.id);
+    const menuOpen = String(openSavedViewMenuId) === String(view.id);
+    row.className = 'saved-view-row' + (isActive ? ' active' : '');
+
+    if (isEditing) {
+      row.innerHTML = `
+        <form class="saved-view-rename-form" data-view-rename-form="${view.id}">
+          <span class="view-icon">◇</span>
+          <input
+            class="saved-view-rename-input"
+            data-view-rename-input="${view.id}"
+            type="text"
+            value="${escapeHtml(view.name)}"
+            aria-label="Rename ${escapeHtml(view.name)}"
+          />
+          <div class="saved-view-inline-actions">
+            <button class="saved-view-mini-btn" type="submit">Save</button>
+            <button class="saved-view-mini-btn" type="button" data-action="cancel-view-rename" data-view-id="${view.id}">Cancel</button>
+          </div>
+        </form>
+      `;
+    } else {
+      row.innerHTML = `
+        <button class="saved-view-item${isActive ? ' active' : ''}" type="button" data-action="apply-view" data-view-id="${view.id}">
+          <span class="view-icon">◇</span>
+          <span class="nav-label">${escapeHtml(view.name)}</span>
+        </button>
+        <div class="saved-view-actions">
+          <button
+            class="saved-view-menu-trigger"
+            type="button"
+            data-action="toggle-view-menu"
+            data-view-id="${view.id}"
+            aria-expanded="${menuOpen ? 'true' : 'false'}"
+            aria-label="Manage ${escapeHtml(view.name)}"
+          >•••</button>
+          ${menuOpen ? `
+            <div class="saved-view-inline-menu" role="menu">
+              <button class="menu-item" type="button" data-action="apply-view" data-view-id="${view.id}">Apply</button>
+              <button class="menu-item" type="button" data-action="overwrite-view" data-view-id="${view.id}">Overwrite</button>
+              <button class="menu-item" type="button" data-action="rename-view" data-view-id="${view.id}">Rename</button>
+              <button class="menu-item danger" type="button" data-action="delete-view" data-view-id="${view.id}">Delete</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    savedViewNav.appendChild(row);
   });
 }
 
@@ -1362,7 +1421,7 @@ function renderList() {
         <span class="company-cell">
           <span class="company-topline">
             <strong>${escapeHtml(entry.company)}</strong>
-            <span class="priority-badge priority-${String(entry.priority || 'Medium').toLowerCase()}">${priorityText}</span>
+            <span class="pill-badge priority-badge priority-${String(entry.priority || 'Medium').toLowerCase()}">${priorityText}</span>
           </span>
           ${locationPrimary ? `<span class="row-location">${escapeHtml(locationPrimary)}</span>` : ''}
           <span class="row-meta-grid">
@@ -1378,7 +1437,7 @@ function renderList() {
         <span class="next-step-detail">${escapeHtml(nextStep.detail)}</span>
       </div>
       <div class="status-wrap">
-        <span class="row-status-badge ${statusClass(entry.status)}">${escapeHtml(entry.status || 'Researching')}</span>
+        <span class="pill-badge ${statusClass(entry.status)}">${escapeHtml(entry.status || 'Researching')}</span>
         <button class="row-primary-btn" type="button" data-action="open" data-id="${entry.id}" aria-label="Open ${escapeHtml(entry.company)}">
           <span>${primaryAction.label}</span>
           <span class="row-primary-detail">${escapeHtml(primaryAction.detail)}</span>
@@ -1471,14 +1530,14 @@ async function saveEntry(event) {
   event.preventDefault();
   const payload = {
     company: companyInput.value.trim(),
-    status: statusInput.value.trim(),
-    notes: notesInput.value.trim(),
+    status: 'Researching',
+    notes: '',
     website: websiteInput.value.trim(),
     tag: tagInput.value.trim(),
-    priority: priorityInput ? priorityInput.value : 'Medium',
-    applied_at: appliedAtInput ? appliedAtInput.value : '',
-    followup_at: followupAtInput ? followupAtInput.value : '',
-    focus_tags: getFocusTagsFromFieldset(tagFieldset).join(',')
+    priority: 'Medium',
+    applied_at: '',
+    followup_at: '',
+    focus_tags: ''
   };
   const id = entryId.value.trim();
   await fetch(id ? `/api/internships/${id}` : '/api/internships', {
@@ -1524,13 +1583,15 @@ async function bulkDelete(ids) {
 }
 
 function selectedEntryFromEvent(event) {
+  const actionEl = event.target.closest('[data-id]');
   const row = event.target.closest('.table-row');
-  const id = event.target?.dataset?.id || row?.querySelector('[data-action="open"]')?.dataset?.id;
+  const id = actionEl?.dataset?.id || row?.querySelector('[data-action="open"]')?.dataset?.id;
   return entries.find((item) => String(item.id) === String(id));
 }
 
 async function handleListClick(event) {
-  const action = event.target?.dataset?.action;
+  const actionEl = event.target.closest('[data-action]');
+  const action = actionEl?.dataset?.action;
   const entry = selectedEntryFromEvent(event);
   if (!entry) return;
   if (action === 'open') { openDrawer(entry); }
@@ -1544,29 +1605,82 @@ async function saveView() {
   await loadSavedViews();
 }
 
-async function overwriteView() {
-  const view = selectedSavedView();
+async function overwriteView(viewId = activeViewId) {
+  const view = getSavedViewById(viewId);
   if (!view) return;
   await fetch(`/api/saved-views/${view.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: view.name, filters: currentFilters(), sort_key: '' }) });
+  activeViewId = view.id;
+  closeSavedViewMenu();
   await loadSavedViews();
 }
 
-async function renameView() {
-  const view = selectedSavedView();
+async function renameView(viewId = activeViewId, nextName = '') {
+  const view = getSavedViewById(viewId);
   if (!view) return;
-  const nextName = window.prompt('Rename view', view.name);
-  if (!nextName) return;
-  await fetch(`/api/saved-views/${view.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nextName.trim(), filters: view.filters || currentFilters(), sort_key: view.sort_key || '' }) });
+  const cleanName = String(nextName || '').trim();
+  if (!cleanName) return;
+  await fetch(`/api/saved-views/${view.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: cleanName, filters: view.filters || currentFilters(), sort_key: view.sort_key || '' }) });
+  editingSavedViewId = null;
+  activeViewId = view.id;
   await loadSavedViews();
 }
 
-async function deleteView() {
-  const view = selectedSavedView();
+async function deleteView(viewId = activeViewId) {
+  const view = getSavedViewById(viewId);
   if (!view) return;
   if (!window.confirm(`Delete view "${view.name}"?`)) return;
   await fetch(`/api/saved-views/${view.id}`, { method: 'DELETE' });
   activeViewId = null;
+  editingSavedViewId = null;
+  closeSavedViewMenu();
   await loadSavedViews();
+}
+
+function handleSavedViewNavClick(event) {
+  const action = event.target?.dataset?.action;
+  const viewId = event.target?.dataset?.viewId;
+  if (!action || !viewId) return;
+  const view = getSavedViewById(viewId);
+  if (!view) return;
+
+  if (action === 'apply-view') {
+    applySavedView(view);
+    return;
+  }
+  if (action === 'toggle-view-menu') {
+    activeViewId = view.id;
+    openSavedViewMenuId = String(openSavedViewMenuId) === String(view.id) ? null : String(view.id);
+    editingSavedViewId = null;
+    renderSavedViewsInSidebar();
+    return;
+  }
+  if (action === 'overwrite-view') {
+    overwriteView(view.id);
+    return;
+  }
+  if (action === 'rename-view') {
+    activeViewId = view.id;
+    startSavedViewRename(view.id);
+    return;
+  }
+  if (action === 'delete-view') {
+    activeViewId = view.id;
+    deleteView(view.id);
+    return;
+  }
+  if (action === 'cancel-view-rename') {
+    editingSavedViewId = null;
+    renderSavedViewsInSidebar();
+  }
+}
+
+async function handleSavedViewNavSubmit(event) {
+  const formEl = event.target.closest('[data-view-rename-form]');
+  if (!formEl) return;
+  event.preventDefault();
+  const viewId = formEl.dataset.viewRenameForm;
+  const input = formEl.querySelector(`[data-view-rename-input="${viewId}"]`);
+  await renameView(viewId, input?.value || '');
 }
 
 /* ============================================================ COMMAND PALETTE */
@@ -1621,7 +1735,7 @@ const ONBOARDING_STEPS = [
   {
     emoji: '⚡',
     title: 'Power-user shortcuts',
-    desc: 'Press / to search instantly. Use the sidebar to filter by stage. Switch to Board view to see your pipeline as a kanban. Right-click saved views to manage them.'
+    desc: 'Press / to search instantly. Use the sidebar to filter by stage. Switch to Board view to see your pipeline as a kanban. Saved views now expose a visible three-dot menu for apply, overwrite, rename, and delete.'
   }
 ];
 
@@ -1667,6 +1781,8 @@ function closeOnboarding() {
 form.addEventListener('submit', saveEntry);
 drawerForm.addEventListener('submit', saveDrawer);
 list.addEventListener('click', handleListClick);
+savedViewNav?.addEventListener('click', handleSavedViewNavClick);
+savedViewNav?.addEventListener('submit', handleSavedViewNavSubmit);
 search?.addEventListener('input', renderAll);
 el('statusFilter')?.addEventListener('change', renderAll);
 statusNav?.addEventListener('click', (event) => {
@@ -1719,10 +1835,6 @@ copyMailHookBtn?.addEventListener('click', async () => {
 });
 themeToggleBtn?.addEventListener('click', toggleTheme);
 saveViewBtn?.addEventListener('click', saveView);
-applySavedViewBtn?.addEventListener('click', () => { const view = selectedSavedView(); if (view) applySavedView(view); });
-overwriteViewBtn?.addEventListener('click', overwriteView);
-renameViewBtn?.addEventListener('click', renameView);
-deleteViewBtn?.addEventListener('click', deleteView);
 searchTrigger?.addEventListener('click', openSearch);
 apiKeyBtn?.addEventListener('click', openApiKeyModal);
 apiKeyForm?.addEventListener('submit', saveApiKey);
@@ -1774,14 +1886,27 @@ document.addEventListener('keydown', (event) => {
     dismissApiKeyModal();
     closeAgentReview();
     closeRowMenu();
-    savedViewMenu?.classList.remove('open');
+    closeSavedViewMenu();
+    if (editingSavedViewId) {
+      editingSavedViewId = null;
+      renderSavedViewsInSidebar();
+    }
   }
 });
 
 document.addEventListener('click', (event) => {
   if (!event.target.closest('.row-menu-wrap')) closeRowMenu();
-  if (savedViewMenu && !event.target.closest('.saved-view-menu') && !event.target.closest('.saved-view-item')) {
-    savedViewMenu.classList.remove('open');
+  if (!event.target.closest('.saved-view-row')) {
+    let shouldRender = false;
+    if (openSavedViewMenuId != null) {
+      closeSavedViewMenu();
+      shouldRender = true;
+    }
+    if (editingSavedViewId != null) {
+      editingSavedViewId = null;
+      shouldRender = true;
+    }
+    if (shouldRender) renderSavedViewsInSidebar();
   }
 });
 

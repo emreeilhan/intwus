@@ -175,3 +175,15 @@
 0.0.44
 - Simplified each list row down to one clear `Open` action and turned the inline status control into a read-only badge, which reduces accidental clicks and makes the primary path obvious.
 - Moved destructive management into the detail drawer by keeping analysis there and adding a drawer-level delete control, so high-risk actions no longer compete for attention in the list.
+
+0.0.45
+- Replaced the hidden saved-view context workflow with a visible per-view `...` menu, so apply, overwrite, rename, and delete actions are now discoverable where the user already looks.
+- Swapped prompt-based rename for inline editing in the sidebar, which makes view cleanup feel lighter and materially increases the chance that saved filters get reused instead of abandoned.
+
+0.0.46
+- Reduced quick add to just company, website, and location so the first capture behaves like a true inbox step instead of a miniature onboarding form.
+- Moved status, notes, dates, and tagging back to the detail drawer flow by saving safe defaults on create, which lowers empty-tracker friction without losing the richer editing path.
+
+0.0.47
+- Fixed the list-row `Open` CTA so clicks on nested label text now resolve to the owning button instead of silently missing the action.
+- This removes the misleading behavior where one row looked unresponsive while a later click on another row seemed to work, which materially reduces trust-breaking interaction bugs.

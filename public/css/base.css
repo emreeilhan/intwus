@@ -33,7 +33,7 @@
   --accent-blue-soft: rgba(10,132,255,0.1);
 
   /* Status */
-  --status-researching: #71717a;
+  --status-researching: #38bdf8;
   --status-ready:       #f59e0b;
   --status-applied:     #3b82f6;
   --status-interview:   #a78bfa;
@@ -271,6 +271,7 @@ body {
   color: var(--muted);
 }
 
+/* Purpose: Icon-only chip in section header (e.g. +). Do not use for text labels — use .sidebar-save-view-btn. */
 .sidebar-section-action {
   width: 18px;
   height: 18px;
@@ -288,6 +289,35 @@ body {
   transition: all var(--ease);
 }
 .sidebar-section-action:hover { color: var(--ink); background: var(--surface-3); border-color: var(--line-strong); transform: none; }
+
+/* Purpose: “Save” next to Views — text button with readable padding (not the 18px .sidebar-section-action box). */
+.sidebar-save-view-btn {
+  flex-shrink: 0;
+  padding: 5px 11px;
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font: 600 0.6875rem/1.2 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background-color var(--ease), border-color var(--ease), color var(--ease);
+  transform: none;
+  box-shadow: none;
+}
+.sidebar-save-view-btn:hover {
+  color: var(--ink);
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  transform: none;
+  box-shadow: none;
+}
+.sidebar-save-view-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px var(--accent-blue-soft);
+}
 
 /* Nav items */
 .sidebar-nav {
@@ -347,6 +377,17 @@ body {
 .sidebar-nav-item.active .nav-count { color: var(--ink-2); }
 
 /* Saved view items in sidebar */
+.saved-view-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+.saved-view-row.active {
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+}
 .saved-view-item {
   display: flex;
   align-items: center;
@@ -367,6 +408,79 @@ body {
 .saved-view-item:hover { color: var(--ink); background: var(--surface-2); transform: none; box-shadow: none; }
 .saved-view-item.active { background: var(--surface-3); color: var(--ink); font-weight: 600; }
 .saved-view-item .view-icon { color: var(--muted); font-size: 0.75rem; flex-shrink: 0; }
+.saved-view-item .nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.saved-view-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+}
+.saved-view-menu-trigger,
+.saved-view-mini-btn {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  color: var(--muted);
+  font: 500 0.6875rem/1 'Inter', sans-serif;
+  min-height: 24px;
+  transform: none;
+  box-shadow: none;
+}
+.saved-view-menu-trigger {
+  width: 24px;
+  padding: 0;
+}
+.saved-view-mini-btn {
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+.saved-view-menu-trigger:hover,
+.saved-view-mini-btn:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+  transform: none;
+  box-shadow: none;
+}
+.saved-view-inline-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  min-width: 144px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 2px;
+}
+.saved-view-rename-form {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.saved-view-rename-input {
+  min-width: 0;
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 0.75rem;
+}
+.saved-view-inline-actions {
+  display: flex;
+  gap: 4px;
+}
 
 .sidebar-spacer { flex: 1; }
 
@@ -749,8 +863,10 @@ body {
   max-width: 48ch;
 }
 
-/* Chips */
-.meta-chip, .priority-badge {
+/* Chips & compact pills — Purpose: shared sizing for meta chips, priority, and row status */
+.meta-chip,
+.pill-badge,
+.priority-badge {
   display: inline-flex;
   align-items: center;
   padding: 1px 6px;
@@ -797,21 +913,6 @@ body {
   min-width: 0;
 }
 .status-label { display: none; }
-
-.row-status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 110px;
-  min-height: 26px;
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font: 500 0.75rem/1 'Inter', sans-serif;
-  background: var(--surface-2);
-  color: var(--ink-2);
-  text-align: center;
-}
 
 .row-primary-btn {
   display: inline-flex;
@@ -862,12 +963,12 @@ body {
 .status-pill:hover { border-color: var(--line-strong); background-color: var(--surface-3); }
 .status-pill:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px var(--accent-blue-soft); }
 
-/* Status-specific tint */
-.status-researching   { border-color: rgba(100,116,139,0.3);  background-color: rgba(100,116,139,0.08); color: #94a3b8; }
+/* Status-specific tint (works on .pill-badge like priority modifiers on .priority-badge) */
+.status-researching   { border-color: rgba(56,189,248,0.35);  background-color: rgba(56,189,248,0.12);  color: #7dd3fc; }
 .status-ready-to-apply{ border-color: rgba(245,158,11,0.35);  background-color: rgba(245,158,11,0.1);   color: #fbbf24; }
 .status-applied       { border-color: rgba(99,102,241,0.35);  background-color: rgba(99,102,241,0.1);   color: #a5b4fc; }
 .status-interview     { border-color: rgba(167,139,250,0.35); background-color: rgba(167,139,250,0.1);  color: #c4b5fd; }
-.status-offer         { border-color: rgba(34,197,94,0.35);   background-color: rgba(34,197,94,0.1);    color: #86efac; }
+.status-offer         { border-color: rgba(34,197,94,0.35);   background-color: rgba(34,197,94,0.12);   color: #86efac; }
 .status-rejected      { border-color: rgba(248,113,113,0.35); background-color: rgba(248,113,113,0.1);  color: #fca5a5; }
 .status-paused        { border-color: rgba(71,85,105,0.3);    background-color: rgba(71,85,105,0.08);   color: #94a3b8; }
 
@@ -1263,16 +1364,6 @@ label {
 .menu-item.danger { color: #fca5a5; }
 .menu-item.danger:hover { background: rgba(239,68,68,0.08); }
 
-.saved-view-menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + 6px); left: 0; z-index: 60;
-  min-width: 180px; padding: 4px;
-  border: 1px solid var(--line); border-radius: var(--radius-md);
-  background: var(--surface-2); box-shadow: var(--shadow);
-}
-.saved-view-menu.open { display: grid; gap: 2px; }
-
 /* ============================================================ TIMELINE */
 .timeline { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 8px; }
 .timeline-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
@@ -1309,7 +1400,7 @@ label {
 :root[data-theme="light"] .sidebar { background: #f0f1f3; }
 :root[data-theme="light"] .list-head { background: #f8f9fa; }
 :root[data-theme="light"] .table-row:hover { background: #f3f4f6; }
-:root[data-theme="light"] .status-researching   { border-color: rgba(100,116,139,0.3);  background-color: rgba(100,116,139,0.06); color: #475569; }
+:root[data-theme="light"] .status-researching   { border-color: rgba(14,165,233,0.35);  background-color: rgba(14,165,233,0.1); color: #0369a1; }
 :root[data-theme="light"] .status-ready-to-apply{ border-color: rgba(245,158,11,0.35);  background-color: rgba(245,158,11,0.07);  color: #b45309; }
 :root[data-theme="light"] .status-applied       { border-color: rgba(59,130,246,0.3);  background-color: rgba(59,130,246,0.07); color: #2563eb; }
 :root[data-theme="light"] .status-interview     { border-color: rgba(139,92,246,0.3);  background-color: rgba(139,92,246,0.07);  color: #7c3aed; }

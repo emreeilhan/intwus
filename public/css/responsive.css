@@ -78,6 +78,10 @@
   .next-step-cell { padding: 0 14px 6px; }
   .status-wrap { padding: 0 14px 10px; justify-content: flex-start; align-items: flex-start; }
   .row-primary-btn { align-items: flex-start; text-align: left; }
+  .saved-view-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .saved-view-rename-form { grid-template-columns: 1fr; }
+  .saved-view-rename-form .view-icon { display: none; }
+  .saved-view-inline-actions { justify-content: flex-start; }
 
   .drawer {
     width: 100%;

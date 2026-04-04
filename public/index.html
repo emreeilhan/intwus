@@ -92,16 +92,10 @@
             <div class="sidebar-section">
               <div class="sidebar-section-label">
                 <span>Views</span>
-                <button class="sidebar-section-action" id="saveViewBtn" type="button" title="Save current view">+</button>
+                <button class="sidebar-save-view-btn" id="saveViewBtn" type="button" title="Save current filters">Save</button>
               </div>
               <div class="sidebar-nav" id="savedViewNav"></div>
               <select id="savedViewSelect" class="sr-only" aria-hidden="true"><option value="">Views</option></select>
-              <div class="saved-view-menu" id="savedViewMenu" aria-hidden="true">
-                <button class="menu-item" id="applySavedViewBtn" type="button">Apply view</button>
-                <button class="menu-item" id="overwriteViewBtn" type="button">Overwrite</button>
-                <button class="menu-item" id="renameViewBtn" type="button">Rename</button>
-                <button class="menu-item danger" id="deleteViewBtn" type="button">Delete</button>
-              </div>
             </div>
 
             <div class="sidebar-spacer"></div>
@@ -215,7 +209,7 @@
         <div class="overlay-header">
           <div>
             <p class="overlay-title">New entry</p>
-            <p class="overlay-sub">Add an internship to your pipeline.</p>
+            <p class="overlay-sub">Capture the company fast. Complete status, notes, and timing in the detail drawer later.</p>
           </div>
           <button class="icon-btn" id="quickAddClose" type="button" aria-label="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -224,35 +218,8 @@
         <form id="entryForm" class="form">
           <input type="hidden" id="entryId" />
           <label>Company <input id="company" name="company" type="text" placeholder="Company name" required /></label>
-          <div class="form-row-2">
-            <label>Status
-              <select id="status" name="status">
-                <option>Researching</option><option>Ready to Apply</option><option>Applied</option>
-                <option>Interview</option><option>Offer</option><option>Rejected</option><option>Paused</option>
-              </select>
-            </label>
-            <label>Priority
-              <select id="priority" name="priority">
-                <option>High</option><option selected>Medium</option><option>Low</option>
-              </select>
-            </label>
-          </div>
           <label>Website <input id="website" name="website" type="url" placeholder="https://" /></label>
-          <div class="form-row-2">
-            <label>Applied at <input id="appliedAt" name="appliedAt" type="date" /></label>
-            <label>Follow-up at <input id="followupAt" name="followupAt" type="date" /></label>
-          </div>
-          <fieldset class="tag-fieldset" id="quickAddTags">
-            <legend>Focus tags</legend>
-            <label class="tag-option"><input type="checkbox" value="Embedded" /> Embedded</label>
-            <label class="tag-option"><input type="checkbox" value="Firmware" /> Firmware</label>
-            <label class="tag-option"><input type="checkbox" value="Security" /> Security</label>
-            <label class="tag-option"><input type="checkbox" value="IoT" /> IoT</label>
-            <label class="tag-option"><input type="checkbox" value="Systems" /> Systems</label>
-            <label class="tag-option"><input type="checkbox" value="Hardware" /> Hardware</label>
-          </fieldset>
           <label>Location <input id="tag" name="tag" type="text" placeholder="City, Country" /></label>
-          <label>Notes <textarea id="notes" name="notes" rows="3" placeholder="Short notes…"></textarea></label>
           <div class="form-actions">
             <button class="ghost-btn" id="cancelBtn" type="button">Cancel</button>
             <button type="submit">Save entry</button>
