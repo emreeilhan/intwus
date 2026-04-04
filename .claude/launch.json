@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "staj-tracker",
-      "runtimeExecutable": "node",
+      "runtimeExecutable": "/Users/emreilhan/.nvm/versions/node/v22.17.1/bin/node",
       "runtimeArgs": ["server.js"],
       "port": 3000,
       "autoPort": false

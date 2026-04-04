@@ -62,19 +62,15 @@
                 <textarea id="agentRouteBody" rows="18"></textarea>
               </label>
 
-              <div class="agent-inline-note" id="agentManualAttachmentNote">
-                Opens Gmail compose with the draft prefilled. Attachments still need to be added manually.
+              <div class="agent-action-bar">
+                <button class="agent-btn-discard" id="agentRouteCancel" type="button">Discard</button>
+                <div class="agent-action-right">
+                  <button class="ghost-btn agent-btn-send" id="agentRouteSendBtn" type="button" hidden>Send directly</button>
+                  <button class="agent-btn-gmail" id="agentRouteGmailBtn" type="button">Open in Gmail →</button>
+                </div>
               </div>
-
-              <div class="agent-submit-bar">
-                <div class="agent-submit-copy">
-                  <div class="agent-submit-label">Decision</div>
-                  <div class="agent-submit-sub" id="agentDecisionHint">Choose whether to send now or open in Gmail.</div>
-                </div>
-                <div class="agent-submit-actions">
-                  <button class="ghost-btn" id="agentRouteCancel" type="button">Cancel</button>
-                  <button id="agentRouteSubmit" type="submit">Apply decision</button>
-                </div>
+              <div class="agent-inline-note" id="agentManualAttachmentNote" hidden>
+                Attachments must be added manually in Gmail.
               </div>
             </form>
           </section>
@@ -97,44 +93,7 @@
                 </div>
               </div>
 
-              <!-- Event log -->
-              <div class="agent-section">
-                <div class="agent-section-head">
-                  <span class="agent-section-label">Event log</span>
-                  <span class="agent-inline-status" id="agentLogStatus">No events</span>
-                </div>
-                <div class="agent-timeline" id="agentTimeline"></div>
-              </div>
-
-              <!-- Decision -->
-              <div class="agent-section">
-                <div class="agent-section-label">Decision</div>
-                <div class="agent-choice-stack">
-                  <label class="agent-choice-card">
-                    <input type="radio" name="agentRouteAction" value="send" />
-                    <div>
-                      <div class="agent-choice-title" id="agentRouteSendLabel">Send directly</div>
-                      <div class="agent-choice-copy">Uses SMTP when configured and contact is verified.</div>
-                    </div>
-                  </label>
-                  <label class="agent-choice-card">
-                    <input type="radio" name="agentRouteAction" value="draft" checked />
-                    <div>
-                      <div class="agent-choice-title" id="agentRouteDraftLabel">Open in Gmail</div>
-                      <div class="agent-choice-copy">Opens Gmail compose in a new tab with the draft prefilled.</div>
-                    </div>
-                  </label>
-                  <label class="agent-choice-card">
-                    <input type="radio" name="agentRouteAction" value="cancel" />
-                    <div>
-                      <div class="agent-choice-title" id="agentRouteCancelLabel">Not now</div>
-                      <div class="agent-choice-copy">Close and leave the company in the pipeline untouched.</div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              <!-- Quick polish -->
+              <!-- Tone -->
               <div class="agent-section">
                 <div class="agent-section-head">
                   <span class="agent-section-label">Tone</span>
@@ -165,27 +124,6 @@
               <div class="agent-section">
                 <div class="agent-section-label">Safety</div>
                 <div class="agent-safety-note" id="agentRouteSafetyNote">-</div>
-              </div>
-
-              <!-- Signals -->
-              <div class="agent-section">
-                <div class="agent-section-label">Company signals</div>
-                <ul class="analysis-list" id="agentRouteSignals"></ul>
-              </div>
-
-              <div class="agent-section">
-                <div class="agent-section-label">Personal angles</div>
-                <ul class="analysis-list" id="agentRouteAngles"></ul>
-              </div>
-
-              <div class="agent-section">
-                <div class="agent-section-label">Warnings</div>
-                <ul class="analysis-list" id="agentRouteWarnings"></ul>
-              </div>
-
-              <div class="agent-section agent-section--last">
-                <div class="agent-section-label">Sources</div>
-                <div class="analysis-source-list" id="agentRouteSources"></div>
               </div>
 
             </div><!-- /.agent-sidebar-card -->

@@ -371,32 +371,55 @@
   line-height: 1.5;
 }
 
-.agent-submit-bar {
+/* Action bar */
+.agent-action-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   padding-top: 4px;
 }
 
-.agent-submit-label {
+.agent-action-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agent-btn-discard {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  padding: 8px 16px;
+  border-radius: 10px;
+  font: inherit;
   font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: border-color var(--ease), color var(--ease);
+}
+
+.agent-btn-discard:hover {
+  border-color: var(--line-strong);
   color: var(--ink);
 }
 
-.agent-submit-sub {
-  font-size: 0.78rem;
-  color: var(--ink-2);
-  margin-top: 3px;
+.agent-btn-gmail {
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  padding: 8px 18px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--ease);
 }
 
-.agent-submit-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-shrink: 0;
+.agent-btn-gmail:hover { opacity: 0.88; }
+
+.agent-btn-send {
+  font-size: 0.85rem;
 }
 
 /* ── Sidebar — single card ───────────────────────────────── */

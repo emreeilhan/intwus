@@ -14,8 +14,10 @@ const routeForm = document.getElementById('agentRouteForm');
 const routeComposePlaceholder = document.getElementById('agentComposePlaceholder');
 const routeEmpty = document.getElementById('agentRouteEmpty');
 const routeError = document.getElementById('agentRouteError');
-const routeSubmit = document.getElementById('agentRouteSubmit');
+const routeSubmit = null; // removed — actions handled by dedicated buttons
 const routeCancel = document.getElementById('agentRouteCancel');
+const routeGmailBtn = document.getElementById('agentRouteGmailBtn');
+const routeSendBtn = document.getElementById('agentRouteSendBtn');
 const routeTo = document.getElementById('agentRouteTo');
 const routeCc = document.getElementById('agentRouteCc');
 const routeSubject = document.getElementById('agentRouteSubject');
@@ -32,20 +34,10 @@ const routeIncludePortfolioLink = document.getElementById('agentRouteIncludePort
 const routeToneGrid = document.getElementById('agentRouteToneGrid');
 const routeToneStatus = document.getElementById('agentRouteToneStatus');
 const routeSafetyNote = document.getElementById('agentRouteSafetyNote');
-const routeSignals = document.getElementById('agentRouteSignals');
-const routeAngles = document.getElementById('agentRouteAngles');
-const routeWarnings = document.getElementById('agentRouteWarnings');
-const routeSources = document.getElementById('agentRouteSources');
 const routeManualAttachmentNote = document.getElementById('agentManualAttachmentNote');
-const routeDecisionHint = document.getElementById('agentDecisionHint');
-const routeSendLabel = document.getElementById('agentRouteSendLabel');
-const routeDraftLabel = document.getElementById('agentRouteDraftLabel');
-const routeCancelLabel = document.getElementById('agentRouteCancelLabel');
 const routeStageList = document.getElementById('agentStageList');
 const routeStageSummary = document.getElementById('agentStageSummary');
 const routeStageElapsed = document.getElementById('agentStageElapsed');
-const routeTimeline = document.getElementById('agentTimeline');
-const routeLogStatus = document.getElementById('agentLogStatus');
 const routeRetryBtn = document.getElementById('agentRetryBtn');
 const routeEmptyCopy = document.getElementById('agentEmptyCopy');
 
@@ -214,19 +206,7 @@ function renderStageList() {
 }
 
 function renderTimeline() {
-  if (!routeTimeline || !routeLogStatus || !reviewState) return;
-  ensureStageState();
-  const timeline = reviewState.stageState.timeline || [];
-  routeLogStatus.textContent = timeline.length ? `${timeline.length} events` : 'No events yet';
-  routeTimeline.innerHTML = timeline.length
-    ? timeline.slice().reverse().map((item) => `
-        <div class="agent-timeline-row">
-          <div class="agent-timeline-time">${escapeHtml(formatClock(item.at))}</div>
-          <div class="agent-timeline-title">${escapeHtml(item.title)}</div>
-          <div class="agent-timeline-copy">${escapeHtml(item.copy || '')}</div>
-        </div>
-      `).join('')
-    : '<div class="muted">Preparation events will appear here in real time.</div>';
+  // Timeline UI removed — events still tracked in reviewState for persistence
 }
 
 function refreshElapsedLabel() {
@@ -277,11 +257,6 @@ function getStoredApiKey() {
   } catch {
     return '';
   }
-}
-
-function selectedAction() {
-  const input = document.querySelector('input[name="agentRouteAction"]:checked');
-  return input?.value || 'draft';
 }
 
 function updateToneButtons(activeTone) {
@@ -342,21 +317,9 @@ function updateSafetyUi() {
 
 function syncActionUi() {
   if (!reviewState) return;
-  const sendInput = document.querySelector('input[name="agentRouteAction"][value="send"]');
-  const draftInput = document.querySelector('input[name="agentRouteAction"][value="draft"]');
   const allowDirectSend = Boolean(reviewState?.draft?.safety?.allowDirectSend) && Boolean(reviewState?.smtpConfigured);
-
-  if (sendInput) sendInput.disabled = !allowDirectSend;
-  if (!allowDirectSend && draftInput) draftInput.checked = true;
-
-  if (routeManualAttachmentNote) {
-    routeManualAttachmentNote.hidden = selectedAction() !== 'draft';
-  }
-  if (routeDecisionHint) {
-    routeDecisionHint.textContent = allowDirectSend
-      ? 'Send directly with SMTP or open in Gmail compose.'
-      : 'Direct send is unavailable — open in Gmail compose to send from there.';
-  }
+  if (routeSendBtn) routeSendBtn.hidden = !allowDirectSend;
+  if (routeManualAttachmentNote) routeManualAttachmentNote.hidden = false;
 }
 
 function renderState() {
@@ -377,13 +340,13 @@ function renderState() {
   if (routeFlowStatus) routeFlowStatus.textContent = hasDraft ? (reviewState.smtpConfigured ? 'Review and send' : 'Review and open') : 'Preparing draft';
   if (routeHeroTitle) {
     routeHeroTitle.textContent = hasDraft
-      ? `Review the outreach draft for ${reviewState.draft.companyName || reviewState.company}.`
-      : `Preparing outreach for ${reviewState.company || 'this company'}.`;
+      ? (reviewState.draft.companyName || reviewState.company)
+      : (reviewState.company || 'Outreach review');
   }
   if (routeHeroSub) {
     routeHeroSub.textContent = hasDraft
-      ? 'Everything is laid out in one calm workspace so you can refine the email before it reaches the company.'
-      : 'You can watch the real preparation steps here while research and copy generation are still running.';
+      ? 'Edit the draft below, then open it in Gmail or send directly.'
+      : 'Watching the agent research and write. Search queries appear below as they run.';
   }
   if (routeFlowSummary) {
     routeFlowSummary.textContent = reviewState?.stageState?.summary || 'Research, polish, then decide.';
@@ -408,7 +371,7 @@ function renderState() {
     return;
   }
 
-  const { draft, sources, assets } = reviewState;
+  const { draft, assets } = reviewState;
   document.title = `${draft.companyName || reviewState.company} Review`;
 
   if (routeTo) routeTo.value = draft.contactEmail || '';
@@ -420,22 +383,6 @@ function renderState() {
   if (routeIncludeTranscript) routeIncludeTranscript.checked = Boolean(draft.recommendedAttachments?.transcript) && Boolean(assets?.transcript?.exists);
   if (routeIncludePortfolioLink) routeIncludePortfolioLink.checked = Boolean(draft.recommendedAttachments?.portfolioLink) && Boolean(reviewState?.profileContext?.portfolioUrl);
   if (routeToneStatus) routeToneStatus.textContent = `Active tone: ${draft.tonePreset || 'balanced'}`;
-  if (routeSendLabel) routeSendLabel.textContent = `Send to ${draft.companyName || reviewState.company} now`;
-  if (routeDraftLabel) routeDraftLabel.textContent = `Open ${draft.companyName || reviewState.company} in Gmail`;
-  if (routeCancelLabel) routeCancelLabel.textContent = `Pause outreach to ${draft.companyName || reviewState.company}`;
-  if (routeSignals) routeSignals.innerHTML = buildListMarkup(draft.companySignals, 'No company signal captured.');
-  if (routeAngles) routeAngles.innerHTML = buildListMarkup(draft.personalAngles, 'No personal angle captured.');
-  if (routeWarnings) routeWarnings.innerHTML = buildListMarkup(draft.warnings, 'No warnings.');
-  if (routeSources) {
-    routeSources.innerHTML = (sources || []).length
-      ? sources.map((source) => `
-          <a class="analysis-source" href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer noopener">
-            <span class="analysis-source-title">${escapeHtml(source.title || source.url)}</span>
-            <span class="analysis-source-meta">${escapeHtml(source.page_age || '')}</span>
-          </a>
-        `).join('')
-      : '<div class="muted">No sources returned.</div>';
-  }
 
   updateToneButtons(draft.tonePreset || 'balanced');
   renderAssetList();
@@ -716,32 +663,15 @@ async function runPreparationPipeline({ retry = false } = {}) {
   }
 }
 
-async function submitReview(event) {
-  event.preventDefault();
+async function openInGmail() {
   if (!reviewState?.draft) return;
-
-  const action = selectedAction();
   const to = routeTo?.value.trim() || '';
   const cc = routeCc?.value.trim() || '';
   const subject = routeSubject?.value.trim() || '';
   const body = routeBody?.value || '';
-  const includeResume = Boolean(routeIncludeResume?.checked);
-  const includeTranscript = Boolean(routeIncludeTranscript?.checked);
-  const includePortfolioLink = Boolean(routeIncludePortfolioLink?.checked);
-  const safety = reviewState?.draft?.safety || { allowDirectSend: false, reasons: [] };
-
-  if (action === 'cancel') {
-    await logAction('cancelled', {
-      confidence: reviewState?.draft?.confidence || 'low',
-      reasons: reviewState?.draft?.safety?.reasons || []
-    });
-    sessionStorage.removeItem(REVIEW_STATE_KEY);
-    window.location.href = '/';
-    return;
-  }
 
   if (!to || !subject || !body.trim()) {
-    setError('Recipient, subject, and body must be filled before continuing.');
+    setError('Recipient, subject, and body must be filled before opening Gmail.');
     return;
   }
 
@@ -751,52 +681,61 @@ async function submitReview(event) {
   persistState();
   setError('');
 
-  if (routeSubmit) {
-    routeSubmit.disabled = true;
-    routeSubmit.textContent = action === 'send' ? 'Sending...' : 'Opening...';
+  // Open synchronously before any await — popup blockers fire after async work
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${escapeMailtoValue(to)}&su=${escapeMailtoValue(subject)}&body=${escapeMailtoValue(body)}${cc ? `&cc=${escapeMailtoValue(cc)}` : ''}`;
+  const gmailWin = window.open(gmailUrl, '_blank');
+  if (!gmailWin) window.location.href = gmailUrl;
+
+  appendTimeline('Gmail draft opened', 'Opened the prepared email in Gmail compose.');
+  await logAction('draft-opened', {
+    to,
+    subject,
+    tonePreset: reviewState?.draft?.tonePreset || 'balanced',
+    attachmentCombo: [
+      routeIncludeResume?.checked ? 'Resume' : null,
+      routeIncludeTranscript?.checked ? 'Transcript' : null,
+      routeIncludePortfolioLink?.checked ? 'Portfolio link' : null
+    ].filter(Boolean).join(' + ') || 'None'
+  });
+}
+
+async function sendDirectly() {
+  if (!reviewState?.draft) return;
+  const to = routeTo?.value.trim() || '';
+  const cc = routeCc?.value.trim() || '';
+  const subject = routeSubject?.value.trim() || '';
+  const body = routeBody?.value || '';
+  const safety = reviewState?.draft?.safety || { allowDirectSend: false, reasons: [] };
+
+  if (!to || !subject || !body.trim()) {
+    setError('Recipient, subject, and body must be filled before sending.');
+    return;
   }
 
+  if (!safety.allowDirectSend) {
+    await logAction('send-blocked', { reasons: safety.reasons || [], confidence: reviewState?.draft?.confidence || 'low' });
+    setError(`Direct send locked: ${(safety.reasons || []).join(' | ') || 'Human-reviewed draft required.'}`);
+    return;
+  }
+
+  reviewState.draft.subject = subject;
+  reviewState.draft.body = body;
+  reviewState.draft.cc = cc;
+  persistState();
+  setError('');
+
+  if (routeSendBtn) { routeSendBtn.disabled = true; routeSendBtn.textContent = 'Sending...'; }
+
   try {
-    if (action === 'draft') {
-      // Open window synchronously before any await — popup blockers only allow
-      // window.open() directly within a user gesture, not after async work.
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${escapeMailtoValue(to)}&su=${escapeMailtoValue(subject)}&body=${escapeMailtoValue(body)}${cc ? `&cc=${escapeMailtoValue(cc)}` : ''}`;
-      const gmailWin = window.open(gmailUrl, '_blank');
-      if (!gmailWin) window.location.href = gmailUrl; // fallback if still blocked
-      appendTimeline('Gmail draft opened', 'Opened the prepared email in Gmail compose.');
-      await logAction('draft-opened', {
-        to,
-        subject,
-        tonePreset: reviewState?.draft?.tonePreset || 'balanced',
-        attachmentCombo: [
-          includeResume ? 'Resume' : null,
-          includeTranscript ? 'Transcript' : null,
-          includePortfolioLink ? 'Portfolio link' : null
-        ].filter(Boolean).join(' + ') || 'None'
-      });
-      return;
-    }
-
-    if (!safety.allowDirectSend) {
-      await logAction('send-blocked', {
-        reasons: safety.reasons || [],
-        confidence: reviewState?.draft?.confidence || 'low'
-      });
-      throw new Error(`Direct send locked: ${(safety.reasons || []).join(' | ') || 'Human-reviewed draft required.'}`);
-    }
-
     const res = await fetch('/api/application-agent/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         internshipId: reviewState.entryId,
-        to,
-        cc,
-        subject,
-        body,
-        includeResume,
-        includeTranscript,
-        includePortfolioLink,
+        to, cc, subject, body,
+        includeResume: Boolean(routeIncludeResume?.checked),
+        includeTranscript: Boolean(routeIncludeTranscript?.checked),
+        includePortfolioLink: Boolean(routeIncludePortfolioLink?.checked),
         confidence: reviewState?.draft?.confidence || 'low',
         warnings: reviewState?.draft?.warnings || [],
         tonePreset: reviewState?.draft?.tonePreset || 'balanced',
@@ -812,13 +751,10 @@ async function submitReview(event) {
     window.alert(`Message sent. Message ID: ${payload.messageId || 'n/a'}`);
     window.location.href = '/';
   } catch (error) {
-    appendTimeline('Send failed', error instanceof Error ? error.message : 'Agent action failed.', 'error');
-    setError(error instanceof Error ? error.message : 'Agent action failed.');
+    appendTimeline('Send failed', error instanceof Error ? error.message : 'Send failed.', 'error');
+    setError(error instanceof Error ? error.message : 'Send failed.');
   } finally {
-    if (routeSubmit) {
-      routeSubmit.disabled = false;
-      routeSubmit.textContent = 'Apply decision';
-    }
+    if (routeSendBtn) { routeSendBtn.disabled = false; routeSendBtn.textContent = 'Send directly'; }
   }
 }
 
@@ -828,10 +764,9 @@ function initTheme() {
 }
 
 function bindEvents() {
-  routeForm?.addEventListener('submit', submitReview);
-  routeCancel?.addEventListener('click', () => {
-    window.location.href = '/';
-  });
+  routeCancel?.addEventListener('click', () => { window.location.href = '/'; });
+  routeGmailBtn?.addEventListener('click', openInGmail);
+  routeSendBtn?.addEventListener('click', sendDirectly);
   routeToneGrid?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-tone-preset]');
     if (!button) return;
@@ -842,9 +777,6 @@ function bindEvents() {
       renderAssetList();
       syncActionUi();
     });
-  });
-  document.querySelectorAll('input[name="agentRouteAction"]').forEach((input) => {
-    input.addEventListener('change', syncActionUi);
   });
   routeRetryBtn?.addEventListener('click', () => {
     runPreparationPipeline({ retry: true });
