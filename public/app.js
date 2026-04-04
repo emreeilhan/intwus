@@ -441,7 +441,6 @@ function openDrawer(entry) {
   drawerNotes.value = entry.notes || '';
   applyFocusTagsToFieldset(document.querySelector('#drawerTags'), String(entry.focus_tags || '').split(',').map((t) => t.trim()).filter(Boolean));
   renderAnalysisState(entry.id);
-  renderApplicationAgentState(entry.id);
   renderActivity(activityCache.get(String(entry.id)) || []);
   loadActivity(entry.id);
 }
@@ -741,47 +740,6 @@ function renderAgentReview() {
   renderAgentAssets(assets);
 }
 
-function renderApplicationAgentSummary(payload) {
-  const draft = payload?.draft || {};
-  return [
-    buildAnalysisSectionMarkup('Contact', [
-      draft.contactEmail ? `Email: ${draft.contactEmail}` : 'No verified public email found',
-      draft.contactReason || 'No contact reason captured',
-      draft.careersUrl ? `Careers: ${draft.careersUrl}` : '',
-      draft.companyWebsite ? `Website: ${draft.companyWebsite}` : ''
-    ].filter(Boolean)),
-    buildAnalysisSectionMarkup('Company Signals', draft.companySignals || []),
-    buildAnalysisSectionMarkup('Warnings', draft.warnings || []),
-    buildAnalysisSectionMarkup('Draft Preview', (draft.introLines || []).concat(draft.bodyLines || []), { mono: true })
-  ].join('');
-}
-
-function renderApplicationAgentState(entryId) {
-  if (!applicationAgentPanel) return;
-  const entry = getEntryById(entryId);
-  const cached = entry ? getCachedApplicationAgent(entry.id) : null;
-  const error = applicationAgentErrors.get(String(entryId)) || '';
-  const isLoading = String(applicationAgentLoadingId) === String(entryId);
-
-  if (prepareApplicationBtn) {
-    prepareApplicationBtn.disabled = !entry || isLoading;
-    prepareApplicationBtn.textContent = isLoading ? 'Preparing outreach...' : 'Prepare outreach';
-  }
-  if (applicationAgentLoadingText) {
-    applicationAgentLoadingText.textContent = entry ? `Preparing outreach for ${entry.company}...` : 'Preparing outreach...';
-  }
-  if (applicationAgentEmpty) applicationAgentEmpty.hidden = Boolean(cached) || Boolean(error) || isLoading;
-  if (applicationAgentLoading) applicationAgentLoading.hidden = !isLoading;
-  if (applicationAgentError) {
-    applicationAgentError.hidden = !error;
-    applicationAgentError.textContent = error;
-  }
-  if (applicationAgentResult) {
-    applicationAgentResult.hidden = !cached;
-    applicationAgentResult.innerHTML = cached ? renderApplicationAgentSummary(cached) : '';
-  }
-}
-
 function openAgentReview() {
   if (!agentReviewModal) return;
   renderAgentReview();
@@ -968,13 +926,10 @@ async function prepareAgentMail(entry) {
   }
 
   agentLoadingId = entry.id;
-  applicationAgentLoadingId = entry.id;
-  applicationAgentErrors.delete(String(entry.id));
   if (prepareAgentBtn) {
     prepareAgentBtn.disabled = true;
     prepareAgentBtn.textContent = 'Preparing...';
   }
-  renderApplicationAgentState(entry.id);
 
   try {
     const res = await fetch('/api/application-agent/prepare', {
@@ -994,27 +949,21 @@ async function prepareAgentMail(entry) {
     }
 
     agentDraftState = { ...payload, entryId: entry.id };
-    setCachedApplicationAgent(entry.id, { ...payload, entryId: entry.id });
     if (agentIncludeResume) agentIncludeResume.checked = Boolean(payload?.assets?.resume?.exists);
     if (agentIncludeTranscript) agentIncludeTranscript.checked = Boolean(payload?.assets?.transcript?.exists);
     document.querySelectorAll('input[name="agentAction"]').forEach((input) => {
       input.checked = input.value === (payload.smtpConfigured ? 'send' : 'draft');
     });
-    renderApplicationAgentState(entry.id);
     openAgentReview();
   } catch (error) {
     analysisErrors.set(String(entry.id), error instanceof Error ? error.message : 'Agent preparation failed.');
-    applicationAgentErrors.set(String(entry.id), error instanceof Error ? error.message : 'Agent preparation failed.');
     renderAnalysisState(entry.id);
-    renderApplicationAgentState(entry.id);
   } finally {
     agentLoadingId = null;
-    applicationAgentLoadingId = null;
     if (prepareAgentBtn) {
       prepareAgentBtn.disabled = false;
       prepareAgentBtn.textContent = 'Prepare Agent Mail';
     }
-    renderApplicationAgentState(entry.id);
   }
 }
 
@@ -1618,11 +1567,6 @@ drawerAnalyzeBtn?.addEventListener('click', async () => {
   await runAnalysisForEntry(entry, { force: hasCachedAnalysis(entry.id) });
 });
 prepareAgentBtn?.addEventListener('click', async () => {
-  const entry = getEntryById(activeEntryId);
-  if (!entry) return;
-  await prepareAgentMail(entry);
-});
-prepareApplicationBtn?.addEventListener('click', async () => {
   const entry = getEntryById(activeEntryId);
   if (!entry) return;
   await prepareAgentMail(entry);

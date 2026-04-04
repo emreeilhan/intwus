@@ -155,3 +155,7 @@
 0.0.39
 - Tightened the agent approval modal into a clearer executive-style decision step with company-specific action labels instead of generic send/draft/cancel wording.
 - Made the final confirmation language more explicit so the user sees a real approval question before the app applies the chosen action.
+
+0.0.40
+- Removed a broken leftover outreach-panel reference in the main tracker script that was throwing on page load and blocking both entry rendering and the light-mode toggle.
+- Kept the working agent review modal flow intact while restoring normal tracker initialization behavior.
