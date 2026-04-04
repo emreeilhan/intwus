@@ -41,7 +41,14 @@ const fields = {
   skillsDomains: document.getElementById('skillsDomains'),
   skillsFocus: document.getElementById('skillsFocus'),
   languages: document.getElementById('languages'),
-  nonGoals: document.getElementById('nonGoals')
+  nonGoals: document.getElementById('nonGoals'),
+  applicationSenderName: document.getElementById('applicationSenderName'),
+  applicationSenderEmail: document.getElementById('applicationSenderEmail'),
+  applicationResumePath: document.getElementById('applicationResumePath'),
+  applicationTranscriptPath: document.getElementById('applicationTranscriptPath'),
+  applicationCc: document.getElementById('applicationCc'),
+  applicationPortfolioUrl: document.getElementById('applicationPortfolioUrl'),
+  applicationEmailSignature: document.getElementById('applicationEmailSignature')
 };
 
 function applyTheme(theme) {
@@ -171,6 +178,13 @@ function hydrateForm(profile) {
   fields.skillsFocus.value = linesToTextarea(profile.skills?.focusAreas);
   fields.languages.value = linesToTextarea(profile.languages);
   fields.nonGoals.value = linesToTextarea(profile.nonGoals);
+  fields.applicationSenderName.value = profile.application?.senderName || '';
+  fields.applicationSenderEmail.value = profile.application?.senderEmail || '';
+  fields.applicationResumePath.value = profile.application?.resumePath || '';
+  fields.applicationTranscriptPath.value = profile.application?.transcriptPath || '';
+  fields.applicationCc.value = profile.application?.cc || '';
+  fields.applicationPortfolioUrl.value = profile.application?.portfolioUrl || '';
+  fields.applicationEmailSignature.value = linesToTextarea(profile.application?.emailSignature);
 
   if (heroHeadline) heroHeadline.textContent = profile.identity?.headline || 'Profile';
   if (heroFocus) heroFocus.textContent = profile.summary?.executive || profile.identity?.currentFocus || '';
@@ -215,6 +229,15 @@ function collectProfile() {
       focusAreas: textareaToLines(fields.skillsFocus.value)
     },
     languages: textareaToLines(fields.languages.value),
+    application: {
+      senderName: fields.applicationSenderName.value.trim(),
+      senderEmail: fields.applicationSenderEmail.value.trim(),
+      resumePath: fields.applicationResumePath.value.trim(),
+      transcriptPath: fields.applicationTranscriptPath.value.trim(),
+      cc: fields.applicationCc.value.trim(),
+      portfolioUrl: fields.applicationPortfolioUrl.value.trim(),
+      emailSignature: textareaToLines(fields.applicationEmailSignature.value)
+    },
     strategy: {
       thesis: fields.strategyThesis.value.trim(),
       primaryAxis: fields.strategyPrimary.value.trim(),

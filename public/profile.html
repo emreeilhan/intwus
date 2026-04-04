@@ -175,6 +175,30 @@
                   </div>
                 </div>
               </section>
+
+              <section class="table-card profile-section">
+                <div class="table-header">
+                  <div>
+                    <div class="table-title">Application Agent</div>
+                    <div class="table-description">Sender identity, signature, and attachment paths used by the outreach flow.</div>
+                  </div>
+                </div>
+                <div class="profile-section-body">
+                  <div class="form-row-2">
+                    <label>Sender name <input id="applicationSenderName" type="text" /></label>
+                    <label>Sender email <input id="applicationSenderEmail" type="email" /></label>
+                  </div>
+                  <div class="form-row-2">
+                    <label>Resume path <input id="applicationResumePath" type="text" placeholder="/absolute/path/resume.pdf" /></label>
+                    <label>Transcript path <input id="applicationTranscriptPath" type="text" placeholder="/absolute/path/transcript.pdf" /></label>
+                  </div>
+                  <div class="form-row-2">
+                    <label>CC <input id="applicationCc" type="text" placeholder="optional@company.com" /></label>
+                    <label>Portfolio URL <input id="applicationPortfolioUrl" type="url" placeholder="https://..." /></label>
+                  </div>
+                  <label>Email signature <textarea id="applicationEmailSignature" rows="5" placeholder="One line per row"></textarea></label>
+                </div>
+              </section>
             </form>
 
             <aside class="profile-side">

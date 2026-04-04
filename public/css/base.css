@@ -1587,3 +1587,73 @@ label {
   min-height: 32px;
 }
 .ob-next:hover { background: #2563eb; transform: none; }
+
+.agent-review-card {
+  max-width: 880px;
+}
+
+.agent-review-grid,
+.agent-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.agent-meta-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+}
+
+.agent-meta-label,
+.agent-choice-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.agent-meta-copy {
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.agent-choice-block {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.agent-decision-question {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.agent-review-panels {
+  display: grid;
+  gap: 12px;
+}
+
+.agent-asset-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.agent-asset-row {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.agent-asset-row.warn {
+  color: #f59e0b;
+}

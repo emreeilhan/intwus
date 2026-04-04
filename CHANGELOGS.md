@@ -143,3 +143,15 @@
 0.0.36
 - Added an AI analysis flow with a local API-key modal, per-row and drawer-level analyze actions, cached company research results, and a copy-ready mail hook inside the detail drawer.
 - Added a minimal Anthropic passthrough plus fit-score persistence so analysis results work in the local app despite localhost browser CORS restrictions on direct Anthropic API calls.
+
+0.0.38
+- Completed the application-agent flow so the drawer can prepare a company-specific outreach email, open a human review modal, and respect a final send-or-draft decision before anything goes out.
+- Wired direct SMTP sends back into the tracker by logging sent-email activity and auto-marking the related company as Applied when the mail is successfully delivered.
+
+0.0.37
+- Added an application-agent flow that researches the company, finds a likely contact path, drafts the outreach email, validates resume/transcript attachments, and routes the final step through a review modal instead of blind auto-send.
+- Added profile-managed sender and attachment settings plus optional SMTP delivery, so the app can either send directly when configured or fall back to an approval-first draft flow without pretending attachments were sent.
+
+0.0.39
+- Tightened the agent approval modal into a clearer executive-style decision step with company-specific action labels instead of generic send/draft/cancel wording.
+- Made the final confirmation language more explicit so the user sees a real approval question before the app applies the chosen action.

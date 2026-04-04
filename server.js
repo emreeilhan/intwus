@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import Database from 'better-sqlite3';
+import nodemailer from 'nodemailer';
 import xlsx from 'xlsx';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -125,6 +126,20 @@ const PROFILE_SEED = {
     'German (B1) - teknik Almanca okuma ve mesleki kullanim motivasyonu yuksek',
     'Turkish - ana iletisim dili'
   ],
+  application: {
+    senderName: 'Emre Ilhan',
+    senderEmail: 'emreilhn15@gmail.com',
+    emailSignature: [
+      'Best regards,',
+      'Emre Ilhan',
+      'emreilhn15@gmail.com',
+      'github.com/emreeilhan'
+    ],
+    resumePath: '',
+    transcriptPath: '',
+    cc: '',
+    portfolioUrl: 'https://emreilhan.pages.dev'
+  },
   strategy: {
     thesis: 'Security ve Embedded, ancak net bicimde embedded-heavy strateji. Ne saf SOC ne de saf embedded; kontrollu iki eksenli ama ana kimligi belli bir yonelim.',
     primaryAxis: 'Kisa vadeli gelir ve ise giris ekseni engineering-leaning cybersecurity. SOC sadece giris mekanizmasi; alert triage-only rol hedef degil.',
@@ -376,6 +391,7 @@ function normalizeProfileInput(input, fallback = PROFILE_SEED) {
   const identityFallback = fallback.identity || {};
   const summaryFallback = fallback.summary || {};
   const skillsFallback = fallback.skills || {};
+  const applicationFallback = fallback.application || {};
   const strategyFallback = fallback.strategy || {};
 
   return {
@@ -401,6 +417,15 @@ function normalizeProfileInput(input, fallback = PROFILE_SEED) {
       focusAreas: normalizeStringList(source.skills?.focusAreas, skillsFallback.focusAreas || [])
     },
     languages: normalizeStringList(source.languages, fallback.languages || []),
+    application: {
+      senderName: normalizeString(source.application?.senderName, applicationFallback.senderName || ''),
+      senderEmail: normalizeString(source.application?.senderEmail, applicationFallback.senderEmail || ''),
+      emailSignature: normalizeStringList(source.application?.emailSignature, applicationFallback.emailSignature || []),
+      resumePath: normalizeString(source.application?.resumePath, applicationFallback.resumePath || ''),
+      transcriptPath: normalizeString(source.application?.transcriptPath, applicationFallback.transcriptPath || ''),
+      cc: normalizeString(source.application?.cc, applicationFallback.cc || ''),
+      portfolioUrl: normalizeString(source.application?.portfolioUrl, applicationFallback.portfolioUrl || '')
+    },
     strategy: {
       thesis: normalizeString(source.strategy?.thesis, strategyFallback.thesis || ''),
       primaryAxis: normalizeString(source.strategy?.primaryAxis, strategyFallback.primaryAxis || ''),
@@ -439,6 +464,74 @@ function writeProfile(profile) {
   normalized.updatedAt = nowIso();
   fs.writeFileSync(profilePath, JSON.stringify(normalized, null, 2));
   return normalized;
+}
+
+function pickProfileSummary(profile) {
+  return {
+    name: profile.identity?.name || '',
+    headline: profile.identity?.headline || '',
+    currentFocus: profile.identity?.currentFocus || '',
+    targetRoles: profile.identity?.targetRoles || [],
+    executiveSummary: profile.summary?.executive || '',
+    positioning: profile.summary?.positioning || '',
+    technicalSkills: profile.skills?.technical || [],
+    domainSkills: profile.skills?.domains || [],
+    focusAreas: profile.skills?.focusAreas || [],
+    languages: profile.languages || [],
+    identityStatement: profile.strategy?.identityStatement || '',
+    portfolioUrl: profile.application?.portfolioUrl || ''
+  };
+}
+
+function resolveAttachment(pathValue) {
+  const value = normalizeString(pathValue);
+  if (!value) return { path: '', exists: false, name: '', error: 'Missing path' };
+  const absolutePath = path.isAbsolute(value) ? value : path.join(process.cwd(), value);
+  const exists = fs.existsSync(absolutePath);
+  return {
+    path: absolutePath,
+    exists,
+    name: path.basename(absolutePath),
+    error: exists ? '' : 'File not found'
+  };
+}
+
+function getApplicationAssets(profile) {
+  const resume = resolveAttachment(profile.application?.resumePath);
+  const transcript = resolveAttachment(profile.application?.transcriptPath);
+  return { resume, transcript };
+}
+
+function getSmtpConfig() {
+  const host = normalizeString(process.env.SMTP_HOST);
+  const port = Number(process.env.SMTP_PORT || 0) || 587;
+  const user = normalizeString(process.env.SMTP_USER);
+  const pass = normalizeString(process.env.SMTP_PASS);
+  const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
+
+  if (!host || !user || !pass) {
+    return null;
+  }
+
+  return {
+    host,
+    port,
+    secure,
+    auth: { user, pass }
+  };
+}
+
+function buildDraftBody({ introLines, bodyLines, signatureLines }) {
+  return [
+    ...(introLines || []),
+    '',
+    ...(bodyLines || []),
+    '',
+    ...(signatureLines || [])
+  ]
+    .map((line) => String(line || '').trimEnd())
+    .join('\n')
+    .trim();
 }
 
 function syncExcel() {
@@ -623,6 +716,13 @@ function extractVerdictScore(verdictItems, rawText) {
 
 const ANALYZE_SYSTEM_PROMPT = "You are an expert internship advisor. You will research a company and compare their requirements against a candidate's CV to give specific, actionable advice.";
 
+const APPLICATION_AGENT_SYSTEM_PROMPT = [
+  'You are an outreach agent for internship applications.',
+  'Use web search to find the most relevant company website, careers page, and if available a public contact email for student or internship outreach.',
+  'Return strict JSON only. No markdown. No prose before or after the JSON.',
+  'If a fact is uncertain, mark it in confidence or notes instead of inventing certainty.'
+].join(' ');
+
 function buildAnalyzeUserPrompt({ company, location, notes, cvText }) {
   return [
     `Company: ${company || '-'}`,
@@ -649,6 +749,51 @@ function buildAnalyzeUserPrompt({ company, location, notes, cvText }) {
     'VERDICT:',
     'For VERDICT, use the format: - Fit: N/5 - reason'
   ].join('\n');
+}
+
+function buildApplicationAgentPrompt({ company, location, notes, website, profile }) {
+  return [
+    'Return JSON matching this schema exactly:',
+    '{',
+    '  "companyName": "string",',
+    '  "companyWebsite": "string",',
+    '  "careersUrl": "string",',
+    '  "contactEmail": "string",',
+    '  "contactReason": "string",',
+    '  "confidence": "high|medium|low",',
+    '  "subject": "string",',
+    '  "introLines": ["string"],',
+    '  "bodyLines": ["string"],',
+    '  "companySignals": ["string"],',
+    '  "personalAngles": ["string"],',
+    '  "warnings": ["string"]',
+    '}',
+    '',
+    `Target company: ${company || '-'}`,
+    `Location hint: ${location || '-'}`,
+    `Website hint: ${website || '-'}`,
+    `Tracker notes: ${notes || '-'}`,
+    '',
+    'Candidate profile:',
+    JSON.stringify(profile, null, 2),
+    '',
+    'Requirements:',
+    '- Subject should sound like a concise internship outreach mail.',
+    '- Intro lines should be the opening paragraph, specific to the company and their work.',
+    '- Body lines should mention fit, relevant background, and that resume plus transcript are attached.',
+    '- contactEmail should be empty if you cannot find a credible public address.',
+    '- warnings should include cases like "No public internship email found" or "Use careers form instead".'
+  ].join('\n');
+}
+
+function parseAgentJson(rawText) {
+  const trimmed = String(rawText || '').trim();
+  const jsonStart = trimmed.indexOf('{');
+  const jsonEnd = trimmed.lastIndexOf('}');
+  if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
+    throw new Error('Agent response did not include valid JSON.');
+  }
+  return JSON.parse(trimmed.slice(jsonStart, jsonEnd + 1));
 }
 
 function syncFromExcel() {
@@ -1093,6 +1238,186 @@ app.post('/api/analyze', async (req, res) => {
   } catch (error) {
     return res.status(502).json({
       error: error instanceof Error ? error.message : 'Analysis request failed.'
+    });
+  }
+});
+
+app.post('/api/application-agent/prepare', async (req, res) => {
+  const apiKey = normalizeString(req.body?.apiKey);
+  const company = normalizeString(req.body?.company);
+  const location = normalizeString(req.body?.location, '-');
+  const notes = typeof req.body?.notes === 'string' ? req.body.notes.trim() : '-';
+  const website = normalizeString(req.body?.website, '-');
+
+  if (!apiKey) {
+    return res.status(400).json({ error: 'Anthropic API key is required.' });
+  }
+  if (!company) {
+    return res.status(400).json({ error: 'Company is required.' });
+  }
+
+  const profile = readProfile();
+  const assets = getApplicationAssets(profile);
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: APPLICATION_AGENT_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: buildApplicationAgentPrompt({
+              company,
+              location,
+              notes,
+              website,
+              profile: pickProfileSummary(profile)
+            })
+          }
+        ],
+        tools: [
+          {
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 6
+          }
+        ]
+      })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: payload?.error?.message || payload?.error || 'Anthropic request failed.'
+      });
+    }
+
+    const content = collectAnthropicContent(payload);
+    if (content.toolErrors.length) {
+      return res.status(502).json({
+        error: `Web search failed: ${content.toolErrors.join(', ')}`
+      });
+    }
+
+    const draft = parseAgentJson(content.rawText);
+    const signatureLines = normalizeStringList(profile.application?.emailSignature, []);
+    const introLines = normalizeStringList(draft?.introLines, []);
+    const bodyLines = normalizeStringList(draft?.bodyLines, []);
+    const cc = normalizeString(profile.application?.cc);
+
+    return res.json({
+      draft: {
+        companyName: normalizeString(draft?.companyName, company),
+        companyWebsite: normalizeString(draft?.companyWebsite, website),
+        careersUrl: normalizeString(draft?.careersUrl),
+        contactEmail: normalizeString(draft?.contactEmail),
+        contactReason: normalizeString(draft?.contactReason),
+        confidence: normalizeString(draft?.confidence, 'low'),
+        subject: normalizeString(draft?.subject, `Internship Application - ${company}`),
+        introLines,
+        bodyLines,
+        signatureLines,
+        body: buildDraftBody({ introLines, bodyLines, signatureLines }),
+        companySignals: normalizeStringList(draft?.companySignals, []),
+        personalAngles: normalizeStringList(draft?.personalAngles, []),
+        warnings: normalizeStringList(draft?.warnings, []),
+        cc
+      },
+      assets,
+      smtpConfigured: Boolean(getSmtpConfig()),
+      sources: content.sources
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'Application agent failed.'
+    });
+  }
+});
+
+app.post('/api/application-agent/send', async (req, res) => {
+  const profile = readProfile();
+  const smtpConfig = getSmtpConfig();
+  if (!smtpConfig) {
+    return res.status(400).json({
+      error: 'SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS to enable direct sending.'
+    });
+  }
+
+  const to = normalizeString(req.body?.to);
+  const subject = normalizeString(req.body?.subject);
+  const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+  const internshipId = Number(req.body?.internshipId || 0) || null;
+  const includeResume = req.body?.includeResume !== false;
+  const includeTranscript = Boolean(req.body?.includeTranscript);
+  const cc = normalizeString(req.body?.cc || profile.application?.cc);
+  const from = normalizeString(profile.application?.senderEmail || smtpConfig.auth.user || process.env.SMTP_FROM);
+  const senderName = normalizeString(profile.application?.senderName);
+
+  if (!to) {
+    return res.status(400).json({ error: 'Recipient email is required.' });
+  }
+  if (!subject) {
+    return res.status(400).json({ error: 'Subject is required.' });
+  }
+  if (!body) {
+    return res.status(400).json({ error: 'Body is required.' });
+  }
+
+  const assets = getApplicationAssets(profile);
+  const attachments = [];
+  if (includeResume) {
+    if (!assets.resume.exists) {
+      return res.status(400).json({ error: 'Resume file is missing. Update the profile before sending.' });
+    }
+    attachments.push({ filename: assets.resume.name, path: assets.resume.path });
+  }
+  if (includeTranscript) {
+    if (!assets.transcript.exists) {
+      return res.status(400).json({ error: 'Transcript file is missing. Update the profile before sending.' });
+    }
+    attachments.push({ filename: assets.transcript.name, path: assets.transcript.path });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport(smtpConfig);
+    const info = await transporter.sendMail({
+      from: senderName ? `"${senderName}" <${from}>` : from,
+      to,
+      cc: cc || undefined,
+      subject,
+      text: body,
+      attachments
+    });
+
+    if (internshipId) {
+      const existing = getInternship(internshipId);
+      if (existing) {
+        addActivity(internshipId, 'email sent', null, {
+          to,
+          cc,
+          subject,
+          attachments: attachments.map((item) => item.filename)
+        });
+      }
+    }
+
+    return res.json({
+      ok: true,
+      messageId: info.messageId || '',
+      accepted: info.accepted || [],
+      rejected: info.rejected || []
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'Send failed.'
     });
   }
 });

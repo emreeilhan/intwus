@@ -42,6 +42,7 @@ const drawerWebsite = el('drawerWebsite');
 const drawerTag = el('drawerTag');
 const drawerNotes = el('drawerNotes');
 const drawerAnalyzeBtn = el('drawerAnalyzeBtn');
+const prepareAgentBtn = el('prepareAgentBtn');
 const copyMailHookBtn = el('copyMailHookBtn');
 const analysisPanel = el('analysisPanel');
 const analysisEmpty = el('analysisEmpty');
@@ -82,6 +83,29 @@ const apiKeyForm = el('apiKeyForm');
 const apiKeyInput = el('apiKeyInput');
 const apiKeyClose = el('apiKeyClose');
 const apiKeyCancel = el('apiKeyCancel');
+const agentReviewModal = el('agentReviewModal');
+const agentReviewForm = el('agentReviewForm');
+const agentReviewClose = el('agentReviewClose');
+const agentReviewCancel = el('agentReviewCancel');
+const agentReviewSubmit = el('agentReviewSubmit');
+const agentToInput = el('agentToInput');
+const agentCcInput = el('agentCcInput');
+const agentSubjectInput = el('agentSubjectInput');
+const agentBodyInput = el('agentBodyInput');
+const agentContactReason = el('agentContactReason');
+const agentConfidence = el('agentConfidence');
+const agentDecisionQuestion = el('agentDecisionQuestion');
+const agentSendLabel = el('agentSendLabel');
+const agentDraftLabel = el('agentDraftLabel');
+const agentCancelLabel = el('agentCancelLabel');
+const agentIncludeResume = el('agentIncludeResume');
+const agentIncludeTranscript = el('agentIncludeTranscript');
+const agentAssetList = el('agentAssetList');
+const agentSignals = el('agentSignals');
+const agentAngles = el('agentAngles');
+const agentWarnings = el('agentWarnings');
+const agentSources = el('agentSources');
+const agentReviewError = el('agentReviewError');
 const statusCountEls = Array.from(document.querySelectorAll('[data-status-count]'));
 
 const themeKey = 'staj-theme';
@@ -172,6 +196,8 @@ let onboardingStep = 0;
 let analysisLoadingId = null;
 let pendingAnalyzeId = null;
 let pendingAnalyzeForce = false;
+let agentDraftState = null;
+let agentLoadingId = null;
 
 function escapeHtml(value) {
   return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -415,6 +441,7 @@ function openDrawer(entry) {
   drawerNotes.value = entry.notes || '';
   applyFocusTagsToFieldset(document.querySelector('#drawerTags'), String(entry.focus_tags || '').split(',').map((t) => t.trim()).filter(Boolean));
   renderAnalysisState(entry.id);
+  renderApplicationAgentState(entry.id);
   renderActivity(activityCache.get(String(entry.id)) || []);
   loadActivity(entry.id);
 }
@@ -578,7 +605,17 @@ function renderActivity(items) {
     const oldValue = safeParseActivityPayload(item.old_value);
     const newValue = safeParseActivityPayload(item.new_value);
     const diffs = item.event_type === 'created' || item.event_type === 'edited' ? diffEntries(oldValue, newValue) : [];
-    const headline = item.event_type === 'created' ? 'Created' : item.event_type === 'deleted' ? 'Deleted' : item.event_type === 'status changed' ? 'Status changed' : item.event_type === 'follow-up changed' ? 'Follow-up changed' : 'Edited';
+    const headline = item.event_type === 'created'
+      ? 'Created'
+      : item.event_type === 'deleted'
+        ? 'Deleted'
+        : item.event_type === 'status changed'
+          ? 'Status changed'
+          : item.event_type === 'follow-up changed'
+            ? 'Follow-up changed'
+            : item.event_type === 'email sent'
+              ? 'Email sent'
+              : 'Edited';
     const details = diffs.length
       ? `<div class="timeline-diff-list">${diffs.map((diff) => `<div class="timeline-diff-row"><span class="timeline-field">${escapeHtml(formatFieldLabel(diff.field))}</span><span class="timeline-old">${escapeHtml(formatActivityValue(diff.before))}</span><span class="timeline-arrow">→</span><span class="timeline-new">${escapeHtml(formatActivityValue(diff.after))}</span></div>`).join('')}</div>`
       : `<div class="timeline-values"><span><strong>old</strong> ${escapeHtml(formatActivityValue(oldValue))}</span><span><strong>new</strong> ${escapeHtml(formatActivityValue(newValue))}</span></div>`;
@@ -637,6 +674,128 @@ function hasCachedAnalysis(id) {
 function getMailHookText(payload) {
   const normalized = normalizeAnalysisPayload(payload);
   return normalized.sections.mailHook.join('\n');
+}
+
+function selectedAgentAction() {
+  const input = document.querySelector('input[name="agentAction"]:checked');
+  return input?.value || 'send';
+}
+
+function escapeMailtoValue(value) {
+  return encodeURIComponent(String(value || ''));
+}
+
+function buildAgentListMarkup(items, emptyText) {
+  const normalized = Array.isArray(items) ? items.filter(Boolean) : [];
+  return normalized.length
+    ? normalized.map((item) => `<li>${escapeHtml(item)}</li>`).join('')
+    : `<li>${escapeHtml(emptyText)}</li>`;
+}
+
+function renderAgentAssets(assets) {
+  if (!agentAssetList) return;
+  const rows = [
+    { label: 'Resume', item: assets?.resume, checked: agentIncludeResume?.checked !== false },
+    { label: 'Transcript', item: assets?.transcript, checked: Boolean(agentIncludeTranscript?.checked) }
+  ];
+  agentAssetList.innerHTML = rows.map((row) => {
+    const status = row.item?.exists ? 'Ready' : row.item?.error || 'Missing';
+    const tone = row.item?.exists ? 'ok' : 'warn';
+    return `
+      <div class="agent-asset-row ${tone}">
+        <span>${escapeHtml(row.label)}</span>
+        <span>${escapeHtml(row.item?.name || row.item?.path || status)}</span>
+        <span>${escapeHtml(status)}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderAgentReview() {
+  if (!agentDraftState) return;
+  const { draft, assets, sources } = agentDraftState;
+  const companyName = draft.companyName || 'this company';
+  if (agentToInput) agentToInput.value = draft.contactEmail || '';
+  if (agentCcInput) agentCcInput.value = draft.cc || '';
+  if (agentSubjectInput) agentSubjectInput.value = draft.subject || '';
+  if (agentBodyInput) agentBodyInput.value = draft.body || '';
+  if (agentContactReason) agentContactReason.textContent = draft.contactReason || 'No reason captured';
+  if (agentConfidence) agentConfidence.textContent = draft.confidence || '-';
+  if (agentDecisionQuestion) agentDecisionQuestion.textContent = `${companyName} icin hazirlanan bu maille ne yapalim?`;
+  if (agentSendLabel) agentSendLabel.textContent = `${companyName} icin hemen gonder`;
+  if (agentDraftLabel) agentDraftLabel.textContent = `${companyName} icin draft ac, son bir kez ben bakayim`;
+  if (agentCancelLabel) agentCancelLabel.textContent = `${companyName} icin simdilik durdur`;
+  if (agentSignals) agentSignals.innerHTML = buildAgentListMarkup(draft.companySignals, 'No company signal captured.');
+  if (agentAngles) agentAngles.innerHTML = buildAgentListMarkup(draft.personalAngles, 'No personal angle captured.');
+  if (agentWarnings) agentWarnings.innerHTML = buildAgentListMarkup(draft.warnings, 'No warnings.');
+  if (agentSources) {
+    agentSources.innerHTML = (sources || []).length
+      ? sources.map((source) => `
+          <a class="analysis-source" href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer noopener">
+            <span class="analysis-source-title">${escapeHtml(source.title || source.url)}</span>
+            <span class="analysis-source-meta">${escapeHtml(source.page_age || '')}</span>
+          </a>
+        `).join('')
+      : '<div class="muted">No sources returned.</div>';
+  }
+  renderAgentAssets(assets);
+}
+
+function renderApplicationAgentSummary(payload) {
+  const draft = payload?.draft || {};
+  return [
+    buildAnalysisSectionMarkup('Contact', [
+      draft.contactEmail ? `Email: ${draft.contactEmail}` : 'No verified public email found',
+      draft.contactReason || 'No contact reason captured',
+      draft.careersUrl ? `Careers: ${draft.careersUrl}` : '',
+      draft.companyWebsite ? `Website: ${draft.companyWebsite}` : ''
+    ].filter(Boolean)),
+    buildAnalysisSectionMarkup('Company Signals', draft.companySignals || []),
+    buildAnalysisSectionMarkup('Warnings', draft.warnings || []),
+    buildAnalysisSectionMarkup('Draft Preview', (draft.introLines || []).concat(draft.bodyLines || []), { mono: true })
+  ].join('');
+}
+
+function renderApplicationAgentState(entryId) {
+  if (!applicationAgentPanel) return;
+  const entry = getEntryById(entryId);
+  const cached = entry ? getCachedApplicationAgent(entry.id) : null;
+  const error = applicationAgentErrors.get(String(entryId)) || '';
+  const isLoading = String(applicationAgentLoadingId) === String(entryId);
+
+  if (prepareApplicationBtn) {
+    prepareApplicationBtn.disabled = !entry || isLoading;
+    prepareApplicationBtn.textContent = isLoading ? 'Preparing outreach...' : 'Prepare outreach';
+  }
+  if (applicationAgentLoadingText) {
+    applicationAgentLoadingText.textContent = entry ? `Preparing outreach for ${entry.company}...` : 'Preparing outreach...';
+  }
+  if (applicationAgentEmpty) applicationAgentEmpty.hidden = Boolean(cached) || Boolean(error) || isLoading;
+  if (applicationAgentLoading) applicationAgentLoading.hidden = !isLoading;
+  if (applicationAgentError) {
+    applicationAgentError.hidden = !error;
+    applicationAgentError.textContent = error;
+  }
+  if (applicationAgentResult) {
+    applicationAgentResult.hidden = !cached;
+    applicationAgentResult.innerHTML = cached ? renderApplicationAgentSummary(cached) : '';
+  }
+}
+
+function openAgentReview() {
+  if (!agentReviewModal) return;
+  renderAgentReview();
+  agentReviewModal.classList.add('open');
+  agentReviewModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeAgentReview() {
+  agentReviewModal?.classList.remove('open');
+  agentReviewModal?.setAttribute('aria-hidden', 'true');
+  if (agentReviewError) {
+    agentReviewError.hidden = true;
+    agentReviewError.textContent = '';
+  }
 }
 
 function buildAnalysisSectionMarkup(title, items, options = {}) {
@@ -700,6 +859,10 @@ function renderAnalysisState(entryId) {
   if (drawerAnalyzeBtn) {
     drawerAnalyzeBtn.textContent = cached ? 'Re-analyze' : 'Analyze';
     drawerAnalyzeBtn.disabled = !entry || isLoading;
+  }
+  if (prepareAgentBtn) {
+    prepareAgentBtn.disabled = !entry || isLoading || String(agentLoadingId) === String(entryId);
+    prepareAgentBtn.textContent = String(agentLoadingId) === String(entryId) ? 'Preparing...' : 'Prepare Agent Mail';
   }
   if (copyMailHookBtn) {
     copyMailHookBtn.textContent = 'Copy Mail Hook';
@@ -793,6 +956,156 @@ async function runAnalysisForEntry(entry, options = {}) {
   } finally {
     analysisLoadingId = null;
     if (String(activeEntryId) === String(entry.id)) renderAnalysisState(entry.id);
+  }
+}
+
+async function prepareAgentMail(entry) {
+  if (!entry) return;
+  const apiKey = getStoredApiKey();
+  if (!apiKey) {
+    openApiKeyModal();
+    return;
+  }
+
+  agentLoadingId = entry.id;
+  applicationAgentLoadingId = entry.id;
+  applicationAgentErrors.delete(String(entry.id));
+  if (prepareAgentBtn) {
+    prepareAgentBtn.disabled = true;
+    prepareAgentBtn.textContent = 'Preparing...';
+  }
+  renderApplicationAgentState(entry.id);
+
+  try {
+    const res = await fetch('/api/application-agent/prepare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        company: entry.company || '',
+        location: entry.tag || '',
+        notes: entry.notes || '',
+        website: entry.website || ''
+      })
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload?.error || 'Agent preparation failed.');
+    }
+
+    agentDraftState = { ...payload, entryId: entry.id };
+    setCachedApplicationAgent(entry.id, { ...payload, entryId: entry.id });
+    if (agentIncludeResume) agentIncludeResume.checked = Boolean(payload?.assets?.resume?.exists);
+    if (agentIncludeTranscript) agentIncludeTranscript.checked = Boolean(payload?.assets?.transcript?.exists);
+    document.querySelectorAll('input[name="agentAction"]').forEach((input) => {
+      input.checked = input.value === (payload.smtpConfigured ? 'send' : 'draft');
+    });
+    renderApplicationAgentState(entry.id);
+    openAgentReview();
+  } catch (error) {
+    analysisErrors.set(String(entry.id), error instanceof Error ? error.message : 'Agent preparation failed.');
+    applicationAgentErrors.set(String(entry.id), error instanceof Error ? error.message : 'Agent preparation failed.');
+    renderAnalysisState(entry.id);
+    renderApplicationAgentState(entry.id);
+  } finally {
+    agentLoadingId = null;
+    applicationAgentLoadingId = null;
+    if (prepareAgentBtn) {
+      prepareAgentBtn.disabled = false;
+      prepareAgentBtn.textContent = 'Prepare Agent Mail';
+    }
+    renderApplicationAgentState(entry.id);
+  }
+}
+
+async function submitAgentReview(event) {
+  event.preventDefault();
+  if (!agentDraftState) return;
+
+  const action = selectedAgentAction();
+  if (action === 'cancel') {
+    closeAgentReview();
+    return;
+  }
+
+  const to = agentToInput?.value.trim() || '';
+  const cc = agentCcInput?.value.trim() || '';
+  const subject = agentSubjectInput?.value.trim() || '';
+  const body = agentBodyInput?.value || '';
+  const includeResume = Boolean(agentIncludeResume?.checked);
+  const includeTranscript = Boolean(agentIncludeTranscript?.checked);
+
+  if (!to || !subject || !body.trim()) {
+    if (agentReviewError) {
+      agentReviewError.hidden = false;
+      agentReviewError.textContent = 'Gonderim karari icin alici, konu ve govde dolu olmali.';
+    }
+    return;
+  }
+
+  if (agentReviewSubmit) {
+    agentReviewSubmit.disabled = true;
+    agentReviewSubmit.textContent = action === 'send' ? 'Gonderiliyor...' : 'Aciliyor...';
+  }
+
+  try {
+    if (action === 'draft') {
+      const mailto = `mailto:${escapeMailtoValue(to)}?subject=${escapeMailtoValue(subject)}&body=${escapeMailtoValue(body)}${cc ? `&cc=${escapeMailtoValue(cc)}` : ''}`;
+      window.location.href = mailto;
+      closeAgentReview();
+      return;
+    }
+
+    const res = await fetch('/api/application-agent/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        internshipId: agentDraftState.entryId,
+        to,
+        cc,
+        subject,
+        body,
+        includeResume,
+        includeTranscript
+      })
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload?.error || 'Send failed.');
+    }
+
+    const entry = getEntryById(agentDraftState.entryId);
+    if (entry) {
+      await fetch(`/api/internships/${entry.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company: entry.company || '',
+          status: 'Applied',
+          notes: entry.notes || '',
+          website: entry.website || '',
+          tag: entry.tag || '',
+          priority: entry.priority || 'Medium',
+          applied_at: entry.applied_at || new Date().toISOString().slice(0, 10),
+          followup_at: entry.followup_at || '',
+          focus_tags: entry.focus_tags || ''
+        })
+      });
+      await Promise.all([loadEntries(), loadActivity(entry.id)]);
+    }
+
+    closeAgentReview();
+    window.alert(`Mail gonderildi. Message ID: ${payload.messageId || 'n/a'}`);
+  } catch (error) {
+    if (agentReviewError) {
+      agentReviewError.hidden = false;
+      agentReviewError.textContent = error instanceof Error ? error.message : 'Agent aksiyonu basarisiz oldu.';
+    }
+  } finally {
+    if (agentReviewSubmit) {
+      agentReviewSubmit.disabled = false;
+      agentReviewSubmit.textContent = 'Karari uygula';
+    }
   }
 }
 
@@ -1304,6 +1617,16 @@ drawerAnalyzeBtn?.addEventListener('click', async () => {
   if (!entry) return;
   await runAnalysisForEntry(entry, { force: hasCachedAnalysis(entry.id) });
 });
+prepareAgentBtn?.addEventListener('click', async () => {
+  const entry = getEntryById(activeEntryId);
+  if (!entry) return;
+  await prepareAgentMail(entry);
+});
+prepareApplicationBtn?.addEventListener('click', async () => {
+  const entry = getEntryById(activeEntryId);
+  if (!entry) return;
+  await prepareAgentMail(entry);
+});
 copyMailHookBtn?.addEventListener('click', async () => {
   const payload = getCachedAnalysis(activeEntryId);
   const mailHook = getMailHookText(payload);
@@ -1330,6 +1653,11 @@ apiKeyBtn?.addEventListener('click', openApiKeyModal);
 apiKeyForm?.addEventListener('submit', saveApiKey);
 apiKeyClose?.addEventListener('click', dismissApiKeyModal);
 apiKeyCancel?.addEventListener('click', dismissApiKeyModal);
+agentReviewForm?.addEventListener('submit', submitAgentReview);
+agentReviewClose?.addEventListener('click', closeAgentReview);
+agentReviewCancel?.addEventListener('click', closeAgentReview);
+agentIncludeResume?.addEventListener('change', () => renderAgentAssets(agentDraftState?.assets));
+agentIncludeTranscript?.addEventListener('change', () => renderAgentAssets(agentDraftState?.assets));
 commandInput?.addEventListener('input', renderCommands);
 obNext?.addEventListener('click', advanceOnboarding);
 obSkip?.addEventListener('click', closeOnboarding);
@@ -1358,6 +1686,7 @@ document.addEventListener('keydown', (event) => {
     closeDrawer();
     closeCommandPalette();
     dismissApiKeyModal();
+    closeAgentReview();
     closeRowMenu();
     savedViewMenu?.classList.remove('open');
   }
@@ -1376,6 +1705,10 @@ commandPalette?.addEventListener('click', (event) => {
 
 apiKeyModal?.addEventListener('click', (event) => {
   if (event.target === apiKeyModal) dismissApiKeyModal();
+});
+
+agentReviewModal?.addEventListener('click', (event) => {
+  if (event.target === agentReviewModal) closeAgentReview();
 });
 
 async function init() {

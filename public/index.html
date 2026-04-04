@@ -296,6 +296,74 @@
       </div>
     </div>
 
+    <div class="overlay-panel" id="agentReviewModal" aria-hidden="true">
+      <div class="overlay-card overlay-card--form agent-review-card" role="dialog" aria-modal="true" aria-labelledby="agentReviewTitle">
+        <div class="overlay-header">
+          <div>
+            <p class="overlay-title" id="agentReviewTitle">Final approval</p>
+            <p class="overlay-sub">Agent her şeyi hazırladı. Son karar sizde: gönder, taslak aç ya da iptal et.</p>
+          </div>
+          <button class="icon-btn" id="agentReviewClose" type="button" aria-label="Close agent review">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <form id="agentReviewForm" class="form">
+          <div class="agent-review-grid">
+            <label>To <input id="agentToInput" type="email" required /></label>
+            <label>CC <input id="agentCcInput" type="text" /></label>
+          </div>
+          <label>Subject <input id="agentSubjectInput" type="text" required /></label>
+          <label>Body <textarea id="agentBodyInput" rows="12" required></textarea></label>
+          <div class="agent-meta-grid">
+            <div class="agent-meta-card">
+              <div class="agent-meta-label">Contact reason</div>
+              <div id="agentContactReason" class="agent-meta-copy">-</div>
+            </div>
+            <div class="agent-meta-card">
+              <div class="agent-meta-label">Confidence</div>
+              <div id="agentConfidence" class="agent-meta-copy">-</div>
+            </div>
+          </div>
+          <div class="agent-choice-block">
+            <div class="agent-choice-title">Attachments</div>
+            <label class="tag-option"><input id="agentIncludeResume" type="checkbox" checked /> Include resume</label>
+            <label class="tag-option"><input id="agentIncludeTranscript" type="checkbox" /> Include transcript</label>
+            <div class="agent-asset-list" id="agentAssetList"></div>
+          </div>
+          <div class="agent-choice-block">
+            <div class="agent-choice-title">Decision</div>
+            <div class="agent-decision-question" id="agentDecisionQuestion">Bu mail için ne yapalım?</div>
+            <label class="tag-option"><input type="radio" name="agentAction" value="send" checked /> <span id="agentSendLabel">Bu şirkete gönder</span></label>
+            <label class="tag-option"><input type="radio" name="agentAction" value="draft" /> <span id="agentDraftLabel">Maili düzenleyip draft aç</span></label>
+            <label class="tag-option"><input type="radio" name="agentAction" value="cancel" /> <span id="agentCancelLabel">Şimdilik gönderme</span></label>
+          </div>
+          <div class="agent-review-panels">
+            <section class="analysis-section">
+              <div class="analysis-section-label">Company signals</div>
+              <ul class="analysis-list" id="agentSignals"></ul>
+            </section>
+            <section class="analysis-section">
+              <div class="analysis-section-label">Personal angles</div>
+              <ul class="analysis-list" id="agentAngles"></ul>
+            </section>
+            <section class="analysis-section">
+              <div class="analysis-section-label">Warnings</div>
+              <ul class="analysis-list" id="agentWarnings"></ul>
+            </section>
+          </div>
+          <div class="analysis-section analysis-sources">
+            <div class="analysis-section-label">Sources</div>
+            <div class="analysis-source-list" id="agentSources"></div>
+          </div>
+          <div class="analysis-error" id="agentReviewError" hidden></div>
+          <div class="form-actions">
+            <button class="ghost-btn" id="agentReviewCancel" type="button">Kapat</button>
+            <button type="submit" id="agentReviewSubmit">Kararı uygula</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- DETAIL DRAWER -->
     <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true">
       <aside class="drawer" id="detailDrawer" aria-hidden="true">
@@ -348,6 +416,7 @@
               </div>
               <div class="analysis-actions">
                 <button id="drawerAnalyzeBtn" type="button">Analyze</button>
+                <button class="ghost-btn" id="prepareAgentBtn" type="button">Prepare Agent Mail</button>
                 <button class="ghost-btn" id="copyMailHookBtn" type="button" hidden>Copy Mail Hook</button>
               </div>
             </div>

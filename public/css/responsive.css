@@ -96,6 +96,9 @@
   .filter-controls { flex-wrap: wrap; }
   .analysis-header { flex-direction: column; }
   .analysis-actions { width: 100%; justify-content: flex-start; }
+  .agent-review-grid,
+  .agent-meta-grid { grid-template-columns: 1fr; }
+  .agent-asset-row { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 600px) {
