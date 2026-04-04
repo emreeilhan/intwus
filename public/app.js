@@ -75,12 +75,6 @@ const onboarding = el('onboarding');
 const obStep = el('obStep');
 const obNext = el('obNext');
 const obSkip = el('obSkip');
-const apiKeyBtn = el('apiKeyBtn');
-const apiKeyModal = el('apiKeyModal');
-const apiKeyForm = el('apiKeyForm');
-const apiKeyInput = el('apiKeyInput');
-const apiKeyClose = el('apiKeyClose');
-const apiKeyCancel = el('apiKeyCancel');
 const agentReviewModal = el('agentReviewModal');
 const agentReviewForm = el('agentReviewForm');
 const agentReviewClose = el('agentReviewClose');
@@ -116,6 +110,8 @@ const themeKey = 'staj-theme';
 const onboardingKey = 'staj-onboarded';
 const viewModeKey = 'staj-viewmode';
 const apiKeyStorageKey = 'staj-apikey';
+// Purpose: after saving key on /api-key, resume analyze on main app load
+const PENDING_ANALYZE_KEY = 'staj-pending-analyze';
 const analysisCacheKey = 'staj-analysis-cache-v1';
 const STATUS_FLOW = ['Researching', 'Ready to Apply', 'Applied', 'Interview', 'Offer', 'Rejected', 'Paused'];
 const PRIORITY_ORDER = { High: 3, Medium: 2, Low: 1 };
@@ -200,8 +196,6 @@ let editingSavedViewId = null;
 let currentViewMode = localStorage.getItem(viewModeKey) || 'list';
 let onboardingStep = 0;
 let analysisLoadingId = null;
-let pendingAnalyzeId = null;
-let pendingAnalyzeForce = false;
 let agentDraftState = null;
 let agentLoadingId = null;
 
@@ -998,9 +992,15 @@ async function runAnalysisForEntry(entry, options = {}) {
 
   const apiKey = getStoredApiKey();
   if (!apiKey) {
-    pendingAnalyzeId = entry.id;
-    pendingAnalyzeForce = force || Boolean(cached);
-    openApiKeyModal();
+    try {
+      sessionStorage.setItem(
+        PENDING_ANALYZE_KEY,
+        JSON.stringify({ entryId: entry.id, force: force || Boolean(cached) })
+      );
+    } catch {
+      // TODO: sessionStorage blocked (private mode) — user must re-run analyze after saving key
+    }
+    window.location.href = '/api-key';
     return null;
   }
 
@@ -1046,7 +1046,7 @@ async function prepareAgentMail(entry) {
   if (!entry) return;
   const apiKey = getStoredApiKey();
   if (!apiKey) {
-    openApiKeyModal();
+    window.location.href = '/api-key';
     return;
   }
 
@@ -1112,7 +1112,7 @@ async function applyTonePreset(tonePreset) {
   if (!agentDraftState) return;
   const apiKey = getStoredApiKey();
   if (!apiKey) {
-    openApiKeyModal();
+    window.location.href = '/api-key';
     return;
   }
 
@@ -1273,42 +1273,19 @@ async function submitAgentReview(event) {
   }
 }
 
-function openApiKeyModal() {
-  if (!apiKeyModal) return;
-  apiKeyModal.classList.add('open');
-  apiKeyModal.setAttribute('aria-hidden', 'false');
-  if (apiKeyInput) {
-    apiKeyInput.value = getStoredApiKey();
-    apiKeyInput.focus();
-    apiKeyInput.select();
+async function resumePendingAnalysisAfterKey() {
+  const raw = sessionStorage.getItem(PENDING_ANALYZE_KEY);
+  if (!raw || !getStoredApiKey()) return;
+  sessionStorage.removeItem(PENDING_ANALYZE_KEY);
+  let payload = null;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return;
   }
-}
-
-function closeApiKeyModal() {
-  apiKeyModal?.classList.remove('open');
-  apiKeyModal?.setAttribute('aria-hidden', 'true');
-}
-
-function dismissApiKeyModal() {
-  pendingAnalyzeId = null;
-  pendingAnalyzeForce = false;
-  closeApiKeyModal();
-}
-
-function maybePromptForApiKey() {
-  if (!getStoredApiKey()) openApiKeyModal();
-}
-
-async function saveApiKey(event) {
-  event.preventDefault();
-  setStoredApiKey(apiKeyInput?.value || '');
-  closeApiKeyModal();
-  if (!pendingAnalyzeId) return;
-  const nextId = pendingAnalyzeId;
-  const force = pendingAnalyzeForce;
-  pendingAnalyzeId = null;
-  pendingAnalyzeForce = false;
-  const entry = getEntryById(nextId);
+  const entryId = payload?.entryId;
+  const force = Boolean(payload?.force);
+  const entry = entryId != null ? getEntryById(entryId) : null;
   if (!entry) return;
   openDrawer(entry);
   await runAnalysisForEntry(entry, { force });
@@ -1703,6 +1680,7 @@ function renderCommands() {
   const items = [
     { label: 'Add internship', action: () => { closeCommandPalette(); openQuickAdd(); } },
     { label: 'Open search', action: () => { closeCommandPalette(); openSearch(); } },
+    { label: 'Open API key page', action: () => { closeCommandPalette(); window.location.href = '/api-key'; } },
     ...countries.map((country) => ({
       label: `Filter: ${country}`,
       action: () => { if (countryFilter) countryFilter.value = country; renderList(); closeCommandPalette(); }
@@ -1836,10 +1814,6 @@ copyMailHookBtn?.addEventListener('click', async () => {
 themeToggleBtn?.addEventListener('click', toggleTheme);
 saveViewBtn?.addEventListener('click', saveView);
 searchTrigger?.addEventListener('click', openSearch);
-apiKeyBtn?.addEventListener('click', openApiKeyModal);
-apiKeyForm?.addEventListener('submit', saveApiKey);
-apiKeyClose?.addEventListener('click', dismissApiKeyModal);
-apiKeyCancel?.addEventListener('click', dismissApiKeyModal);
 agentReviewForm?.addEventListener('submit', submitAgentReview);
 agentReviewClose?.addEventListener('click', closeAgentReview);
 agentReviewCancel?.addEventListener('click', closeAgentReview);
@@ -1883,7 +1857,6 @@ document.addEventListener('keydown', (event) => {
     closeQuickAdd();
     closeDrawer();
     closeCommandPalette();
-    dismissApiKeyModal();
     closeAgentReview();
     closeRowMenu();
     closeSavedViewMenu();
@@ -1914,10 +1887,6 @@ commandPalette?.addEventListener('click', (event) => {
   if (event.target === commandPalette) closeCommandPalette();
 });
 
-apiKeyModal?.addEventListener('click', (event) => {
-  if (event.target === apiKeyModal) dismissApiKeyModal();
-});
-
 agentReviewModal?.addEventListener('click', (event) => {
   if (event.target === agentReviewModal) closeAgentReview();
 });
@@ -1926,7 +1895,7 @@ async function init() {
   initTheme();
   setViewMode(currentViewMode);
   await Promise.all([loadSavedViews(), loadEntries()]);
-  maybePromptForApiKey();
+  await resumePendingAnalysisAfterKey();
   showOnboarding();
 }
 

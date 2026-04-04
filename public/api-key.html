@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>API key – Internship Tracker</title>
+    <meta name="description" content="Store your OpenAI API key locally for AI analysis features." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/css/api-key-page.css" />
+  </head>
+  <body class="api-key-route">
+    <a class="api-key-back" href="/">Back to tracker</a>
+    <main class="api-key-wrap">
+      <p class="api-key-eyebrow">Connections</p>
+      <h1 class="api-key-title">OpenAI API key</h1>
+      <p class="api-key-lead">
+        Add your key here to enable company research and AI-assisted analysis. Nothing is sent to our servers except model requests you trigger.
+      </p>
+      <form id="apiKeyRouteForm" class="api-key-form">
+        <label class="api-key-label" for="apiKeyRouteInput">Secret key</label>
+        <input
+          class="api-key-input"
+          id="apiKeyRouteInput"
+          name="apiKey"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="sk-proj-…"
+        />
+        <p class="api-key-hint">
+          Stored only in this browser as <code>staj-apikey</code>. Never written to the tracker database.
+        </p>
+        <div class="api-key-actions">
+          <a class="api-key-secondary" href="/">Cancel</a>
+          <button type="submit" class="api-key-submit">Save</button>
+        </div>
+      </form>
+    </main>
+    <script src="/api-key.js"></script>
+  </body>
+</html>

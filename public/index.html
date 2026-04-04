@@ -18,12 +18,12 @@
         <div class="sidebar-inner">
 
           <div class="sidebar-brand">
-            <div class="sidebar-brand-left">
+            <a class="sidebar-brand-left" href="/" title="Home — Internship Tracker">
               <div class="brand-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M9 6a3 3 0 0 1 6 0v1h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6Zm2 1h2V6a1 1 0 0 0-2 0v1Zm-5 4h12v6H6v-6Z" /></svg>
               </div>
               <span class="brand-name">Tracker</span>
-            </div>
+            </a>
             <button class="sidebar-toggle" id="sidebarToggleBtn" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Hide sidebar" title="Hide sidebar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <path d="M15 6l-6 6 6 6" />
@@ -109,10 +109,10 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
                 Profile
               </a>
-              <button class="sidebar-footer-link" id="apiKeyBtn" type="button">
+              <a class="sidebar-footer-link" href="/api-key">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a2 2 0 1 1-2.83-2.83l6.5-6.5a2 2 0 1 1 2.83 2.83l-1.5 1.5"/><path d="M7.5 15.5 4 19l-1 4 4-1 3.5-3.5"/><path d="m14.5 6.5 3 3"/></svg>
-                API Key
-              </button>
+                API key
+              </a>
               <button class="sidebar-footer-link" id="exportBtn" type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
                 Export
@@ -235,31 +235,6 @@
           <input id="commandInput" type="text" placeholder="Type a command…" autocomplete="off" />
         </div>
         <div class="command-list" id="commandList"></div>
-      </div>
-    </div>
-
-    <!-- API KEY MODAL -->
-    <div class="overlay-panel" id="apiKeyModal" aria-hidden="true">
-      <div class="overlay-card overlay-card--form api-key-card" role="dialog" aria-modal="true" aria-labelledby="apiKeyTitle">
-        <div class="overlay-header">
-          <div>
-            <p class="overlay-title" id="apiKeyTitle">OpenAI API key</p>
-            <p class="overlay-sub">Save your key locally to unlock AI analysis for company-specific research.</p>
-          </div>
-          <button class="icon-btn" id="apiKeyClose" type="button" aria-label="Close API key modal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <form id="apiKeyForm" class="form">
-          <label>OpenAI API key
-            <input id="apiKeyInput" type="password" placeholder="sk-proj-..." autocomplete="off" spellcheck="false" required />
-          </label>
-          <p class="api-key-note">Stored in this browser as <code>staj-apikey</code>. The key never gets written to your tracker database.</p>
-          <div class="form-actions">
-            <button class="ghost-btn" id="apiKeyCancel" type="button">Not now</button>
-            <button type="submit">Save key</button>
-          </div>
-        </form>
       </div>
     </div>
 

@@ -178,11 +178,24 @@ body {
   margin-bottom: 14px;
 }
 
+/* Purpose: home link — same layout as former div; keyboard + hover affordance */
 .sidebar-brand-left {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius-sm);
+  outline: none;
+  flex: 1;
+}
+.sidebar-brand-left:hover .brand-icon {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+.sidebar-brand-left:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-blue-soft);
 }
 
 .brand-icon {
@@ -1174,17 +1187,6 @@ label {
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.36);
 }
-.api-key-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1.55;
-}
-.api-key-note code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--ink-2);
-}
-
 .tag-fieldset {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);

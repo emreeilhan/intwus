@@ -1,0 +1,164 @@
+/* Purpose: Dedicated /api-key route — airy layout, distinct typography from main shell */
+
+.api-key-route {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+.api-key-back {
+  position: fixed;
+  top: clamp(1rem, 4vw, 1.75rem);
+  left: clamp(1rem, 4vw, 2rem);
+  z-index: 2;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  transition: color var(--ease-fast);
+}
+
+.api-key-back:hover {
+  color: var(--ink);
+}
+
+.api-key-back:focus-visible {
+  outline: none;
+  border-radius: var(--radius-xs);
+  box-shadow: 0 0 0 3px var(--accent-blue-soft);
+}
+
+.api-key-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: clamp(4.5rem, 14vh, 8rem) clamp(1.25rem, 5vw, 2rem) 4rem;
+}
+
+.api-key-eyebrow {
+  margin: 0 0 1rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.api-key-title {
+  margin: 0 0 1.25rem;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.api-key-lead {
+  margin: 0 0 2.75rem;
+  font-size: 1.0625rem;
+  font-weight: 400;
+  line-height: 1.65;
+  color: var(--ink-2);
+  max-width: 36ch;
+}
+
+.api-key-form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.api-key-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.api-key-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 1rem 1.125rem;
+  font: 400 0.9375rem/1.4 'IBM Plex Mono', ui-monospace, monospace;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  transition: border-color var(--ease-fast), box-shadow var(--ease-fast);
+}
+
+.api-key-input::placeholder {
+  color: var(--muted);
+  opacity: 0.65;
+}
+
+.api-key-input:hover {
+  border-color: var(--line-strong);
+}
+
+.api-key-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px var(--accent-blue-soft);
+}
+
+.api-key-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.api-key-hint code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.75em;
+  padding: 0.12em 0.4em;
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  border: 1px solid var(--line-subtle);
+}
+
+.api-key-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 2rem;
+}
+
+.api-key-secondary {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.api-key-secondary:hover {
+  color: var(--ink);
+}
+
+.api-key-submit {
+  padding: 0.65rem 1.35rem;
+  font: 600 0.875rem/1 'Plus Jakarta Sans', sans-serif;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: opacity var(--ease-fast);
+}
+
+.api-key-submit:hover {
+  opacity: 0.92;
+}
+
+.api-key-submit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-blue-soft);
+}
