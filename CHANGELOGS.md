@@ -159,3 +159,7 @@
 0.0.40
 - Removed a broken leftover outreach-panel reference in the main tracker script that was throwing on page load and blocking both entry rendering and the light-mode toggle.
 - Kept the working agent review modal flow intact while restoring normal tracker initialization behavior.
+
+0.0.41
+- Switched the AI analysis and application-agent backend from Anthropic to the OpenAI Responses API so the app now uses one provider for both research and drafting.
+- Split the mail workflow across `gpt-5.4 mini` for company research plus tool use and `gpt-5.4` for final email polishing, which keeps per-application cost low while improving final writing quality.

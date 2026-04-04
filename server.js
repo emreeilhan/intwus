@@ -614,38 +614,51 @@ function backfillPriority() {
   db.prepare(`UPDATE internships SET priority = 'Medium' WHERE priority IS NULL OR priority = ''`).run();
 }
 
-function collectAnthropicContent(response) {
-  const blocks = Array.isArray(response?.content) ? response.content : [];
+function collectOpenAIContent(response) {
+  const blocks = Array.isArray(response?.output) ? response.output : [];
   const textParts = [];
-  const citations = [];
-  const searchResults = [];
-  const toolErrors = [];
+  const sources = [];
 
   blocks.forEach((block) => {
-    if (block?.type === 'text' && typeof block.text === 'string' && block.text.trim()) {
-      textParts.push(block.text.trim());
-      if (Array.isArray(block.citations)) {
-        block.citations.forEach((citation) => {
-          if (citation?.url) citations.push(citation);
-        });
-      }
+    if (block?.type === 'message') {
+      const items = Array.isArray(block.content) ? block.content : [];
+      items.forEach((item) => {
+        if (item?.type === 'output_text' && typeof item.text === 'string' && item.text.trim()) {
+          textParts.push(item.text.trim());
+        }
+        if (Array.isArray(item?.annotations)) {
+          item.annotations.forEach((annotation) => {
+            if (annotation?.type === 'url_citation' && annotation.url) {
+              sources.push({
+                url: annotation.url,
+                title: annotation.title || annotation.url,
+                cited_text: '',
+                page_age: ''
+              });
+            }
+          });
+        }
+      });
       return;
     }
 
-    if (block?.type !== 'web_search_tool_result') return;
-    const items = Array.isArray(block.content) ? block.content : [block.content].filter(Boolean);
-    items.forEach((item) => {
-      if (item?.type === 'web_search_result' && item.url) {
-        searchResults.push(item);
-      }
-      if (item?.type === 'web_search_tool_result_error') {
-        toolErrors.push(item.error_code || 'unknown_error');
-      }
-    });
+    if (block?.type === 'web_search_call') {
+      const callSources = Array.isArray(block?.action?.sources) ? block.action.sources : [];
+      callSources.forEach((source) => {
+        if (source?.url) {
+          sources.push({
+            url: source.url,
+            title: source.title || source.url,
+            cited_text: '',
+            page_age: ''
+          });
+        }
+      });
+    }
   });
 
   const uniqueSources = Array.from(new Map(
-    [...citations, ...searchResults]
+    sources
       .filter((item) => item?.url)
       .map((item) => [item.url, {
         url: item.url,
@@ -657,8 +670,7 @@ function collectAnthropicContent(response) {
 
   return {
     rawText: textParts.join('\n\n').trim(),
-    sources: uniqueSources,
-    toolErrors
+    sources: uniqueSources
   };
 }
 
@@ -723,6 +735,66 @@ const APPLICATION_AGENT_SYSTEM_PROMPT = [
   'If a fact is uncertain, mark it in confidence or notes instead of inventing certainty.'
 ].join(' ');
 
+const POLISH_MAIL_SYSTEM_PROMPT = [
+  'You are a strong internship application writer.',
+  'Take the researched draft and rewrite it into a cleaner, sharper, more convincing email.',
+  'Keep it specific, grounded, and professional.',
+  'Return strict JSON only.'
+].join(' ');
+
+const OPENAI_RESEARCH_MODEL = 'gpt-5.4-mini';
+const OPENAI_POLISH_MODEL = 'gpt-5.4';
+
+async function callOpenAIResponses({
+  apiKey,
+  model,
+  instructions,
+  input,
+  maxOutputTokens,
+  tools,
+  textFormat,
+  reasoningEffort,
+  include
+}) {
+  const body = {
+    model,
+    instructions,
+    input,
+    store: false
+  };
+
+  if (Number.isFinite(maxOutputTokens)) {
+    body.max_output_tokens = maxOutputTokens;
+  }
+  if (Array.isArray(tools) && tools.length) {
+    body.tools = tools;
+  }
+  if (textFormat) {
+    body.text = { format: textFormat };
+  }
+  if (reasoningEffort) {
+    body.reasoning = { effort: reasoningEffort };
+  }
+  if (Array.isArray(include) && include.length) {
+    body.include = include;
+  }
+
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || payload?.error || 'OpenAI request failed.');
+  }
+  return payload;
+}
+
 function buildAnalyzeUserPrompt({ company, location, notes, cvText }) {
   return [
     `Company: ${company || '-'}`,
@@ -783,6 +855,34 @@ function buildApplicationAgentPrompt({ company, location, notes, website, profil
     '- Body lines should mention fit, relevant background, and that resume plus transcript are attached.',
     '- contactEmail should be empty if you cannot find a credible public address.',
     '- warnings should include cases like "No public internship email found" or "Use careers form instead".'
+  ].join('\n');
+}
+
+function buildPolishMailPrompt({ company, draft, profile }) {
+  return [
+    'Return JSON matching this schema exactly:',
+    '{',
+    '  "subject": "string",',
+    '  "introLines": ["string"],',
+    '  "bodyLines": ["string"],',
+    '  "warnings": ["string"]',
+    '}',
+    '',
+    `Target company: ${company || draft?.companyName || '-'}`,
+    '',
+    'Candidate profile summary:',
+    JSON.stringify(pickProfileSummary(profile), null, 2),
+    '',
+    'Researched draft JSON:',
+    JSON.stringify(draft, null, 2),
+    '',
+    'Rewrite rules:',
+    '- Keep the message short enough for a real recruiter or hiring manager to read fast.',
+    '- Preserve specific company signals that make the outreach feel researched.',
+    '- Mention attached resume and transcript naturally in the body.',
+    '- Do not invent achievements or claims that are not in the profile or draft.',
+    '- Keep tone warm, sharp, and professional, not robotic.',
+    '- warnings should only contain real risks or caveats that still matter after polishing.'
   ].join('\n');
 }
 
@@ -1174,7 +1274,7 @@ app.post('/api/analyze', async (req, res) => {
   const cvText = typeof req.body?.cvText === 'string' ? req.body.cvText.trim() : '';
 
   if (!apiKey) {
-    return res.status(400).json({ error: 'Anthropic API key is required.' });
+    return res.status(400).json({ error: 'OpenAI API key is required.' });
   }
   if (!company) {
     return res.status(400).json({ error: 'Company is required.' });
@@ -1184,46 +1284,16 @@ app.post('/api/analyze', async (req, res) => {
   }
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1200,
-        system: ANALYZE_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: buildAnalyzeUserPrompt({ company, location, notes, cvText })
-          }
-        ],
-        tools: [
-          {
-            type: 'web_search_20250305',
-            name: 'web_search',
-            max_uses: 5
-          }
-        ]
-      })
+    const payload = await callOpenAIResponses({
+      apiKey,
+      model: OPENAI_RESEARCH_MODEL,
+      instructions: ANALYZE_SYSTEM_PROMPT,
+      input: buildAnalyzeUserPrompt({ company, location, notes, cvText }),
+      maxOutputTokens: 1200,
+      tools: [{ type: 'web_search_preview' }],
+      reasoningEffort: 'minimal'
     });
-
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: payload?.error?.message || payload?.error || 'Anthropic request failed.'
-      });
-    }
-
-    const content = collectAnthropicContent(payload);
-    if (content.toolErrors.length) {
-      return res.status(502).json({
-        error: `Web search failed: ${content.toolErrors.join(', ')}`
-      });
-    }
+    const content = collectOpenAIContent(payload);
 
     const sections = parseAnalysisSections(content.rawText);
     const verdictScore = extractVerdictScore(sections.verdict, content.rawText);
@@ -1250,7 +1320,7 @@ app.post('/api/application-agent/prepare', async (req, res) => {
   const website = normalizeString(req.body?.website, '-');
 
   if (!apiKey) {
-    return res.status(400).json({ error: 'Anthropic API key is required.' });
+    return res.status(400).json({ error: 'OpenAI API key is required.' });
   }
   if (!company) {
     return res.status(400).json({ error: 'Company is required.' });
@@ -1260,80 +1330,69 @@ app.post('/api/application-agent/prepare', async (req, res) => {
   const assets = getApplicationAssets(profile);
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        system: APPLICATION_AGENT_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: buildApplicationAgentPrompt({
-              company,
-              location,
-              notes,
-              website,
-              profile: pickProfileSummary(profile)
-            })
-          }
-        ],
-        tools: [
-          {
-            type: 'web_search_20250305',
-            name: 'web_search',
-            max_uses: 6
-          }
-        ]
-      })
+    const researchPayload = await callOpenAIResponses({
+      apiKey,
+      model: OPENAI_RESEARCH_MODEL,
+      instructions: APPLICATION_AGENT_SYSTEM_PROMPT,
+      input: buildApplicationAgentPrompt({
+        company,
+        location,
+        notes,
+        website,
+        profile: pickProfileSummary(profile)
+      }),
+      maxOutputTokens: 1500,
+      tools: [{ type: 'web_search_preview' }],
+      textFormat: { type: 'json_object' },
+      reasoningEffort: 'minimal'
     });
+    const researchContent = collectOpenAIContent(researchPayload);
+    const researchedDraft = parseAgentJson(researchPayload.output_text || researchContent.rawText);
 
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: payload?.error?.message || payload?.error || 'Anthropic request failed.'
-      });
-    }
-
-    const content = collectAnthropicContent(payload);
-    if (content.toolErrors.length) {
-      return res.status(502).json({
-        error: `Web search failed: ${content.toolErrors.join(', ')}`
-      });
-    }
-
-    const draft = parseAgentJson(content.rawText);
+    const polishPayload = await callOpenAIResponses({
+      apiKey,
+      model: OPENAI_POLISH_MODEL,
+      instructions: POLISH_MAIL_SYSTEM_PROMPT,
+      input: buildPolishMailPrompt({
+        company,
+        draft: researchedDraft,
+        profile
+      }),
+      maxOutputTokens: 900,
+      textFormat: { type: 'json_object' },
+      reasoningEffort: 'low'
+    });
+    const polishedDraft = parseAgentJson(polishPayload.output_text || collectOpenAIContent(polishPayload).rawText);
     const signatureLines = normalizeStringList(profile.application?.emailSignature, []);
-    const introLines = normalizeStringList(draft?.introLines, []);
-    const bodyLines = normalizeStringList(draft?.bodyLines, []);
+    const introLines = normalizeStringList(polishedDraft?.introLines, researchedDraft?.introLines || []);
+    const bodyLines = normalizeStringList(polishedDraft?.bodyLines, researchedDraft?.bodyLines || []);
     const cc = normalizeString(profile.application?.cc);
 
     return res.json({
       draft: {
-        companyName: normalizeString(draft?.companyName, company),
-        companyWebsite: normalizeString(draft?.companyWebsite, website),
-        careersUrl: normalizeString(draft?.careersUrl),
-        contactEmail: normalizeString(draft?.contactEmail),
-        contactReason: normalizeString(draft?.contactReason),
-        confidence: normalizeString(draft?.confidence, 'low'),
-        subject: normalizeString(draft?.subject, `Internship Application - ${company}`),
+        companyName: normalizeString(researchedDraft?.companyName, company),
+        companyWebsite: normalizeString(researchedDraft?.companyWebsite, website),
+        careersUrl: normalizeString(researchedDraft?.careersUrl),
+        contactEmail: normalizeString(researchedDraft?.contactEmail),
+        contactReason: normalizeString(researchedDraft?.contactReason),
+        confidence: normalizeString(researchedDraft?.confidence, 'low'),
+        subject: normalizeString(polishedDraft?.subject, normalizeString(researchedDraft?.subject, `Internship Application - ${company}`)),
         introLines,
         bodyLines,
         signatureLines,
         body: buildDraftBody({ introLines, bodyLines, signatureLines }),
-        companySignals: normalizeStringList(draft?.companySignals, []),
-        personalAngles: normalizeStringList(draft?.personalAngles, []),
-        warnings: normalizeStringList(draft?.warnings, []),
+        companySignals: normalizeStringList(researchedDraft?.companySignals, []),
+        personalAngles: normalizeStringList(researchedDraft?.personalAngles, []),
+        warnings: normalizeStringList(polishedDraft?.warnings, normalizeStringList(researchedDraft?.warnings, [])),
         cc
       },
       assets,
       smtpConfigured: Boolean(getSmtpConfig()),
-      sources: content.sources
+      sources: researchContent.sources,
+      usage: {
+        research: researchPayload?.usage || null,
+        polish: polishPayload?.usage || null
+      }
     });
   } catch (error) {
     return res.status(502).json({
