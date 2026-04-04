@@ -122,6 +122,7 @@ const apiKeyStorageKey = 'staj-apikey';
 // Purpose: after saving key on /api-key, resume analyze on main app load
 const PENDING_ANALYZE_KEY = 'staj-pending-analyze';
 const analysisCacheKey = 'staj-analysis-cache-v1';
+const agentReviewStateKey = 'staj-agent-review-state-v1';
 const STATUS_FLOW = ['Researching', 'Ready to Apply', 'Applied', 'Interview', 'Offer', 'Rejected', 'Paused'];
 const PRIORITY_ORDER = { High: 3, Medium: 2, Low: 1 };
 const CV_TEXT = `Emre Ilhan
@@ -812,6 +813,36 @@ function escapeMailtoValue(value) {
   return encodeURIComponent(String(value || ''));
 }
 
+function persistAgentReviewState(state) {
+  try {
+    if (!state) {
+      sessionStorage.removeItem(agentReviewStateKey);
+      return;
+    }
+    sessionStorage.setItem(agentReviewStateKey, JSON.stringify({
+      ...state,
+      draft: state.draft ? { ...state.draft } : null
+    }));
+  } catch {
+    // Non-blocking: if sessionStorage is unavailable, the route will show a recovery state.
+  }
+}
+
+function navigateToAgentReview(state) {
+  persistAgentReviewState(state);
+  const params = new URLSearchParams({
+    entryId: String(state?.entryId || ''),
+    company: String(state?.company || ''),
+    location: String(state?.location || ''),
+    notes: String(state?.notes || ''),
+    website: String(state?.website || '')
+  });
+  document.body.classList.add('route-transitioning');
+  window.setTimeout(() => {
+    window.location.href = `/agent-review?${params.toString()}`;
+  }, 280);
+}
+
 function buildAgentListMarkup(items, emptyText) {
   const normalized = Array.isArray(items) ? items.filter(Boolean) : [];
   return normalized.length
@@ -1108,28 +1139,19 @@ async function prepareAgentMail(entry) {
   }
 
   try {
-    const res = await fetch('/api/application-agent/prepare', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        apiKey,
-        company: entry.company || '',
-        location: entry.tag || '',
-        notes: entry.notes || '',
-        website: entry.website || ''
-      })
+    navigateToAgentReview({
+      entryId: entry.id,
+      company: entry.company || '',
+      location: entry.tag || '',
+      notes: entry.notes || '',
+      website: entry.website || '',
+      startedAt: new Date().toISOString(),
+      stageState: {
+        status: 'queued',
+        currentStep: 'queued',
+        timeline: []
+      }
     });
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(payload?.error || 'Agent preparation failed.');
-    }
-
-    agentDraftState = { ...payload, entryId: entry.id };
-    document.querySelectorAll('input[name="agentAction"]').forEach((input) => {
-      const defaultAction = payload?.draft?.safety?.allowDirectSend && payload.smtpConfigured ? 'send' : 'draft';
-      input.checked = input.value === defaultAction;
-    });
-    openAgentReview();
   } catch (error) {
     analysisErrors.set(String(entry.id), error instanceof Error ? error.message : 'Agent preparation failed.');
     renderAnalysisState(entry.id);

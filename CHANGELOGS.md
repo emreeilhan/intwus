@@ -223,3 +223,23 @@
 - Unified user-facing copy to English across the agent review flow and related JS messages; replaced emoji empty states with shared stroke SVG icons (`/js/ui-icons.js`).
 - Added Insights screen reader summary for the pipeline trend chart, wired `aria-labelledby` to a hidden data summary, and exposed the dashboard focus summary in the layout with a sticky “Jump to” nav for major sections.
 - Added profile page sticky section navigation with anchor targets and scroll-margin; aligned the standalone API key page with Inter and system monospace for secrets.
+
+0.0.55
+- Normalized Responses API reasoning effort for web-search calls so requests no longer fail when the app asks OpenAI for `minimal` reasoning alongside `web_search_preview`.
+- This restores the live Analyze and agent research flows after API key setup, which is the real operational benefit because the AI path now fails over to a compatible low-effort setting instead of hard erroring.
+
+0.0.56
+- Normalized Responses API text formatting for web-search calls by dropping JSON mode when search is enabled, while keeping prompt-level strict JSON instructions for the agent research step.
+- This restores the prepare-mail research leg too, so the AI workflow now clears both compatibility blockers instead of fixing analysis only.
+
+0.0.57
+- Moved the agent mail review flow out of the modal into a dedicated `/agent-review` route with a calmer, full-page workspace and route-level transition choreography.
+- Rewired `Prepare Agent Mail` to hand off review state into that route, so the flow now feels deliberate and premium instead of cramming a high-focus drafting task into an overlay.
+
+0.0.58
+- Reworked `/agent-review` into a real staged pipeline: the page now starts research and polish itself, shows live step status, elapsed time, retry state, and a timestamped event log instead of a fake loading shell.
+- Split backend preparation into observable research and polish phases so the UI can surface where the flow is, whether it is still moving, and the exact error if it fails.
+
+0.0.59
+- Replaced the brittle web-search research JSON contract with a labeled text protocol plus deterministic parsing, so company research no longer falls over when the model refuses prompt-only JSON during search-enabled runs.
+- This materially improves the new live stage flow because the research step now completes reliably enough to expose real progress instead of failing at the first parsing edge case.

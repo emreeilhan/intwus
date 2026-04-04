@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent Review</title>
+    <meta name="description" content="A focused, minimal workspace for reviewing and opening AI-prepared outreach drafts." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="agent-review-body">
+    <div class="agent-route-shell">
+      <header class="agent-route-topbar agent-stage" style="--enter-delay: 40ms;">
+        <a class="agent-back-link" href="/">
+          <span class="agent-back-icon" aria-hidden="true">←</span>
+          <span>Back to tracker</span>
+        </a>
+        <div class="agent-topbar-meta">
+          <span class="agent-status-pill" id="agentFlowStatus">Agent review</span>
+        </div>
+      </header>
+
+      <main class="agent-route-main">
+        <section class="agent-stage agent-hero" style="--enter-delay: 110ms;">
+          <div class="agent-hero-copy">
+            <p class="agent-eyebrow">Prepared outreach</p>
+            <h1 id="agentHeroTitle">Review the draft before it leaves your system.</h1>
+            <p id="agentHeroSub">A quiet workspace for refining, verifying, and opening the email in your own client.</p>
+          </div>
+          <div class="agent-hero-note">
+            <div class="agent-hero-note-label">Flow</div>
+            <div class="agent-hero-note-value" id="agentFlowSummary">Research, polish, then decide.</div>
+          </div>
+        </section>
+
+        <div class="agent-workspace">
+          <section class="agent-stage agent-compose" style="--enter-delay: 180ms;">
+            <div class="agent-compose-placeholder" id="agentComposePlaceholder">
+              <p class="agent-eyebrow">Live preparation</p>
+              <h2>Watching the agent build the draft.</h2>
+              <p>The left workspace stays intentionally quiet until the draft is real. Use the timeline on the right to see whether the flow is moving, stuck, or failed.</p>
+            </div>
+            <form id="agentRouteForm" class="agent-compose-form">
+              <div class="agent-field-grid">
+                <label class="agent-field">
+                  <span>To</span>
+                  <input id="agentRouteTo" type="email" />
+                </label>
+                <label class="agent-field">
+                  <span>Cc</span>
+                  <input id="agentRouteCc" type="text" />
+                </label>
+              </div>
+
+              <label class="agent-field">
+                <span>Subject</span>
+                <input id="agentRouteSubject" type="text" />
+              </label>
+
+              <label class="agent-field agent-field--body">
+                <span>Body</span>
+                <textarea id="agentRouteBody" rows="18"></textarea>
+              </label>
+
+              <div class="agent-inline-note" id="agentManualAttachmentNote">
+                Opens Gmail compose in a new tab with the draft ready. Attachments still need to be added manually there.
+              </div>
+
+              <div class="agent-submit-bar">
+                <div class="agent-submit-copy">
+                  <div class="agent-submit-label">Decision</div>
+                  <div class="agent-submit-sub" id="agentDecisionHint">Choose whether to send now or open it in your own mail app.</div>
+                </div>
+                <div class="agent-submit-actions">
+                  <button class="ghost-btn" id="agentRouteCancel" type="button">Cancel</button>
+                  <button id="agentRouteSubmit" type="submit">Apply decision</button>
+                </div>
+              </div>
+            </form>
+          </section>
+
+          <aside class="agent-stage agent-sidebar" style="--enter-delay: 250ms;">
+            <section class="agent-panel agent-panel--status">
+              <div class="agent-panel-head">
+                <div class="agent-panel-label">Live flow</div>
+                <div class="agent-inline-status" id="agentStageElapsed">Waiting to start</div>
+              </div>
+              <div class="agent-stage-summary" id="agentStageSummary">The route will show real preparation stages here.</div>
+              <div class="agent-stage-list" id="agentStageList"></div>
+              <div class="agent-stage-actions">
+                <button class="ghost-btn" id="agentRetryBtn" type="button" hidden>Retry flow</button>
+              </div>
+            </section>
+
+            <section class="agent-panel">
+              <div class="agent-panel-head">
+                <div class="agent-panel-label">Event log</div>
+                <div class="agent-inline-status" id="agentLogStatus">No events yet</div>
+              </div>
+              <div class="agent-timeline" id="agentTimeline"></div>
+            </section>
+
+            <section class="agent-panel">
+              <div class="agent-panel-label">Decision mode</div>
+              <div class="agent-choice-stack">
+                <label class="agent-choice-card">
+                  <input type="radio" name="agentRouteAction" value="send" />
+                  <div>
+                    <div class="agent-choice-title" id="agentRouteSendLabel">Send directly</div>
+                    <div class="agent-choice-copy">Uses SMTP when the system and recipient safety checks allow it.</div>
+                  </div>
+                </label>
+                <label class="agent-choice-card">
+                  <input type="radio" name="agentRouteAction" value="draft" checked />
+                  <div>
+                    <div class="agent-choice-title" id="agentRouteDraftLabel">Open in Gmail</div>
+                    <div class="agent-choice-copy">Opens Gmail compose in a new tab with the draft prefilled — final send stays in your hands.</div>
+                  </div>
+                </label>
+                <label class="agent-choice-card">
+                  <input type="radio" name="agentRouteAction" value="cancel" />
+                  <div>
+                    <div class="agent-choice-title" id="agentRouteCancelLabel">Not now</div>
+                    <div class="agent-choice-copy">Close the flow and keep the company in the pipeline untouched.</div>
+                  </div>
+                </label>
+              </div>
+            </section>
+
+            <section class="agent-panel">
+              <div class="agent-panel-head">
+                <div class="agent-panel-label">Quick polish</div>
+                <div class="agent-inline-status" id="agentRouteToneStatus">Balanced tone active.</div>
+              </div>
+              <div class="agent-tone-grid" id="agentRouteToneGrid">
+                <button type="button" class="tone-chip" data-tone-preset="balanced">Balanced</button>
+                <button type="button" class="tone-chip" data-tone-preset="technical">Technical</button>
+                <button type="button" class="tone-chip" data-tone-preset="concise">Concise</button>
+                <button type="button" class="tone-chip" data-tone-preset="warm">Warm</button>
+                <button type="button" class="tone-chip" data-tone-preset="corporate">Formal</button>
+              </div>
+            </section>
+
+            <section class="agent-panel">
+              <div class="agent-panel-label">Attachments</div>
+              <div class="agent-inline-copy" id="agentRouteAttachmentReason">-</div>
+              <label class="tag-option"><input id="agentRouteIncludeResume" type="checkbox" checked /> Include resume</label>
+              <label class="tag-option"><input id="agentRouteIncludeTranscript" type="checkbox" /> Include transcript</label>
+              <label class="tag-option"><input id="agentRouteIncludePortfolioLink" type="checkbox" /> Include portfolio link in body</label>
+              <div class="agent-asset-list" id="agentRouteAssetList"></div>
+            </section>
+
+            <section class="agent-panel">
+              <div class="agent-panel-label">Safety</div>
+              <div class="agent-safety-note" id="agentRouteSafetyNote">-</div>
+            </section>
+
+            <section class="agent-panel">
+              <div class="agent-panel-label">Company signals</div>
+              <ul class="analysis-list" id="agentRouteSignals"></ul>
+            </section>
+
+            <section class="agent-panel">
+              <div class="agent-panel-label">Personal angles</div>
+              <ul class="analysis-list" id="agentRouteAngles"></ul>
+            </section>
+
+            <section class="agent-panel">
+              <div class="agent-panel-label">Warnings</div>
+              <ul class="analysis-list" id="agentRouteWarnings"></ul>
+            </section>
+
+            <section class="agent-panel">
+              <div class="agent-panel-label">Sources</div>
+              <div class="analysis-source-list" id="agentRouteSources"></div>
+            </section>
+          </aside>
+        </div>
+
+        <section class="agent-stage agent-empty-state" id="agentRouteEmpty" hidden style="--enter-delay: 160ms;">
+          <p class="agent-eyebrow">No active draft</p>
+          <h2>There is nothing to review yet.</h2>
+          <p id="agentEmptyCopy">Go back to the tracker, pick a company, and run <strong>Prepare Agent Mail</strong> again.</p>
+          <a href="/" class="ghost-btn agent-empty-link">Return to tracker</a>
+        </section>
+
+        <div class="analysis-error agent-route-error" id="agentRouteError" hidden></div>
+      </main>
+    </div>
+
+    <script src="/agent-review.js"></script>
+  </body>
+</html>

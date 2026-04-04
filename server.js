@@ -221,6 +221,10 @@ app.get('/api-key', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'api-key.html'));
 });
 
+app.get('/agent-review', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'agent-review.html'));
+});
+
 app.get('/apikey', (req, res) => {
   res.redirect(302, '/api-key');
 });
@@ -774,18 +778,29 @@ function extractVerdictScore(verdictItems, rawText) {
 const ANALYZE_SYSTEM_PROMPT = "You are an expert internship advisor. You will research a company and compare their requirements against a candidate's CV to give specific, actionable advice.";
 
 const APPLICATION_AGENT_SYSTEM_PROMPT = [
-  'You are an outreach agent for internship applications.',
-  'Use web search to find the most relevant company website, careers page, and if available a public contact email for student or internship outreach.',
-  'Return strict JSON only. No markdown. No prose before or after the JSON.',
-  'If a fact is uncertain, mark it in confidence or notes instead of inventing certainty.'
+  'You are a precision outreach researcher for internship applications.',
+  'Your job is to research a company deeply enough to find a single specific non-obvious hook that connects the candidate\'s background to what that company actually works on — not their generic mission statement or homepage tagline.',
+  'Use web search to find: the most relevant team, research group, or project area; a credible direct contact path (not just a careers page form); and real technical signals about what makes this company worth reaching out to.',
+  'Never invent facts. If a detail is uncertain, flag it in confidence or warnings instead of stating it as true.',
+  'Return plain text only with the exact headers from the user prompt. No markdown code fences.'
 ].join(' ');
 
 const POLISH_MAIL_SYSTEM_PROMPT = [
-  'You are a strong internship application writer.',
-  'Take the researched draft and rewrite it into a cleaner, sharper, more convincing email.',
-  'Keep it specific, grounded, and professional.',
+  'You are an elite internship outreach writer.',
+  'Your job is to make this email feel like it was written by someone who actually knows this company\'s work and has a specific reason to reach out — not a candidate sending a template.',
+  '',
+  'Rules for world-class outreach:',
+  '1. Open with ONE specific company-rooted sentence that proves real research. Reference their actual research area, named project, or specific technical focus — never their tagline or "I am reaching out because".',
+  '2. Show skills through narrative context, never as a list. Instead of "I know C and Python", write what you built or studied with them. One concrete sentence beats five skill names.',
+  '3. The body must implicitly answer three questions: why this person, why this company, why now. Be concrete on all three without making them sound like checklist items.',
+  '4. The closing ask must be direct and confident — one sentence. Never "I would be glad to follow any available path." Instead: "I\'d welcome a short conversation about whether there\'s a fit."',
+  '5. Remove all filler: "for context", "as well", "I would like to", "I am interested in". Every sentence starts with a fact or action.',
+  '6. Total content: 4–6 sentences maximum. The whole email including greeting and signature must fit in one screen.',
+  '7. Mention resume and transcript in one brief natural sentence — not a standalone paragraph.',
+  '8. If a portfolio link is included, weave it into a sentence as proof of work, not appended at the end.',
+  '9. Never invent achievements or facts not in the profile or draft.',
   'Return strict JSON only.'
-].join(' ');
+].join('\n');
 
 const OPENAI_RESEARCH_MODEL = 'gpt-5.4-mini';
 const OPENAI_POLISH_MODEL = 'gpt-5.4';
@@ -801,6 +816,14 @@ async function callOpenAIResponses({
   reasoningEffort,
   include
 }) {
+  const hasWebSearchTool = Array.isArray(tools) && tools.some((tool) => {
+    const type = normalizeString(tool?.type);
+    return type === 'web_search' || type === 'web_search_preview' || type === 'web_search_2025_08_26';
+  });
+  // OpenAI rejects web search with minimal reasoning, so step up one notch for compatible calls.
+  const effectiveReasoningEffort = hasWebSearchTool && reasoningEffort === 'minimal' ? 'low' : reasoningEffort;
+  // Web search responses cannot use JSON mode, so rely on prompt-level JSON shaping for those calls.
+  const effectiveTextFormat = hasWebSearchTool && textFormat?.type === 'json_object' ? null : textFormat;
   const body = {
     model,
     instructions,
@@ -814,11 +837,11 @@ async function callOpenAIResponses({
   if (Array.isArray(tools) && tools.length) {
     body.tools = tools;
   }
-  if (textFormat) {
-    body.text = { format: textFormat };
+  if (effectiveTextFormat) {
+    body.text = { format: effectiveTextFormat };
   }
-  if (reasoningEffort) {
-    body.reasoning = { effort: reasoningEffort };
+  if (effectiveReasoningEffort) {
+    body.reasoning = { effort: effectiveReasoningEffort };
   }
   if (Array.isArray(include) && include.length) {
     body.include = include;
@@ -870,29 +893,31 @@ function buildAnalyzeUserPrompt({ company, location, notes, cvText }) {
 
 function buildApplicationAgentPrompt({ company, location, notes, website, profile }) {
   return [
-    'Return JSON matching this schema exactly:',
-    '{',
-    '  "companyName": "string",',
-    '  "companyWebsite": "string",',
-    '  "careersUrl": "string",',
-    '  "contactEmail": "string",',
-    '  "contactReason": "string",',
-    '  "confidence": "high|medium|low",',
-    '  "subject": "string",',
-    '  "introLines": ["string"],',
-    '  "bodyLines": ["string"],',
-    '  "hookType": "mission|technical|product|team|general",',
-    '  "companySignals": ["string"],',
-    '  "personalAngles": ["string"],',
-    '  "warnings": ["string"],',
-    '  "recommendedAttachments": {',
-    '    "resume": true,',
-    '    "transcript": false,',
-    '    "portfolioLink": false,',
-    '    "combinationLabel": "Resume only",',
-    '    "rationale": "string"',
-    '  }',
-    '}',
+    'Return plain text using these exact headers and bullet/list rules:',
+    'COMPANY_NAME:',
+    'COMPANY_WEBSITE:',
+    'CAREERS_URL:',
+    'CONTACT_EMAIL:',
+    'CONTACT_REASON:',
+    'CONFIDENCE:',
+    'SUBJECT:',
+    'HOOK_TYPE:',
+    'INTRO_LINES:',
+    '- one bullet per line',
+    'BODY_LINES:',
+    '- one bullet per line',
+    'COMPANY_SIGNALS:',
+    '- one bullet per line',
+    'PERSONAL_ANGLES:',
+    '- one bullet per line',
+    'WARNINGS:',
+    '- one bullet per line',
+    'RECOMMENDED_ATTACHMENTS:',
+    '- resume: true|false',
+    '- transcript: true|false',
+    '- portfolioLink: true|false',
+    'COMBINATION_LABEL:',
+    'RATIONALE:',
     '',
     `Target company: ${company || '-'}`,
     `Location hint: ${location || '-'}`,
@@ -903,13 +928,14 @@ function buildApplicationAgentPrompt({ company, location, notes, website, profil
     JSON.stringify(profile, null, 2),
     '',
     'Requirements:',
-    '- Subject should sound like a concise internship outreach mail.',
-    '- Intro lines should be the opening paragraph, specific to the company and their work.',
-    '- Body lines should mention fit, relevant background, and that resume plus transcript are attached.',
-    '- hookType should describe what makes the opening strongest: mission, technical, product, team, or general.',
-    '- contactEmail should be empty if you cannot find a credible public address.',
-    '- recommendedAttachments should prefer resume for most cases, transcript when student proof matters, and portfolioLink when a project-heavy profile will help.',
-    '- warnings should include cases like "No public internship email found" or "Use careers form instead".'
+    '- Subject: concise, role-specific, and non-generic. Do not write "Internship Application - CompanyName". Reference what you are actually connecting on.',
+    '- Intro lines: ONE opening sentence that names a specific research area, project, team, or technical focus from the company. Not their tagline. Not "I am a student interested in your work."',
+    '- Body lines: Explain the candidate-company connection in narrative form. Show skills through what was built or studied, never as a list. One line on the specific fit, one line on what the candidate brings, one line on the ask.',
+    '- Do NOT produce a skill list anywhere. If skills appear, they must be embedded in a sentence explaining what was built or studied.',
+    '- hookType: mission (company mission alignment), technical (specific technical area match), product (specific product or system they build), team (specific named team or researcher), general (fallback only if nothing specific found).',
+    '- contactEmail: search aggressively for a real email address. Try in this order: (1) company "contact" or "team" page, (2) academic staff page or research group page, (3) GitHub profile bio of founders or team leads, (4) published papers listing author contact, (5) common patterns like careers@, internships@, info@, hello@ with the company domain. Only leave empty if nothing credible is found after all attempts.',
+    '- recommendedAttachments: prefer resume always, transcript when student-proof matters, portfolioLink when the portfolio has directly relevant project work.',
+    '- warnings should include cases like "No public internship email found", "Use careers form instead", or "Contact path is indirect — reply rate may be low".'
   ].join('\n');
 }
 
@@ -939,14 +965,17 @@ function buildPolishMailPrompt({ company, draft, profile, tonePreset = 'balanced
     JSON.stringify(draft, null, 2),
     '',
     'Rewrite rules:',
-    '- Keep the message short enough for a real recruiter or hiring manager to read fast.',
-    '- Preserve specific company signals that make the outreach feel researched.',
-    '- Mention attached resume and transcript naturally in the body.',
+    '- Open with ONE company-specific hook sentence that proves you know their actual work — not a generic opener like "I am reaching out because...".',
+    '- Skills must appear through narrative context only. Never produce a comma-separated skill list. Show what was built or studied, not what tools were used.',
+    '- Answer three questions implicitly and concretely: why this person, why this company, why now.',
+    '- The closing must be one direct confident sentence. Reject any phrasing like "I would be glad to follow any available path" or "I would welcome the opportunity". Use something like: "I\'d welcome a short conversation about whether there\'s a fit."',
+    '- Remove all filler phrases: "for context", "as well", "I would like to", "I am interested in", "I am reaching out because". Every sentence starts with a fact or action.',
+    '- Maximum 4–6 content sentences. The full email including greeting and signature must fit in one screen.',
+    '- Mention attached resume and transcript in one brief natural sentence integrated into the body — never as its own paragraph.',
     includePortfolioLink && profile.application?.portfolioUrl
-      ? `- Naturally include the portfolio link ${profile.application.portfolioUrl} in the body.`
+      ? `- Include the portfolio link ${profile.application.portfolioUrl} woven into a sentence as proof of work, not appended at the end.`
       : '- Do not mention a portfolio link unless explicitly requested.',
-    '- Do not invent achievements or claims that are not in the profile or draft.',
-    '- Keep tone warm, sharp, and professional, not robotic.',
+    '- Do not invent achievements or claims not in the profile or draft.',
     `- ${toneInstructionMap[tonePreset] || toneInstructionMap.balanced}`,
     '- warnings should only contain real risks or caveats that still matter after polishing.'
   ].join('\n');
@@ -969,6 +998,116 @@ function normalizeAttachmentPlan(value, profile) {
     portfolioLink,
     combinationLabel: normalizeString(plan.combinationLabel, enabled.join(' + ') || 'No attachments'),
     rationale: normalizeString(plan.rationale, 'No recommendation reason returned.')
+  };
+}
+
+function buildAgentResearchResult({ researchedDraft, company, website, profile, researchContent, researchPayload }) {
+  return {
+    researchedDraft,
+    recommendedAttachments: normalizeAttachmentPlan(researchedDraft?.recommendedAttachments, profile),
+    assets: getApplicationAssets(profile),
+    smtpConfigured: Boolean(getSmtpConfig()),
+    sources: researchContent.sources,
+    profileContext: {
+      portfolioUrl: normalizeString(profile.application?.portfolioUrl)
+    },
+    usage: researchPayload?.usage || null,
+    meta: {
+      companyName: normalizeString(researchedDraft?.companyName, company),
+      companyWebsite: normalizeString(researchedDraft?.companyWebsite, website),
+      careersUrl: normalizeString(researchedDraft?.careersUrl),
+      contactEmail: normalizeString(researchedDraft?.contactEmail),
+      contactReason: normalizeString(researchedDraft?.contactReason),
+      confidence: normalizeString(researchedDraft?.confidence, 'low'),
+      hookType: normalizeString(researchedDraft?.hookType, 'general'),
+      companySignals: normalizeStringList(researchedDraft?.companySignals, []),
+      personalAngles: normalizeStringList(researchedDraft?.personalAngles, []),
+      warnings: normalizeStringList(researchedDraft?.warnings, [])
+    }
+  };
+}
+
+function buildAgentFinalDraft({ researchedDraft, polishedDraft, company, website, profile, recommendedAttachments }) {
+  const signatureLines = normalizeStringList(profile.application?.emailSignature, []);
+  const introLines = normalizeStringList(polishedDraft?.introLines, researchedDraft?.introLines || []);
+  const bodyLines = normalizeStringList(polishedDraft?.bodyLines, researchedDraft?.bodyLines || []);
+  const warnings = normalizeStringList(polishedDraft?.warnings, normalizeStringList(researchedDraft?.warnings, []));
+  const cc = normalizeString(profile.application?.cc);
+  const safety = evaluateSendSafety({
+    contactEmail: normalizeString(researchedDraft?.contactEmail),
+    confidence: normalizeString(researchedDraft?.confidence, 'low'),
+    warnings
+  });
+
+  return {
+    companyName: normalizeString(researchedDraft?.companyName, company),
+    companyWebsite: normalizeString(researchedDraft?.companyWebsite, website),
+    careersUrl: normalizeString(researchedDraft?.careersUrl),
+    contactEmail: normalizeString(researchedDraft?.contactEmail),
+    contactReason: normalizeString(researchedDraft?.contactReason),
+    confidence: normalizeString(researchedDraft?.confidence, 'low'),
+    subject: normalizeString(polishedDraft?.subject, normalizeString(researchedDraft?.subject, `Internship Application - ${company}`)),
+    introLines,
+    bodyLines,
+    signatureLines,
+    body: buildDraftBody({ introLines, bodyLines, signatureLines }),
+    hookType: normalizeString(researchedDraft?.hookType, 'general'),
+    companySignals: normalizeStringList(researchedDraft?.companySignals, []),
+    personalAngles: normalizeStringList(researchedDraft?.personalAngles, []),
+    warnings,
+    recommendedAttachments,
+    safety,
+    tonePreset: 'balanced',
+    cc
+  };
+}
+
+async function runApplicationAgentResearch({ apiKey, company, location, notes, website }) {
+  const profile = readProfile();
+  const researchPayload = await callOpenAIResponses({
+    apiKey,
+    model: OPENAI_RESEARCH_MODEL,
+    instructions: APPLICATION_AGENT_SYSTEM_PROMPT,
+    input: buildApplicationAgentPrompt({
+      company,
+      location,
+      notes,
+      website,
+      profile: pickProfileSummary(profile)
+    }),
+    maxOutputTokens: 1500,
+    tools: [{ type: 'web_search_preview' }],
+    textFormat: { type: 'json_object' },
+    reasoningEffort: 'minimal'
+  });
+  const researchContent = collectOpenAIContent(researchPayload);
+  const researchedDraft = parseAgentResearchText(researchPayload.output_text || researchContent.rawText);
+  return buildAgentResearchResult({ researchedDraft, company, website, profile, researchContent, researchPayload });
+}
+
+async function runApplicationAgentPolish({ apiKey, company, draftInput, tonePreset = 'balanced', includePortfolioLink = false }) {
+  const profile = readProfile();
+  const polishPayload = await callOpenAIResponses({
+    apiKey,
+    model: OPENAI_POLISH_MODEL,
+    instructions: POLISH_MAIL_SYSTEM_PROMPT,
+    input: buildPolishMailPrompt({
+      company,
+      draft: draftInput,
+      profile,
+      tonePreset,
+      includePortfolioLink
+    }),
+    maxOutputTokens: 900,
+    textFormat: { type: 'json_object' },
+    reasoningEffort: 'low'
+  });
+  const polishedDraft = parseAgentJson(polishPayload.output_text || collectOpenAIContent(polishPayload).rawText);
+  return {
+    polishedDraft,
+    signatureLines: normalizeStringList(profile.application?.emailSignature, []),
+    usage: polishPayload?.usage || null,
+    profile
   };
 }
 
@@ -1006,6 +1145,97 @@ function parseAgentJson(rawText) {
     throw new Error('Agent response did not include valid JSON.');
   }
   return JSON.parse(trimmed.slice(jsonStart, jsonEnd + 1));
+}
+
+function parseAgentResearchText(rawText) {
+  const text = String(rawText || '').replace(/\r/g, '').trim();
+  if (!text) {
+    throw new Error('Agent research response was empty.');
+  }
+
+  const singleFields = {
+    COMPANY_NAME: 'companyName',
+    COMPANY_WEBSITE: 'companyWebsite',
+    CAREERS_URL: 'careersUrl',
+    CONTACT_EMAIL: 'contactEmail',
+    CONTACT_REASON: 'contactReason',
+    CONFIDENCE: 'confidence',
+    SUBJECT: 'subject',
+    HOOK_TYPE: 'hookType',
+    COMBINATION_LABEL: 'combinationLabel',
+    RATIONALE: 'rationale'
+  };
+  const listFields = {
+    INTRO_LINES: 'introLines',
+    BODY_LINES: 'bodyLines',
+    COMPANY_SIGNALS: 'companySignals',
+    PERSONAL_ANGLES: 'personalAngles',
+    WARNINGS: 'warnings'
+  };
+
+  const result = {
+    companyName: '',
+    companyWebsite: '',
+    careersUrl: '',
+    contactEmail: '',
+    contactReason: '',
+    confidence: 'low',
+    subject: '',
+    hookType: 'general',
+    introLines: [],
+    bodyLines: [],
+    companySignals: [],
+    personalAngles: [],
+    warnings: [],
+    recommendedAttachments: {
+      resume: true,
+      transcript: false,
+      portfolioLink: false,
+      combinationLabel: '',
+      rationale: ''
+    }
+  };
+
+  let currentSection = '';
+  let inAttachmentSection = false;
+
+  text.split('\n').forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    const headerMatch = trimmed.match(/^([A-Z_]+):\s*(.*)$/);
+    if (headerMatch) {
+      const [, header, value] = headerMatch;
+      inAttachmentSection = header === 'RECOMMENDED_ATTACHMENTS';
+      currentSection = header;
+      if (singleFields[header]) {
+        result[singleFields[header]] = value.trim();
+      } else if (listFields[header]) {
+        result[listFields[header]] = [];
+      }
+      return;
+    }
+
+    if (inAttachmentSection) {
+      const attachmentMatch = trimmed.match(/^[-*]\s*(resume|transcript|portfolioLink)\s*:\s*(true|false)\s*$/i);
+      if (attachmentMatch) {
+        const key = attachmentMatch[1];
+        result.recommendedAttachments[key] = attachmentMatch[2].toLowerCase() === 'true';
+      }
+      return;
+    }
+
+    if (listFields[currentSection] && /^[-*]\s+/.test(trimmed)) {
+      result[listFields[currentSection]].push(trimmed.replace(/^[-*]\s+/, '').trim());
+    }
+  });
+
+  result.recommendedAttachments.combinationLabel = result.combinationLabel;
+  result.recommendedAttachments.rationale = result.rationale;
+  delete result.combinationLabel;
+  delete result.rationale;
+
+  return result;
 }
 
 // Purpose: map varied spreadsheet headers (export format + Turkish aliases) to canonical row shape
@@ -1513,94 +1743,72 @@ app.post('/api/application-agent/prepare', async (req, res) => {
     return res.status(400).json({ error: 'Company is required.' });
   }
 
-  const profile = readProfile();
-  const assets = getApplicationAssets(profile);
-
   try {
-    const researchPayload = await callOpenAIResponses({
+    const researchResult = await runApplicationAgentResearch({ apiKey, company, location, notes, website });
+    const polishResult = await runApplicationAgentPolish({
       apiKey,
-      model: OPENAI_RESEARCH_MODEL,
-      instructions: APPLICATION_AGENT_SYSTEM_PROMPT,
-      input: buildApplicationAgentPrompt({
-        company,
-        location,
-        notes,
-        website,
-        profile: pickProfileSummary(profile)
-      }),
-      maxOutputTokens: 1500,
-      tools: [{ type: 'web_search_preview' }],
-      textFormat: { type: 'json_object' },
-      reasoningEffort: 'minimal'
-    });
-    const researchContent = collectOpenAIContent(researchPayload);
-    const researchedDraft = parseAgentJson(researchPayload.output_text || researchContent.rawText);
-    const recommendedAttachments = normalizeAttachmentPlan(researchedDraft?.recommendedAttachments, profile);
-
-    const polishPayload = await callOpenAIResponses({
-      apiKey,
-      model: OPENAI_POLISH_MODEL,
-      instructions: POLISH_MAIL_SYSTEM_PROMPT,
-      input: buildPolishMailPrompt({
-        company,
-        draft: researchedDraft,
-        profile,
-        includePortfolioLink: recommendedAttachments.portfolioLink
-      }),
-      maxOutputTokens: 900,
-      textFormat: { type: 'json_object' },
-      reasoningEffort: 'low'
-    });
-    const polishedDraft = parseAgentJson(polishPayload.output_text || collectOpenAIContent(polishPayload).rawText);
-    const signatureLines = normalizeStringList(profile.application?.emailSignature, []);
-    const introLines = normalizeStringList(polishedDraft?.introLines, researchedDraft?.introLines || []);
-    const bodyLines = normalizeStringList(polishedDraft?.bodyLines, researchedDraft?.bodyLines || []);
-    const cc = normalizeString(profile.application?.cc);
-    const safety = evaluateSendSafety({
-      contactEmail: normalizeString(researchedDraft?.contactEmail),
-      confidence: normalizeString(researchedDraft?.confidence, 'low'),
-      warnings: normalizeStringList(polishedDraft?.warnings, normalizeStringList(researchedDraft?.warnings, []))
+      company,
+      draftInput: researchResult.researchedDraft,
+      includePortfolioLink: researchResult.recommendedAttachments.portfolioLink
     });
 
     return res.json({
-      draft: {
-        companyName: normalizeString(researchedDraft?.companyName, company),
-        companyWebsite: normalizeString(researchedDraft?.companyWebsite, website),
-        careersUrl: normalizeString(researchedDraft?.careersUrl),
-        contactEmail: normalizeString(researchedDraft?.contactEmail),
-        contactReason: normalizeString(researchedDraft?.contactReason),
-        confidence: normalizeString(researchedDraft?.confidence, 'low'),
-        subject: normalizeString(polishedDraft?.subject, normalizeString(researchedDraft?.subject, `Internship Application - ${company}`)),
-        introLines,
-        bodyLines,
-        signatureLines,
-        body: buildDraftBody({ introLines, bodyLines, signatureLines }),
-        hookType: normalizeString(researchedDraft?.hookType, 'general'),
-        companySignals: normalizeStringList(researchedDraft?.companySignals, []),
-        personalAngles: normalizeStringList(researchedDraft?.personalAngles, []),
-        warnings: normalizeStringList(polishedDraft?.warnings, normalizeStringList(researchedDraft?.warnings, [])),
-        recommendedAttachments,
-        safety,
-        tonePreset: 'balanced',
-        cc
-      },
-      assets,
-      smtpConfigured: Boolean(getSmtpConfig()),
-      sources: researchContent.sources,
-      profileContext: {
-        portfolioUrl: normalizeString(profile.application?.portfolioUrl)
-      },
+      draft: buildAgentFinalDraft({
+        researchedDraft: researchResult.researchedDraft,
+        polishedDraft: polishResult.polishedDraft,
+        company,
+        website,
+        profile: polishResult.profile,
+        recommendedAttachments: researchResult.recommendedAttachments
+      }),
+      assets: researchResult.assets,
+      smtpConfigured: researchResult.smtpConfigured,
+      sources: researchResult.sources,
+      profileContext: researchResult.profileContext,
       defaults: {
         tonePreset: 'balanced'
       },
       usage: {
-        research: researchPayload?.usage || null,
-        polish: polishPayload?.usage || null
+        research: researchResult.usage,
+        polish: polishResult.usage
       }
     });
   } catch (error) {
     return res.status(502).json({
       error: error instanceof Error ? error.message : 'Application agent failed.'
+    });
+  }
+});
+
+app.post('/api/application-agent/research', async (req, res) => {
+  const apiKey = normalizeString(req.body?.apiKey);
+  const company = normalizeString(req.body?.company);
+  const location = normalizeString(req.body?.location, '-');
+  const notes = typeof req.body?.notes === 'string' ? req.body.notes.trim() : '-';
+  const website = normalizeString(req.body?.website, '-');
+
+  if (!apiKey) {
+    return res.status(400).json({ error: 'OpenAI API key is required.' });
+  }
+  if (!company) {
+    return res.status(400).json({ error: 'Company is required.' });
+  }
+
+  try {
+    const researchResult = await runApplicationAgentResearch({ apiKey, company, location, notes, website });
+    return res.json({
+      ...researchResult.meta,
+      draft: researchResult.researchedDraft,
+      recommendedAttachments: researchResult.recommendedAttachments,
+      assets: researchResult.assets,
+      smtpConfigured: researchResult.smtpConfigured,
+      sources: researchResult.sources,
+      profileContext: researchResult.profileContext,
+      usage: researchResult.usage
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'Application agent research failed.'
     });
   }
 });
@@ -1619,37 +1827,25 @@ app.post('/api/application-agent/polish', async (req, res) => {
     return res.status(400).json({ error: 'Draft payload is required.' });
   }
 
-  const profile = readProfile();
-  const signatureLines = normalizeStringList(profile.application?.emailSignature, []);
-
   try {
-    const polishPayload = await callOpenAIResponses({
+    const polishResult = await runApplicationAgentPolish({
       apiKey,
-      model: OPENAI_POLISH_MODEL,
-      instructions: POLISH_MAIL_SYSTEM_PROMPT,
-      input: buildPolishMailPrompt({
-        company,
-        draft: draftInput,
-        profile,
-        tonePreset,
-        includePortfolioLink
-      }),
-      maxOutputTokens: 900,
-      textFormat: { type: 'json_object' },
-      reasoningEffort: 'low'
+      company,
+      draftInput,
+      tonePreset,
+      includePortfolioLink
     });
-    const polishedDraft = parseAgentJson(polishPayload.output_text || collectOpenAIContent(polishPayload).rawText);
-    const introLines = normalizeStringList(polishedDraft?.introLines, draftInput?.introLines || []);
-    const bodyLines = normalizeStringList(polishedDraft?.bodyLines, draftInput?.bodyLines || []);
+    const introLines = normalizeStringList(polishResult.polishedDraft?.introLines, draftInput?.introLines || []);
+    const bodyLines = normalizeStringList(polishResult.polishedDraft?.bodyLines, draftInput?.bodyLines || []);
     return res.json({
-      subject: normalizeString(polishedDraft?.subject, normalizeString(draftInput?.subject, company ? `Internship Application - ${company}` : 'Internship Application')),
+      subject: normalizeString(polishResult.polishedDraft?.subject, normalizeString(draftInput?.subject, company ? `Internship Application - ${company}` : 'Internship Application')),
       introLines,
       bodyLines,
-      signatureLines,
-      body: buildDraftBody({ introLines, bodyLines, signatureLines }),
-      warnings: normalizeStringList(polishedDraft?.warnings, normalizeStringList(draftInput?.warnings, [])),
+      signatureLines: polishResult.signatureLines,
+      body: buildDraftBody({ introLines, bodyLines, signatureLines: polishResult.signatureLines }),
+      warnings: normalizeStringList(polishResult.polishedDraft?.warnings, normalizeStringList(draftInput?.warnings, [])),
       tonePreset,
-      usage: polishPayload?.usage || null
+      usage: polishResult.usage
     });
   } catch (error) {
     return res.status(502).json({
