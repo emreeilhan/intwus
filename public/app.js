@@ -546,10 +546,6 @@ function renderAll() {
 }
 
 /* ============================================================ SAVED VIEWS */
-function selectedSavedView() {
-  return savedViews.find((item) => String(item.id) === String(activeViewId));
-}
-
 function getSavedViewById(id) {
   return savedViews.find((item) => String(item.id) === String(id));
 }
