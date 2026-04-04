@@ -11,6 +11,9 @@
 }
 
 .api-key-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   position: fixed;
   top: clamp(1rem, 4vw, 1.75rem);
   left: clamp(1rem, 4vw, 2rem);
@@ -20,11 +23,18 @@
   color: var(--muted);
   text-decoration: none;
   letter-spacing: -0.01em;
-  transition: color var(--ease-fast);
+  transition: color var(--ease-fast), border-color var(--ease-fast), background var(--ease-fast);
+  /* Purpose: ElevenLabs-style ghost control — readable hit target without modal chrome */
+  padding: 0.5rem 0.95rem;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
 }
 
 .api-key-back:hover {
   color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface);
 }
 
 .api-key-back:focus-visible {
@@ -36,9 +46,18 @@
 .api-key-wrap {
   position: relative;
   z-index: 1;
-  max-width: 36rem;
+  max-width: 38rem;
   margin: 0 auto;
   padding: clamp(4.5rem, 14vh, 8rem) clamp(1.25rem, 5vw, 2rem) 4rem;
+}
+
+/* Purpose: soft elevated panel on page bg (minimal SaaS card) */
+.api-key-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.75rem, 5vw, 2.35rem);
+  box-shadow: var(--shadow-soft);
 }
 
 .api-key-eyebrow {
@@ -53,7 +72,7 @@
 .api-key-title {
   margin: 0 0 1.25rem;
   font-size: clamp(1.75rem, 4vw, 2.25rem);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
 }
@@ -86,9 +105,9 @@
   padding: 1rem 1.125rem;
   font: 400 0.9375rem/1.4 'IBM Plex Mono', ui-monospace, monospace;
   color: var(--ink);
-  background: var(--surface);
+  background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   transition: border-color var(--ease-fast), box-shadow var(--ease-fast);
 }
 
@@ -133,23 +152,33 @@
 }
 
 .api-key-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--muted);
+  color: var(--ink-2);
   text-decoration: none;
+  padding: 0.55rem 1.15rem;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--line);
+  background: transparent;
+  transition: color var(--ease-fast), border-color var(--ease-fast), background var(--ease-fast);
 }
 
 .api-key-secondary:hover {
   color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface-2);
 }
 
 .api-key-submit {
-  padding: 0.65rem 1.35rem;
+  padding: 0.7rem 1.5rem;
   font: 600 0.875rem/1 'Plus Jakarta Sans', sans-serif;
   background: var(--ink);
   color: var(--bg);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill, 999px);
   cursor: pointer;
   transition: opacity var(--ease-fast);
 }

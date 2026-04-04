@@ -187,3 +187,12 @@
 0.0.47
 - Fixed the list-row `Open` CTA so clicks on nested label text now resolve to the owning button instead of silently missing the action.
 - This removes the misleading behavior where one row looked unresponsive while a later click on another row seemed to work, which materially reduces trust-breaking interaction bugs.
+
+0.0.48
+- Added a backward-compatible `/apikey` route that redirects to the existing `/api-key` page, so mistyped or older links no longer fail with `Cannot GET`.
+- This removes a trust-breaking dead-end around API key setup while preserving the canonical `/api-key` route.
+
+0.0.49
+- Introduced a dedicated `--main-canvas` surface for the main column so light mode reads as a white workspace on a soft grey shell, closer to the calm Productivity UI references without turning the app into a marketing page.
+- Retuned the sticky context bar to frost against the canvas color and added a reduced-transparency fallback so the header stays solid when the OS discourages blur.
+- Loosened light-theme sidebar padding and nav item targets, strengthened the wordmark weight, and upgraded the API key route’s back/skip controls to pill ghost buttons for a more intentional personal-tool feel.

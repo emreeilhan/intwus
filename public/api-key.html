@@ -17,30 +17,32 @@
   <body class="api-key-route">
     <a class="api-key-back" href="/">Back to tracker</a>
     <main class="api-key-wrap">
-      <p class="api-key-eyebrow">Connections</p>
-      <h1 class="api-key-title">OpenAI API key</h1>
-      <p class="api-key-lead">
-        Add your key here to enable company research and AI-assisted analysis. Nothing is sent to our servers except model requests you trigger.
-      </p>
-      <form id="apiKeyRouteForm" class="api-key-form">
-        <label class="api-key-label" for="apiKeyRouteInput">Secret key</label>
-        <input
-          class="api-key-input"
-          id="apiKeyRouteInput"
-          name="apiKey"
-          type="password"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="sk-proj-…"
-        />
-        <p class="api-key-hint">
-          Stored only in this browser as <code>staj-apikey</code>. Never written to the tracker database.
+      <div class="api-key-panel">
+        <p class="api-key-eyebrow">Connections</p>
+        <h1 class="api-key-title">OpenAI API key</h1>
+        <p class="api-key-lead">
+          Add your key here to enable company research and AI-assisted analysis. Nothing is sent to our servers except model requests you trigger.
         </p>
-        <div class="api-key-actions">
-          <a class="api-key-secondary" href="/">Cancel</a>
-          <button type="submit" class="api-key-submit">Save</button>
-        </div>
-      </form>
+        <form id="apiKeyRouteForm" class="api-key-form">
+          <label class="api-key-label" for="apiKeyRouteInput">Secret key</label>
+          <input
+            class="api-key-input"
+            id="apiKeyRouteInput"
+            name="apiKey"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="sk-proj-…"
+          />
+          <p class="api-key-hint">
+            Stored only in this browser as <code>staj-apikey</code>. Never written to the tracker database.
+          </p>
+          <div class="api-key-actions">
+            <a class="api-key-secondary" href="/">Cancel</a>
+            <button type="submit" class="api-key-submit">Save</button>
+          </div>
+        </form>
+      </div>
     </main>
     <script src="/api-key.js"></script>
   </body>

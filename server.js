@@ -221,6 +221,10 @@ app.get('/api-key', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'api-key.html'));
 });
 
+app.get('/apikey', (req, res) => {
+  res.redirect(302, '/api-key');
+});
+
 const selectAll = db.prepare(`
   SELECT id, company, status, notes, website, tag, fit_score, applied_at, followup_at, reply_received_at, reply_outcome, priority, focus_tags, created_at, updated_at
   FROM internships
