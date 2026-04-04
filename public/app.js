@@ -409,10 +409,10 @@ function closeSearch() {
 
 /* ============================================================ FORM HELPERS */
 function resetForm() {
-  entryId.value = '';
-  companyInput.value = '';
-  websiteInput.value = '';
-  tagInput.value = '';
+  if (entryId) entryId.value = '';
+  if (companyInput) companyInput.value = '';
+  if (websiteInput) websiteInput.value = '';
+  if (tagInput) tagInput.value = '';
   if (statusInput) statusInput.value = 'Researching';
   if (notesInput) notesInput.value = '';
   if (priorityInput) priorityInput.value = 'Medium';
@@ -424,7 +424,7 @@ function resetForm() {
 function openQuickAdd() {
   quickAddPanel?.classList.add('open');
   quickAddPanel?.setAttribute('aria-hidden', 'false');
-  companyInput.focus();
+  companyInput?.focus();
 }
 
 function closeQuickAdd() {
@@ -433,7 +433,7 @@ function closeQuickAdd() {
 }
 
 function openDrawer(entry) {
-  if (!drawerBackdrop || !detailDrawer) return;
+  if (!drawerBackdrop || !detailDrawer || !drawerCompany) return;
   activeEntryId = entry.id;
   rowMenuId = null;
   drawerBackdrop.classList.add('open');
@@ -625,14 +625,26 @@ function renderSavedViews() {
 }
 
 async function loadSavedViews() {
-  const res = await fetch('/api/saved-views');
-  savedViews = await res.json();
+  try {
+    const res = await fetch('/api/saved-views');
+    const text = await res.text();
+    const parsed = safeJsonParse(text, []);
+    savedViews = res.ok && Array.isArray(parsed) ? parsed : [];
+  } catch {
+    savedViews = [];
+  }
   renderSavedViews();
 }
 
 async function loadEntries() {
-  const res = await fetch('/api/internships');
-  entries = await res.json();
+  try {
+    const res = await fetch('/api/internships');
+    const text = await res.text();
+    const parsed = safeJsonParse(text, []);
+    entries = res.ok && Array.isArray(parsed) ? parsed : [];
+  } catch {
+    entries = [];
+  }
   populateCountryFilterOptions();
   renderAll();
 }
@@ -1361,13 +1373,14 @@ function updateEmptyState(filtered) {
   if (emptySub) emptySub.textContent = stage.sub;
   if (!filtered.length) {
     emptyState?.classList.add('show');
-    list.innerHTML = '';
+    if (list) list.innerHTML = '';
   } else {
     emptyState?.classList.remove('show');
   }
 }
 
 function renderList() {
+  if (!list) return;
   const filtered = getFilteredEntries();
   lastFiltered = filtered;
   renderStatusCounts();
@@ -1784,9 +1797,9 @@ function closeOnboarding() {
 }
 
 /* ============================================================ EVENT BINDINGS */
-form.addEventListener('submit', saveEntry);
-drawerForm.addEventListener('submit', saveDrawer);
-list.addEventListener('click', handleListClick);
+form?.addEventListener('submit', saveEntry);
+drawerForm?.addEventListener('submit', saveDrawer);
+list?.addEventListener('click', handleListClick);
 savedViewNav?.addEventListener('click', handleSavedViewNavClick);
 savedViewNav?.addEventListener('submit', handleSavedViewNavSubmit);
 search?.addEventListener('input', renderAll);
@@ -1958,11 +1971,15 @@ agentReviewModal?.addEventListener('click', (event) => {
 });
 
 async function init() {
-  initTheme();
-  setViewMode(currentViewMode);
-  await Promise.all([loadSavedViews(), loadEntries()]);
-  await resumePendingAnalysisAfterKey();
-  showOnboarding();
+  try {
+    initTheme();
+    setViewMode(currentViewMode);
+    await Promise.all([loadSavedViews(), loadEntries()]);
+    await resumePendingAnalysisAfterKey();
+    showOnboarding();
+  } catch (err) {
+    console.error('Internship Tracker init failed:', err);
+  }
 }
 
 init();

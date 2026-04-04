@@ -1,6 +1,7 @@
 /* ============================================================
    DESIGN SYSTEM v2 — Internship Tracker
-   Linear-grade workspace architecture
+   Productivity workspace + calm marketing minimalism (airy type,
+   soft radii, generous rhythm — without rearranging layout).
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -8,13 +9,13 @@
 :root {
   color-scheme: dark;
 
-  /* Surfaces — near-black, OpenAI-style */
-  --bg:        #0d0d0e;
-  --sidebar-bg:#111113;
-  --surface:   #161618;
-  --surface-2: #1c1c1f;
-  --surface-3: #242428;
-  --surface-4: #2c2c31;
+  /* Surfaces — deep neutral with a hint of cool blue (calm, Notion-adjacent) */
+  --bg:         #0a0b0f;
+  --sidebar-bg: #0e1017;
+  --surface:    #13141a;
+  --surface-2:  #181a22;
+  --surface-3:  #20222c;
+  --surface-4:  #292b36;
 
   /* Text */
   --ink:   #efefef;
@@ -46,17 +47,18 @@
   --pri-medium: #fbbf24;
   --pri-low:    #3b82f6;
 
-  /* Shadows — clean depth, no color tints */
-  --shadow:      0 0 0 1px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-soft: 0 0 0 1px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2);
-  --shadow-lg:   0 0 0 1px rgba(0,0,0,0.6), 0 16px 48px rgba(0,0,0,0.6);
+  /* Shadows — lighter shells, less harsh */
+  --shadow:      0 0 0 1px rgba(0,0,0,0.4), 0 6px 24px rgba(0,0,0,0.35);
+  --shadow-soft: 0 0 0 1px rgba(0,0,0,0.28), 0 2px 12px rgba(0,0,0,0.22);
+  --shadow-lg:   0 0 0 1px rgba(0,0,0,0.45), 0 20px 48px rgba(0,0,0,0.5);
 
-  /* Radii */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* Radii — softer corners (ElevenLabs-style product chrome) */
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
 
   /* Sidebar */
   --sidebar-w: 220px;
@@ -74,15 +76,15 @@
   --sidebar-body-motion: 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Light theme — warm off-white, Claude-style */
+/* Light — cool off-white page, crisp cards (minimal SaaS landing vibe) */
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg:        #f7f7f8;
-  --sidebar-bg:#f0f0f2;
-  --surface:   #ffffff;
-  --surface-2: #f3f3f5;
-  --surface-3: #eaeaed;
-  --surface-4: #e0e0e4;
+  --bg:         #f4f4f6;
+  --sidebar-bg: #ececf0;
+  --surface:    #ffffff;
+  --surface-2:  #f2f2f5;
+  --surface-3:  #e8e8ed;
+  --surface-4:  #dedee4;
   --ink:       #0c0c0d;
   --ink-2:     #3f3f46;
   --muted:     #71717a;
@@ -93,9 +95,9 @@
   --accent-soft: rgba(12,12,13,0.05);
   --accent-blue: #0070f3;
   --accent-blue-soft: rgba(0,112,243,0.08);
-  --shadow:      0 0 0 1px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.07);
-  --shadow-soft: 0 0 0 1px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.05);
-  --shadow-lg:   0 0 0 1px rgba(0,0,0,0.07), 0 12px 36px rgba(0,0,0,0.1);
+  --shadow:      0 0 0 1px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-soft: 0 0 0 1px rgba(0,0,0,0.035), 0 2px 8px rgba(0,0,0,0.045);
+  --shadow-lg:   0 0 0 1px rgba(0,0,0,0.05), 0 16px 40px rgba(0,0,0,0.08);
 }
 
 
@@ -108,7 +110,8 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--ink);
-  line-height: 1.5;
+  line-height: 1.55;
+  letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -152,7 +155,7 @@ body {
   height: 100%;
   overflow-y: auto;
   scrollbar-width: none;
-  padding: 16px 10px 12px;
+  padding: 18px 12px 14px;
 }
 .sidebar-inner::-webkit-scrollbar { display: none; }
 
