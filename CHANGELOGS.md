@@ -113,10 +113,6 @@
 - Filled the tracker spreadsheet with fit scores, location tags, focus tags, and outreach-ready notes so the shortlist is immediately usable for 2026 summer applications.
 
 0.0.29
-- Added an AI analysis flow with a local API-key modal, per-row and drawer-level analyze actions, cached company research results, and a copy-ready mail hook inside the detail drawer.
-- Added a minimal Anthropic passthrough plus fit-score persistence so analysis results work in the local app despite localhost browser CORS restrictions on direct Anthropic API calls.
-
-0.0.29
 - Added a shared sidebar toggle across tracker, insights, and profile so the shell can collapse into a wider working surface on desktop and slide into an off-canvas panel on mobile.
 - Kept the state persistent with local storage, added a mobile backdrop, and preserved the existing layout language so the control feels native instead of bolted on.
 
@@ -143,3 +139,7 @@
 0.0.35
 - Switched the closed sidebar back to a true off-canvas transform so no clipped navigation text or ghost strip can remain on screen.
 - Added a dedicated floating reopen button for the collapsed state, which keeps access obvious without reintroducing the rail.
+
+0.0.36
+- Added an AI analysis flow with a local API-key modal, per-row and drawer-level analyze actions, cached company research results, and a copy-ready mail hook inside the detail drawer.
+- Added a minimal Anthropic passthrough plus fit-score persistence so analysis results work in the local app despite localhost browser CORS restrictions on direct Anthropic API calls.
