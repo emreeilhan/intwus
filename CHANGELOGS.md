@@ -252,3 +252,9 @@
 - Hardened the agent review state lifecycle so refresh now restores the right company, resumes queued or in-progress prep, and clears stale data when the query or stored state conflicts.
 - Persisted live draft edits, attachment toggles, and page visibility changes so typed changes survive refresh instead of disappearing mid-review.
 - Added safer storage recovery for broken session data and localStorage fallback so the route can still reopen cleanly when one storage path is unavailable.
+
+0.0.62
+- Added flow-run guards so stale research events from an old retry or slow network response can no longer overwrite the current agent draft.
+- Cleared both persisted storage layers and in-memory state on discard or successful send, which prevents an old draft from reappearing after the user explicitly leaves the flow.
+- Reset the no-draft UI state during preparation so stale attachment, tone, and safety details do not linger while the next draft is being built.
+- Added `pagehide` persistence for more reliable refresh and tab-close recovery on browsers that are weaker on `beforeunload`.

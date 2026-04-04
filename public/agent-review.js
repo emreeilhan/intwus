@@ -44,6 +44,7 @@ const routeEmptyCopy = document.getElementById('agentEmptyCopy');
 let reviewState = null;
 let elapsedTimer = null;
 let draftSyncTimer = null;
+let activeFlowRunId = '';
 
 function escapeHtml(value) {
   return String(value || '')
@@ -215,6 +216,16 @@ function saveStateTo(storage) {
   } catch {
     // Keep going if storage is unavailable.
   }
+}
+
+function clearPersistedState() {
+  [window.sessionStorage, window.localStorage].forEach((storage) => {
+    try {
+      storage.removeItem(REVIEW_STATE_KEY);
+    } catch {
+      // Ignore storage cleanup failures.
+    }
+  });
 }
 
 function persistState() {
@@ -437,7 +448,7 @@ function renderState() {
 
   if (!hasContext) {
     if (routeEmptyCopy) routeEmptyCopy.innerHTML = 'Go back to the tracker, pick a company, and run <strong>Prepare Agent Mail</strong> again.';
-    stopElapsedTicker();
+    stopTimers();
     return;
   }
 
@@ -469,6 +480,7 @@ function renderState() {
   startElapsedTicker();
 
   if (!hasDraft) {
+    clearDraftUi();
     if (routeEmptyCopy) {
       routeEmptyCopy.innerHTML = `Preparing outreach for <strong>${escapeHtml(reviewState.company || 'this company')}</strong>. You can already see where the flow is, whether it is still moving, and if it fails, the exact error.`;
     }
@@ -525,10 +537,50 @@ function syncAttachmentChoices() {
   persistState();
 }
 
+function clearDraftUi() {
+  if (routeTo) routeTo.value = '';
+  if (routeCc) routeCc.value = '';
+  if (routeSubject) routeSubject.value = '';
+  if (routeBody) routeBody.value = '';
+  if (routeAttachmentReason) routeAttachmentReason.textContent = '-';
+  if (routeAssetList) routeAssetList.innerHTML = '';
+  if (routeIncludeResume) routeIncludeResume.checked = false;
+  if (routeIncludeTranscript) routeIncludeTranscript.checked = false;
+  if (routeIncludePortfolioLink) routeIncludePortfolioLink.checked = false;
+  if (routeToneStatus) routeToneStatus.textContent = 'Balanced';
+  if (routeSafetyNote) routeSafetyNote.textContent = '-';
+  if (routeManualAttachmentNote) routeManualAttachmentNote.hidden = true;
+  if (routeSendBtn) routeSendBtn.hidden = true;
+  routeToneGrid?.querySelectorAll('[data-tone-preset]').forEach((button) => {
+    button.classList.remove('active');
+  });
+}
+
 function shouldAutoResume() {
   if (!reviewState?.company || reviewState?.draft) return false;
   const status = reviewState?.stageState?.status;
-  return ['queued', 'running', 'stuck'].includes(status);
+  return ['queued', 'running'].includes(status);
+}
+
+function startNewFlowRun() {
+  if (!reviewState) return '';
+  ensureStageState();
+  activeFlowRunId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  reviewState.stageState.runId = activeFlowRunId;
+  reviewState.stageState.startedAt = new Date().toISOString();
+  reviewState.stageState.lastEventAt = reviewState.stageState.startedAt;
+  persistState();
+  return activeFlowRunId;
+}
+
+function isCurrentFlowRun(runId) {
+  return Boolean(runId && reviewState?.stageState?.runId === runId && activeFlowRunId === runId);
+}
+
+function stopTimers() {
+  stopElapsedTicker();
+  window.clearTimeout(draftSyncTimer);
+  draftSyncTimer = null;
 }
 
 async function logAction(action, meta = {}) {
@@ -667,6 +719,8 @@ async function runPreparationPipeline({ retry = false } = {}) {
     return;
   }
 
+  const flowRunId = startNewFlowRun();
+
   if (retry) {
     reviewState.draft = null;
     reviewState.researchedDraft = null;
@@ -714,6 +768,7 @@ async function runPreparationPipeline({ retry = false } = {}) {
     let buffer = '';
 
     const processEvent = (eventType, data) => {
+      if (!isCurrentFlowRun(flowRunId)) return;
       switch (eventType) {
         case 'stage': {
           const step = data.step || 'research';
@@ -758,6 +813,7 @@ async function runPreparationPipeline({ retry = false } = {}) {
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      if (!isCurrentFlowRun(flowRunId)) break;
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -796,6 +852,7 @@ async function runPreparationPipeline({ retry = false } = {}) {
 
   } catch (error) {
     if (composeEl) composeEl.classList.remove('is-researching');
+    if (!isCurrentFlowRun(flowRunId)) return;
     const message = error instanceof Error ? error.message : 'Preparation failed.';
     setStage(reviewState?.stageState?.currentStep || 'queued', 'error', message, { error: message });
     appendTimeline('Preparation failed', message, 'error');
@@ -888,7 +945,10 @@ async function sendDirectly() {
 
     appendTimeline('Mail sent', `Direct send completed. Message ID: ${payload.messageId || 'n/a'}.`);
     await markEntryApplied();
-    sessionStorage.removeItem(REVIEW_STATE_KEY);
+    clearPersistedState();
+    stopTimers();
+    reviewState = null;
+    activeFlowRunId = '';
     window.alert(`Message sent. Message ID: ${payload.messageId || 'n/a'}`);
     window.location.href = '/';
   } catch (error) {
@@ -905,7 +965,13 @@ function initTheme() {
 }
 
 function bindEvents() {
-  routeCancel?.addEventListener('click', () => { window.location.href = '/'; });
+  routeCancel?.addEventListener('click', () => {
+    clearPersistedState();
+    stopTimers();
+    reviewState = null;
+    activeFlowRunId = '';
+    window.location.href = '/';
+  });
   routeGmailBtn?.addEventListener('click', openInGmail);
   routeSendBtn?.addEventListener('click', sendDirectly);
   routeToneGrid?.addEventListener('click', (event) => {
@@ -931,6 +997,7 @@ function bindEvents() {
     runPreparationPipeline({ retry: true });
   });
   window.addEventListener('beforeunload', persistState);
+  window.addEventListener('pagehide', persistState);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') persistState();
   });
@@ -944,7 +1011,7 @@ function boot() {
   renderState();
   if (shouldAutoResume()) {
     runPreparationPipeline({
-      retry: ['running', 'stuck'].includes(reviewState?.stageState?.status)
+      retry: reviewState?.stageState?.status === 'running'
     });
   }
   window.requestAnimationFrame(() => {
