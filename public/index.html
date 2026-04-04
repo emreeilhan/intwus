@@ -411,30 +411,6 @@
           </fieldset>
           <label>Location <input id="drawerTag" type="text" /></label>
           <label>Notes <textarea id="drawerNotes" rows="4"></textarea></label>
-          <section class="analysis-block" aria-labelledby="analysisTitle">
-            <div class="analysis-header">
-              <div>
-                <p class="analysis-title" id="analysisTitle">AI Analysis</p>
-                <p class="analysis-sub">Research the company and compare the role fit against your CV.</p>
-              </div>
-              <div class="analysis-actions">
-                <button id="drawerAnalyzeBtn" type="button">Analyze</button>
-                <button class="ghost-btn" id="prepareAgentBtn" type="button">Prepare Agent Mail</button>
-                <button class="ghost-btn" id="copyMailHookBtn" type="button" hidden>Copy Mail Hook</button>
-              </div>
-            </div>
-            <div class="analysis-panel" id="analysisPanel">
-              <div class="analysis-empty" id="analysisEmpty">
-                Run an analysis to see match gaps, CV edits, and a company-specific mail hook.
-              </div>
-              <div class="analysis-loading" id="analysisLoading" hidden>
-                <span class="analysis-spinner" aria-hidden="true"></span>
-                <span id="analysisLoadingText">Analyzing…</span>
-              </div>
-              <div class="analysis-error" id="analysisError" hidden></div>
-              <div class="analysis-result" id="analysisResult" hidden></div>
-            </div>
-          </section>
           <div class="timeline">
             <div class="timeline-header">
               <span class="timeline-label">Activity</span>
@@ -448,6 +424,32 @@
             <button type="submit">Save changes</button>
           </div>
         </form>
+
+        <!-- Purpose: AI tools live outside the edit form — same drawer, no nested form sections. -->
+        <section class="analysis-block" aria-labelledby="analysisTitle">
+          <div class="analysis-header">
+            <div>
+              <p class="analysis-title" id="analysisTitle">AI Analysis</p>
+              <p class="analysis-sub">Research the company and compare the role fit against your CV.</p>
+            </div>
+            <div class="analysis-actions">
+              <button id="drawerAnalyzeBtn" type="button">Analyze</button>
+              <button class="ghost-btn" id="prepareAgentBtn" type="button">Prepare Agent Mail</button>
+              <button class="ghost-btn" id="copyMailHookBtn" type="button" hidden>Copy Mail Hook</button>
+            </div>
+          </div>
+          <div class="analysis-panel" id="analysisPanel">
+            <div class="analysis-empty" id="analysisEmpty">
+              Run an analysis to see match gaps, CV edits, and a company-specific mail hook.
+            </div>
+            <div class="analysis-loading" id="analysisLoading" hidden>
+              <span class="analysis-spinner" aria-hidden="true"></span>
+              <span id="analysisLoadingText">Analyzing…</span>
+            </div>
+            <div class="analysis-error" id="analysisError" hidden></div>
+            <div class="analysis-result" id="analysisResult" hidden></div>
+          </div>
+        </section>
       </aside>
     </div>
 

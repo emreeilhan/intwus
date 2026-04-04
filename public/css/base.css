@@ -1319,6 +1319,15 @@ label {
   box-shadow: var(--shadow-lg);
   padding: 20px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Purpose: AI block sits below the edit form, not inside <form> (clearer semantics + scroll). */
+.drawer > .analysis-block {
+  margin-top: 16px;
+  flex-shrink: 0;
 }
 
 /* AI analysis */

@@ -214,3 +214,7 @@
 0.0.52
 - Fixed sidebar footer links that are `<button>` elements appearing centered instead of left-aligned: the global `button { justify-content: center }` rule was winning where `.sidebar-footer-link` did not set `justify-content`, while `<a class="sidebar-footer-link">` rows stayed left-aligned.
 - Set `justify-content: flex-start` and `text-align: left` on `.sidebar-footer-link`, and the same flex justification on `.sidebar-nav-item` and `.sidebar-search-trigger` so all sidebar buttons match anchor alignment.
+
+0.0.53
+- Moved the AI Analysis block out of `#drawerForm` so it is a sibling section under `#detailDrawer`, separating form submit scope from AI tooling while keeping the same controls and IDs.
+- Adjusted drawer layout flex so the analysis block stacks below the form with consistent spacing.
