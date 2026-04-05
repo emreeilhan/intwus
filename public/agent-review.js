@@ -75,6 +75,35 @@ function formatDuration(ms) {
   return `${minutes}m ${seconds}s`;
 }
 
+function getStageLabel(stepKey) {
+  return PREP_STAGES.find((item) => item.key === stepKey)?.label || 'Preparing';
+}
+
+function getStageTiming() {
+  const startedAt = new Date(reviewState?.stageState?.startedAt || reviewState?.startedAt || '').getTime();
+  const lastEventAt = new Date(reviewState?.stageState?.lastEventAt || reviewState?.stageState?.startedAt || '').getTime();
+  return {
+    elapsedMs: Number.isNaN(startedAt) ? 0 : Math.max(0, Date.now() - startedAt),
+    idleMs: Number.isNaN(lastEventAt) ? 0 : Math.max(0, Date.now() - lastEventAt)
+  };
+}
+
+function buildStuckMessage() {
+  const stageState = reviewState?.stageState || {};
+  const currentLabel = getStageLabel(stageState.currentStep);
+  const { elapsedMs, idleMs } = getStageTiming();
+  const lastUpdate = stageState.summary || 'No progress update arrived before the flow stalled.';
+
+  return `Preparation stalled on ${currentLabel} after ${formatDuration(elapsedMs)}. No new events arrived for ${formatDuration(idleMs)}. Last update: ${lastUpdate}. Retry will restart the flow from the beginning.`;
+}
+
+function getRouteIssueMessage() {
+  const stageState = reviewState?.stageState || {};
+  if (stageState.status === 'stuck') return stageState.error || buildStuckMessage();
+  if (stageState.status === 'error') return stageState.error || stageState.summary || 'Preparation failed.';
+  return stageState.error || '';
+}
+
 function setError(message = '') {
   if (!routeError) return;
   routeError.hidden = !message;
@@ -339,6 +368,10 @@ function refreshElapsedLabel() {
     routeStageElapsed.textContent = `Stopped at ${currentLabel}`;
     return;
   }
+  if (status === 'stuck') {
+    routeStageElapsed.textContent = `Stalled at ${currentLabel} · ${formatDuration(elapsed)}`;
+    return;
+  }
   if (status === 'ready') {
     const completedAt = new Date(reviewState.stageState.lastEventAt || reviewState.stageState.startedAt).getTime();
     const completedElapsed = Number.isNaN(completedAt) ? elapsed : Math.max(0, completedAt - startedAt);
@@ -347,6 +380,9 @@ function refreshElapsedLabel() {
   }
   if (staleFor > 20000 && status === 'running') {
     reviewState.stageState.status = 'stuck';
+    reviewState.stageState.error = buildStuckMessage();
+    reviewState.stageState.lastEventAt = new Date().toISOString();
+    appendTimeline('Preparation stalled', reviewState.stageState.error, 'error');
     persistState();
     renderState();
     routeStageElapsed.textContent = `Still on ${currentLabel} after ${formatDuration(elapsed)}`;
@@ -441,10 +477,11 @@ function renderState() {
   ensureStageState();
   const hasContext = Boolean(reviewState?.company || reviewState?.draft);
   const hasDraft = Boolean(reviewState?.draft);
+  const issueMessage = getRouteIssueMessage();
   if (routeForm) routeForm.hidden = !hasDraft;
   if (routeComposePlaceholder) routeComposePlaceholder.hidden = hasDraft || !hasContext;
   if (routeEmpty) routeEmpty.hidden = hasContext;
-  setError(reviewState?.stageState?.error || '');
+  setError(issueMessage);
 
   if (!hasContext) {
     if (routeEmptyCopy) routeEmptyCopy.innerHTML = 'Go back to the tracker, pick a company, and run <strong>Prepare Agent Mail</strong> again.';
@@ -472,7 +509,7 @@ function renderState() {
   }
 
   if (routeStageSummary) {
-    routeStageSummary.textContent = reviewState?.stageState?.summary || 'The route will show real preparation stages here.';
+    routeStageSummary.textContent = issueMessage || reviewState?.stageState?.summary || 'The route will show real preparation stages here.';
   }
 
   renderStageList();

@@ -258,3 +258,7 @@
 - Cleared both persisted storage layers and in-memory state on discard or successful send, which prevents an old draft from reappearing after the user explicitly leaves the flow.
 - Reset the no-draft UI state during preparation so stale attachment, tone, and safety details do not linger while the next draft is being built.
 - Added `pagehide` persistence for more reliable refresh and tab-close recovery on browsers that are weaker on `beforeunload`.
+
+0.0.63
+- Made `stuck` and `error` states in `/agent-review` explain themselves with a visible diagnostic message instead of leaving only the Retry button on screen.
+- Added timeout-based stall detection details, including the current stage, idle time, and last successful update, so the UI now tells the user what actually went wrong. This is the real benefit because it turns a vague recovery state into a debuggable one.

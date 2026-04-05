@@ -669,7 +669,16 @@
 
 /* ── Error ───────────────────────────────────────────────── */
 
-.agent-route-error { margin-top: 16px; }
+.agent-route-error {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(248,113,113,0.24);
+  border-radius: 14px;
+  background: rgba(248,113,113,0.06);
+  color: #fca5a5;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
 
 /* ── Responsive ─────────────────────────────────────────── */
 
