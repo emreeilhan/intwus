@@ -919,6 +919,7 @@ const APPLICATION_AGENT_SYSTEM_PROMPT = [
   'Use web search to find: the most relevant team, research group, or project area; a credible direct contact path (not just a careers page form); and real technical signals about what makes this company worth reaching out to.',
   'Research quality matters more than writing style here. Gather concrete facts and contact paths; do not try to sound polished, impressive, literary, or overly strategic.',
   'The candidate is early-career. Favor modest, earned claims over strong self-positioning.',
+  'Write for a capable but junior applicant. Curious and technically grounded is good; sounding advanced, elite, or unusually senior is not.',
   'Never invent facts. If a detail is uncertain, flag it in confidence or warnings instead of stating it as true.',
   'Return plain text only with the exact headers from the user prompt. No markdown code fences.'
 ].join(' ');
@@ -944,6 +945,7 @@ const POLISH_MAIL_SYSTEM_PROMPT = [
   '12. Optimize for "sounds believable and human" over "sounds impressive".',
   '13. Avoid praise-heavy or self-promotional patterns such as "exactly the kind of environment I want to grow in", "my work and studies have pushed me toward", "that focus is why I am writing to you specifically", or "your work stands out for".',
   '14. Avoid meta lines that explain the psychology of the email. Just say the relevant fact, your background, and the ask.',
+  '15. Write like a capable but junior candidate. Curious, technically grounded, and respectful is right; self-congratulatory, high-status, or unusually senior is wrong.',
   'Return strict JSON only.'
 ].join('\n');
 
@@ -1168,6 +1170,7 @@ function buildApplicationAgentPrompt({ company, location, notes, website, profil
     '- Keep the draft plain enough that it could have been written directly by the candidate in one sitting. Specific is good; polished admiration is not.',
     '- Do NOT produce a skill list anywhere. If skills appear, they must be embedded in a sentence explaining what was built or studied.',
     '- Underclaim rather than overclaim. Avoid phrases like "exactly the kind of environment I want to grow in", "my work and studies have pushed me toward", "that focus is why I am writing to you specifically", or "your work stands out for".',
+    '- Treat the candidate as a junior applicant. Do not oversell ownership, scope, confidence, or certainty of fit.',
     '- Do not compliment the company at length. One concrete fact is enough to justify the email.',
     '- hookType: mission (company mission alignment), technical (specific technical area match), product (specific product or system they build), team (specific named team or researcher), general (fallback only if nothing specific found).',
     '- contactEmail: search aggressively for a real email address. Try in this order: (1) company "contact" or "team" page, (2) academic staff page or research group page, (3) GitHub profile bio of founders or team leads, (4) published papers listing author contact, (5) common patterns like careers@, internships@, info@, hello@ with the company domain. Only leave empty if nothing credible is found after all attempts.',
@@ -1205,6 +1208,7 @@ function buildPolishMailPrompt({ company, draft, profile, tonePreset = 'balanced
     '- Open with one company-specific sentence, but keep it plain and readable. No dramatic framing, no inflated wording, no thesis-statement energy.',
     '- Mention the company area directly. Do not explain back to them why their approach is special, distinctive, or notable.',
     '- The candidate should sound capable, curious, and grounded, not exceptional, destined, or unusually polished.',
+    '- The candidate is a junior applicant. Keep the voice modest and realistic, with no self-congratulatory or high-status phrasing.',
     '- Skills must appear through natural context only. Never produce a comma-separated skill list. Prefer one simple concrete sentence over layered abstractions.',
     '- Do not force hidden rhetorical structure. If "why this person / why this company / why now" makes the draft sound AI-written, drop the pattern and write normally.',
     '- Slight underclaiming is good. Use earned claims only and let the company fact carry the specificity.',
@@ -1212,6 +1216,7 @@ function buildPolishMailPrompt({ company, draft, profile, tonePreset = 'balanced
     '- Remove filler phrases: "for context", "as well", "I would like to", "I am interested in", "I am reaching out because", "that overlap is why I am writing".',
     '- Avoid praise-heavy lines or meta explanations such as "that is why I am writing to you specifically". One factual reference is enough.',
     '- Avoid these patterns unless the draft absolutely needs them: "exactly the kind of", "I want to grow in", "my work and studies have pushed me toward", "I\'d welcome a short conversation about whether there is a fit", "your work stands out for".',
+    '- Avoid these self-positioning patterns too: "what I bring", "I can contribute by", "where I want to contribute now", or anything that makes the candidate sound more senior than an intern applicant.',
     '- Ban these tones unless the draft explicitly needs them: grand, literary, highly polished, consultant-like, or motivational.',
     '- Maximum 4–6 content sentences. The full email including greeting and signature must fit in one screen.',
     '- Mention attached resume and transcript in one brief natural sentence integrated into the body — never as its own paragraph.',
@@ -1272,10 +1277,198 @@ function buildAgentResearchResult({ researchedDraft, company, website, profile, 
   };
 }
 
-function buildAgentFinalDraft({ researchedDraft, polishedDraft, company, website, profile, recommendedAttachments }) {
+function finalizeMailSentence(value) {
+  let text = normalizeString(value).replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  text = text
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\.\.+/g, '.')
+    .trim();
+  if (text && !/[.!?]$/.test(text)) text += '.';
+  return text;
+}
+
+function normalizeRelevantDetail(value) {
+  return normalizeString(value)
+    .replace(/\bshowing that\b.*$/i, '')
+    .replace(/\bwhich shows that\b.*$/i, '')
+    .replace(/^your\s+/i, '')
+    .replace(/^public work around\s+/i, 'work on ')
+    .replace(/^work around\s+/i, 'work on ')
+    .replace(/^research around\s+/i, 'research on ')
+    .trim();
+}
+
+function sanitizeMailSentence(line) {
+  let text = normalizeString(line);
+  if (!text) return '';
+
+  const tieMatch = text.match(/^(.*?)(?:\s+stood out|\s+stands out)\s+because it ties\s+(.+)$/i);
+  if (tieMatch) {
+    return finalizeMailSentence(`${tieMatch[1]} ties ${tieMatch[2]}`);
+  }
+
+  const becauseMatch = text.match(/^(.*?)(?:\s+stood out|\s+stands out)\s+because\s+(.+)$/i);
+  if (becauseMatch) {
+    return finalizeMailSentence(`${becauseMatch[1]} focuses on ${becauseMatch[2]}`);
+  }
+
+  const treatingMatch = text.match(/^(.*?)(?:\s+stood out|\s+stands out)\s+for treating\s+(.+)$/i);
+  if (treatingMatch) {
+    return finalizeMailSentence(`${treatingMatch[1]} works on ${treatingMatch[2]}`);
+  }
+
+  const sameDirectionMatch = text.match(/^My work (?:has been|is) moving in (?:that|the same) [^:]+:\s*I approach security by (.+)$/i);
+  if (sameDirectionMatch) {
+    text = `In my studies and projects, I have been focusing on ${sameDirectionMatch[1]}`;
+  }
+
+  const pushedTowardMatch = text.match(/^My work and studies have pushed me toward (.+)$/i);
+  if (pushedTowardMatch) {
+    text = `I have been focusing more on ${pushedTowardMatch[1]}`;
+  }
+
+  const workOnRelevantMatch = text.match(/^That (?:focus makes|makes) .* work on (.+?) especially relevant.*$/i);
+  if (workOnRelevantMatch) {
+    text = `Your work on ${workOnRelevantMatch[1]} is relevant to me`;
+  }
+
+  const particularlyWithMatch = text.match(/^That .* particularly with (.+)$/i);
+  if (particularlyWithMatch) {
+    const detail = normalizeRelevantDetail(particularlyWithMatch[1]);
+    if (detail) text = `Your ${detail} is relevant to me`;
+  }
+
+  text = text
+    .replace(/\bespecially compelling\b/gi, 'relevant')
+    .replace(/\bparticularly compelling\b/gi, 'relevant')
+    .replace(/\bvery compelling\b/gi, 'relevant')
+    .replace(/\bexactly the kind of environment I want to grow in\b/gi, 'a direction I want to learn more in')
+    .replace(/\bwhere I want to contribute now\b/gi, 'that I want to learn more about')
+    .replace(/\bthat focus is why I am writing to you specifically\b/gi, 'that is why I am writing')
+    .replace(/\bI(?:'|’)d welcome a short conversation about whether there(?:'|’)s a fit(?: for an internship or early-career role)?\b/gi, 'If there is a fit, I would be glad to talk')
+    .replace(/\bI(?:'|’)d welcome a short conversation about whether there is a fit(?: for an internship or early-career role)?\b/gi, 'If there is a fit, I would be glad to talk')
+    .replace(/\bwhat I bring\b/gi, 'my background')
+    .replace(/\bI can contribute by\b/gi, 'I can support this work through')
+    .replace(/\b now\b/gi, '')
+    .trim();
+
+  return finalizeMailSentence(text);
+}
+
+function sanitizeMailLines(lines) {
+  return normalizeStringList(lines, [])
+    .map((line) => sanitizeMailSentence(line))
+    .filter(Boolean);
+}
+
+function cleanCompanyFocusPhrase(value, company) {
+  const companyName = normalizeString(company);
+  const escapedCompany = companyName ? companyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+  let text = normalizeString(value);
+  if (!text) return '';
+
+  if (escapedCompany) {
+    text = text.replace(new RegExp(`^${escapedCompany}(?:['’]s)?\\s+`, 'i'), '');
+  }
+
+  text = text
+    .replace(/\b(?:stood|stands) out\b.*$/i, '')
+    .replace(/\b(?:is|are) especially relevant.*$/i, '')
+    .replace(/\bshowing that\b.*$/i, '')
+    .replace(/\bwhich shows that\b.*$/i, '')
+    .replace(/^your\s+/i, '')
+    .replace(/^public work around\s+/i, '')
+    .replace(/^public work on\s+/i, '')
+    .replace(/^work around\s+/i, '')
+    .replace(/^work on\s+/i, '')
+    .replace(/^works on\s+/i, '')
+    .replace(/^research around\s+/i, '')
+    .replace(/^research on\s+/i, '')
+    .replace(/\bCyber Security Engineer work for the\b/i, '')
+    .replace(/\bEngineer work for the\b/i, '')
+    .replace(/\brole for the\b/i, '')
+    .replace(/\brole on the\b/i, '')
+    .replace(/\bit treats hardware behavior as a security problem, not just a software one\b/i, 'hardware-level security problems')
+    .replace(/\bvehicle-level cyber-security requirements directly to regulated compliance under\b/i, 'vehicle-level cyber-security requirements under')
+    .replace(/\s+/g, ' ')
+    .replace(/^[,;:\-\s]+|[,;:\-\s]+$/g, '')
+    .trim();
+
+  return text;
+}
+
+function pickCompanyFocusPhrase({ company, researchedDraft }) {
+  const candidates = [
+    ...normalizeStringList(researchedDraft?.companySignals, []),
+    ...normalizeStringList(researchedDraft?.introLines, []),
+    normalizeString(researchedDraft?.subject)
+  ];
+
+  for (const candidate of candidates) {
+    const cleaned = cleanCompanyFocusPhrase(candidate, company);
+    if (cleaned && cleaned.length >= 12) return cleaned;
+  }
+  return 'embedded systems and security';
+}
+
+function buildPlainIntroLine({ company, researchedDraft }) {
+  const companyName = normalizeString(researchedDraft?.companyName, company || 'the team');
+  const focus = pickCompanyFocusPhrase({ company: companyName, researchedDraft });
+  return finalizeMailSentence(`I saw that ${companyName} is working on ${focus}`);
+}
+
+function buildPlainBackgroundLine(tonePreset = 'balanced') {
+  const variants = {
+    balanced: 'I am a Computer Engineering student focusing on embedded systems and security, especially firmware and device behavior.',
+    technical: 'I am a Computer Engineering student focusing on embedded systems and security, especially firmware behavior, device communication, and telemetry.',
+    concise: 'I am a Computer Engineering student focusing on embedded systems, firmware, and security.',
+    warm: 'I am a Computer Engineering student focusing on embedded systems and security, especially firmware and device behavior.',
+    corporate: 'I am a Computer Engineering student focused on embedded systems and security, especially firmware and device-level behavior.'
+  };
+  return finalizeMailSentence(variants[tonePreset] || variants.balanced);
+}
+
+function buildPlainCloseLine({ recommendedAttachments, tonePreset = 'balanced' }) {
+  const attachments = [];
+  if (recommendedAttachments?.resume !== false) attachments.push('resume');
+  if (recommendedAttachments?.transcript) attachments.push('transcript');
+
+  let attachmentText = 'my resume';
+  if (attachments.length === 2) attachmentText = 'my resume and transcript';
+  else if (attachments.length === 1 && attachments[0] === 'transcript') attachmentText = 'my transcript';
+
+  const variants = {
+    balanced: `I attached ${attachmentText}. If there is an internship fit in your team, I would be happy to talk.`,
+    technical: `I attached ${attachmentText}. If there is an internship fit in your team, I would be happy to talk.`,
+    concise: `I attached ${attachmentText}. If there is an internship fit, I would be happy to talk.`,
+    warm: `I attached ${attachmentText}. If there is an internship fit in your team, I would be happy to talk.`,
+    corporate: `I attached ${attachmentText}. If there is an internship fit in your team, I would be happy to discuss it further.`
+  };
+  return finalizeMailSentence(variants[tonePreset] || variants.balanced);
+}
+
+function buildPlainMailLines({ company, researchedDraft, recommendedAttachments, tonePreset = 'balanced' }) {
+  return {
+    introLines: [buildPlainIntroLine({ company, researchedDraft })],
+    bodyLines: [
+      buildPlainBackgroundLine(tonePreset),
+      buildPlainCloseLine({ recommendedAttachments, tonePreset })
+    ].filter(Boolean)
+  };
+}
+
+function buildAgentFinalDraft({ researchedDraft, polishedDraft, company, website, profile, recommendedAttachments, tonePreset = 'balanced' }) {
   const signatureLines = normalizeStringList(profile.application?.emailSignature, []);
-  const introLines = normalizeStringList(polishedDraft?.introLines, researchedDraft?.introLines || []);
-  const bodyLines = normalizeStringList(polishedDraft?.bodyLines, researchedDraft?.bodyLines || []);
+  const plainLines = buildPlainMailLines({
+    company,
+    researchedDraft,
+    recommendedAttachments,
+    tonePreset
+  });
+  const introLines = plainLines.introLines;
+  const bodyLines = plainLines.bodyLines;
   const warnings = normalizeStringList(polishedDraft?.warnings, normalizeStringList(researchedDraft?.warnings, []));
   const cc = normalizeString(profile.application?.cc);
   const safety = evaluateSendSafety({
@@ -1302,7 +1495,7 @@ function buildAgentFinalDraft({ researchedDraft, polishedDraft, company, website
     warnings,
     recommendedAttachments,
     safety,
-    tonePreset: 'balanced',
+    tonePreset,
     cc
   };
 }
@@ -2092,8 +2285,18 @@ app.post('/api/application-agent/polish', async (req, res) => {
       tonePreset,
       includePortfolioLink
     });
-    const introLines = normalizeStringList(polishResult.polishedDraft?.introLines, draftInput?.introLines || []);
-    const bodyLines = normalizeStringList(polishResult.polishedDraft?.bodyLines, draftInput?.bodyLines || []);
+    const plainLines = buildPlainMailLines({
+      company: company || draftInput?.companyName || '',
+      researchedDraft: draftInput,
+      recommendedAttachments: draftInput?.recommendedAttachments || {
+        resume: true,
+        transcript: false,
+        portfolioLink: false
+      },
+      tonePreset
+    });
+    const introLines = plainLines.introLines;
+    const bodyLines = plainLines.bodyLines;
     return res.json({
       subject: normalizeString(polishResult.polishedDraft?.subject, normalizeString(draftInput?.subject, company ? `Internship Application - ${company}` : 'Internship Application')),
       introLines,

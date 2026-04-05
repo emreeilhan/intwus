@@ -310,3 +310,15 @@
 0.0.76
 - Tightened the outreach prompts so the mail agent now prefers plain, modest wording and explicitly avoids praise-heavy hooks like "your work stands out for" or over-crafted closing lines.
 - Trimmed the profile context sent into mail generation by removing strategy-heavy and raw source-document framing, which should materially reduce the AI-ish "manifesto" tone in first-pass emails. 🙂
+
+0.0.77
+- Added a stronger junior-candidate voice constraint to the outreach prompts so the mailer now treats the sender as capable but clearly early-career instead of drifting into high-status or self-promotional language.
+- Added a post-generation cleanup pass for outreach lines that flattens praise-heavy hooks and over-crafted closings like "stood out", "especially compelling", and "I'd welcome a short conversation...", which is the real guard when prompt-following slips.
+
+0.0.78
+- Replaced the free-form final outreach body with a tighter deterministic structure: one plain company-specific line, one plain student-background line, and one direct attachment/ask line.
+- Routed tone repolish through the same plain-body builder, so the review page can no longer fall back to AI-ish hook paragraphs when you click a tone preset.
+
+0.0.79
+- Bumped the persisted agent-review state key so stale local/session drafts from the older mail flow no longer bleed into the new review route.
+- This matters because even after fixing the server prompts, an old saved draft could still make the UI look broken until the stored state was cleared.

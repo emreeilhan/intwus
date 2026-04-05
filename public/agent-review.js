@@ -1,4 +1,4 @@
-const REVIEW_STATE_KEY = 'staj-agent-review-state-v1';
+const REVIEW_STATE_KEY = 'staj-agent-review-state-v2';
 const THEME_KEY = 'staj-theme';
 const API_KEY_STORAGE_KEY = 'staj-apikey';
 
