@@ -731,7 +731,23 @@ function buildDraftBody({ introLines, bodyLines, signatureLines }) {
     .trim();
 }
 
+let syncExcelTimeout = null;
+
 function syncExcel() {
+  if (syncExcelTimeout) {
+    clearTimeout(syncExcelTimeout);
+  }
+  syncExcelTimeout = setTimeout(() => {
+    syncExcelTimeout = null;
+    try {
+      performSyncExcel();
+    } catch (err) {
+      console.error('Failed to sync Excel:', err);
+    }
+  }, 1000);
+}
+
+function performSyncExcel() {
   const rows = selectAll.all();
   const header = [[
     'Id',
@@ -770,7 +786,11 @@ function syncExcel() {
   const worksheet = xlsx.utils.aoa_to_sheet([...header, ...body]);
   const workbook = xlsx.utils.book_new();
   xlsx.utils.book_append_sheet(workbook, worksheet, 'Internships');
-  xlsx.writeFile(workbook, excelPath);
+  xlsx.writeFileAsync(excelPath, workbook, (err) => {
+    if (err) {
+      console.error('Error writing Excel file:', err);
+    }
+  });
 }
 
 function computeFitScore({ company, status, notes, website, tag }) {
