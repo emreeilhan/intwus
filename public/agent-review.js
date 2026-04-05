@@ -261,6 +261,7 @@ function normalizeReviewState(state) {
   const normalized = {
     ...state,
     entryId: Number(state.entryId || 0) || null,
+    draftId: Number(state.draftId || 0) || null,
     company: String(state.company || '').trim(),
     location: String(state.location || ''),
     notes: String(state.notes || ''),
@@ -304,6 +305,8 @@ function normalizeReviewState(state) {
   if (!Array.isArray(normalized.streamLog)) {
     normalized.streamLog = [];
   }
+  normalized.gmailConfirmationPending = Boolean(normalized.gmailConfirmationPending);
+  normalized.gmailPromptOpen = Boolean(normalized.gmailPromptOpen);
 
   return normalized;
 }
@@ -373,6 +376,33 @@ function clearPersistedState() {
 function persistState() {
   saveStateTo(window.sessionStorage);
   saveStateTo(window.localStorage);
+}
+
+async function persistDraftToServer(status = 'draft') {
+  if (!reviewState?.draftId || !reviewState?.draft) return;
+  try {
+    await fetch(`/api/application-agent/drafts/${reviewState.draftId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status,
+        draft: reviewState.draft
+      })
+    });
+  } catch {
+    // Keep local work even if the background save fails.
+  }
+}
+
+async function deleteDraftFromServer() {
+  if (!reviewState?.draftId) return;
+  try {
+    await fetch(`/api/application-agent/drafts/${reviewState.draftId}`, {
+      method: 'DELETE'
+    });
+  } catch {
+    // Keep local cleanup path even if delete request fails.
+  }
 }
 
 function ensureStageState() {
@@ -667,6 +697,7 @@ function scheduleDraftSync() {
   window.clearTimeout(draftSyncTimer);
   draftSyncTimer = window.setTimeout(() => {
     persistState();
+    persistDraftToServer();
   }, 120);
 }
 
@@ -739,6 +770,52 @@ function stopTimers() {
   draftSyncTimer = null;
 }
 
+async function handleGmailReturn() {
+  if (!reviewState?.draft || !reviewState?.gmailConfirmationPending || reviewState?.gmailPromptOpen) return;
+  reviewState.gmailPromptOpen = true;
+  persistState();
+
+  const sent = window.confirm("Patron, mail'i attin mi?");
+  if (sent) {
+    reviewState.gmailConfirmationPending = false;
+    reviewState.gmailPromptOpen = false;
+    persistState();
+    appendTimeline('Gmail send confirmed', 'You confirmed that the Gmail draft was sent.');
+    await persistDraftToServer('sent');
+    await logAction('gmail-sent-confirmed', {
+      to: reviewState?.draft?.contactEmail || '',
+      subject: reviewState?.draft?.subject || ''
+    });
+    await markEntryApplied();
+    clearPersistedState();
+    stopTimers();
+    reviewState = null;
+    activeFlowRunId = '';
+    window.location.href = '/';
+    return;
+  }
+
+  const discard = window.confirm("Mail'i atmadin. Begenmediysen tamam'a bas, silelim. Taslak olarak saklamak icin iptal'e bas.");
+  reviewState.gmailConfirmationPending = false;
+  reviewState.gmailPromptOpen = false;
+
+  if (discard) {
+    appendTimeline('Draft discarded', 'You chose not to keep this Gmail draft.');
+    await deleteDraftFromServer();
+    clearPersistedState();
+    stopTimers();
+    reviewState = null;
+    activeFlowRunId = '';
+    window.location.href = '/';
+    return;
+  }
+
+  appendTimeline('Draft kept', 'You chose to keep the Gmail draft in history without sending it.');
+  persistState();
+  await persistDraftToServer('saved_draft');
+  renderState();
+}
+
 async function logAction(action, meta = {}) {
   if (!reviewState?.entryId) return;
   try {
@@ -797,6 +874,7 @@ async function applyTonePreset(tonePreset) {
     if (routeBody) routeBody.value = reviewState.draft.body || '';
     appendTimeline('Tone updated', `The draft was repolished with the ${tonePreset} tone.`);
     persistState();
+    await persistDraftToServer('draft');
     renderState();
   } catch (error) {
     appendTimeline('Tone update failed', error instanceof Error ? error.message : 'Tone update failed.', 'error');
@@ -909,6 +987,7 @@ async function runPreparationPipeline({ retry = false } = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         apiKey,
+        internshipId: reviewState.entryId,
         company: reviewState.company || '',
         location: reviewState.location || '',
         notes: reviewState.notes || '',
@@ -963,6 +1042,7 @@ async function runPreparationPipeline({ retry = false } = {}) {
           touchStageActivity();
           break;
         case 'draft':
+          reviewState.draftId = Number(data.draftId || 0) || null;
           reviewState.draft = data.draft || null;
           reviewState.sources = data.sources || [];
           reviewState.assets = data.assets || {};
@@ -1047,6 +1127,7 @@ async function openInGmail() {
   reviewState.draft.body = body;
   reviewState.draft.cc = cc;
   persistState();
+  await persistDraftToServer('draft');
   setError('');
 
   // Open synchronously before any await — popup blockers fire after async work
@@ -1055,6 +1136,10 @@ async function openInGmail() {
   if (!gmailWin) window.location.href = gmailUrl;
 
   appendTimeline('Gmail draft opened', 'Opened the prepared email in Gmail compose.');
+  reviewState.gmailConfirmationPending = true;
+  reviewState.gmailPromptOpen = false;
+  persistState();
+  await persistDraftToServer('draft_opened');
   await logAction('draft-opened', {
     to,
     subject,
@@ -1090,6 +1175,7 @@ async function sendDirectly() {
   reviewState.draft.body = body;
   reviewState.draft.cc = cc;
   persistState();
+  await persistDraftToServer('ready_to_send');
   setError('');
 
   if (routeSendBtn) { routeSendBtn.disabled = true; routeSendBtn.textContent = 'Sending...'; }
@@ -1114,6 +1200,7 @@ async function sendDirectly() {
     if (!res.ok) throw new Error(payload?.error || 'Send failed.');
 
     appendTimeline('Mail sent', `Direct send completed. Message ID: ${payload.messageId || 'n/a'}.`);
+    await persistDraftToServer('sent');
     await markEntryApplied();
     clearPersistedState();
     stopTimers();
@@ -1170,6 +1257,10 @@ function bindEvents() {
   window.addEventListener('pagehide', persistState);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') persistState();
+    if (document.visibilityState === 'visible') handleGmailReturn();
+  });
+  window.addEventListener('focus', () => {
+    handleGmailReturn();
   });
 }
 

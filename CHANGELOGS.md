@@ -294,3 +294,11 @@
 0.0.71
 - Expanded the profile summary sent to the mail agent so it now includes goals, strengths, growth areas, strategy context, and clipped excerpts/raw content from the saved profile source documents.
 - This gives the agent more of the real `Whoami` material instead of only a shallow profile stub, which should make the outreach sound closer to your actual positioning.
+
+0.0.72
+- Added persistent `application_mail_drafts` storage in SQLite so each newly prepared mail draft is saved as its own record for the related company/internship.
+- Wired the review route to keep the saved draft updated as you edit, repolish, open in Gmail, or send, so multiple drafts for the same company can coexist in the database instead of being lost in session state.
+
+0.0.73
+- Added a Gmail return decision flow on the review page: after opening Gmail and coming back, the app now asks whether you actually sent the mail, then marks it as sent, keeps it as a saved draft, or deletes it based on your answer.
+- Manual Gmail send confirmations now land in activity as real `email sent` events, so the tracker state and draft history stay aligned with what you actually did.

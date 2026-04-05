@@ -279,6 +279,24 @@ db.exec(`
     new_value TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS application_mail_drafts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    internship_id INTEGER NOT NULL,
+    company TEXT NOT NULL,
+    to_email TEXT DEFAULT '',
+    cc_email TEXT DEFAULT '',
+    subject TEXT DEFAULT '',
+    body TEXT DEFAULT '',
+    tone_preset TEXT DEFAULT 'balanced',
+    confidence TEXT DEFAULT 'low',
+    hook_type TEXT DEFAULT 'general',
+    contact_reason TEXT DEFAULT '',
+    status TEXT DEFAULT 'draft',
+    draft_json TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 const insertActivity = db.prepare(`
@@ -297,6 +315,51 @@ const selectAllActivity = db.prepare(`
   SELECT id, internship_id, event_type, old_value, new_value, created_at
   FROM activity_log
   ORDER BY id DESC
+`);
+
+const insertMailDraft = db.prepare(`
+  INSERT INTO application_mail_drafts (
+    internship_id, company, to_email, cc_email, subject, body, tone_preset,
+    confidence, hook_type, contact_reason, status, draft_json, updated_at
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+`);
+
+const updateMailDraft = db.prepare(`
+  UPDATE application_mail_drafts
+  SET
+    to_email = ?,
+    cc_email = ?,
+    subject = ?,
+    body = ?,
+    tone_preset = ?,
+    confidence = ?,
+    hook_type = ?,
+    contact_reason = ?,
+    status = ?,
+    draft_json = ?,
+    updated_at = datetime('now')
+  WHERE id = ?
+`);
+
+const selectMailDraftsByInternship = db.prepare(`
+  SELECT id, internship_id, company, to_email, cc_email, subject, body, tone_preset, confidence,
+         hook_type, contact_reason, status, draft_json, created_at, updated_at
+  FROM application_mail_drafts
+  WHERE internship_id = ?
+  ORDER BY id DESC
+`);
+
+const selectMailDraftById = db.prepare(`
+  SELECT id, internship_id, company, to_email, cc_email, subject, body, tone_preset, confidence,
+         hook_type, contact_reason, status, draft_json, created_at, updated_at
+  FROM application_mail_drafts
+  WHERE id = ?
+`);
+
+const deleteMailDraft = db.prepare(`
+  DELETE FROM application_mail_drafts
+  WHERE id = ?
 `);
 
 const selectSavedViews = db.prepare(`
@@ -350,6 +413,69 @@ function addActivity(internshipId, eventType, oldValue, newValue) {
     serializeValue(newValue),
     nowIso()
   );
+}
+
+function createMailDraftRecord({ internshipId, company, draft, status = 'draft' }) {
+  const payload = draft && typeof draft === 'object' ? { ...draft } : {};
+  const info = insertMailDraft.run(
+    internshipId,
+    normalizeString(company, normalizeString(payload.companyName)),
+    normalizeString(payload.contactEmail),
+    normalizeString(payload.cc),
+    normalizeString(payload.subject),
+    typeof payload.body === 'string' ? payload.body : '',
+    normalizeString(payload.tonePreset, 'balanced'),
+    normalizeString(payload.confidence, 'low'),
+    normalizeString(payload.hookType, 'general'),
+    normalizeString(payload.contactReason),
+    normalizeString(status, 'draft'),
+    JSON.stringify(payload)
+  );
+  return Number(info.lastInsertRowid);
+}
+
+function updateMailDraftRecord({ draftId, draft, status }) {
+  const existing = selectMailDraftById.get(Number(draftId));
+  if (!existing) return false;
+  const previousPayload = safeJsonParse(existing.draft_json, {});
+  const payload = draft && typeof draft === 'object'
+    ? { ...previousPayload, ...draft }
+    : previousPayload;
+  updateMailDraft.run(
+    normalizeString(payload.contactEmail),
+    normalizeString(payload.cc),
+    normalizeString(payload.subject),
+    typeof payload.body === 'string' ? payload.body : '',
+    normalizeString(payload.tonePreset, 'balanced'),
+    normalizeString(payload.confidence, 'low'),
+    normalizeString(payload.hookType, 'general'),
+    normalizeString(payload.contactReason),
+    normalizeString(status, normalizeString(existing.status, 'draft')),
+    JSON.stringify(payload),
+    Number(draftId)
+  );
+  return true;
+}
+
+function formatMailDraftRow(row) {
+  const payload = safeJsonParse(row?.draft_json, {});
+  return {
+    id: Number(row?.id || 0),
+    internshipId: Number(row?.internship_id || 0),
+    company: normalizeString(row?.company),
+    to: normalizeString(row?.to_email),
+    cc: normalizeString(row?.cc_email),
+    subject: normalizeString(row?.subject),
+    body: typeof row?.body === 'string' ? row.body : '',
+    tonePreset: normalizeString(row?.tone_preset, 'balanced'),
+    confidence: normalizeString(row?.confidence, 'low'),
+    hookType: normalizeString(row?.hook_type, 'general'),
+    contactReason: normalizeString(row?.contact_reason),
+    status: normalizeString(row?.status, 'draft'),
+    createdAt: normalizeString(row?.created_at),
+    updatedAt: normalizeString(row?.updated_at),
+    draft: payload && typeof payload === 'object' ? payload : {}
+  };
 }
 
 function getInternship(id) {
@@ -1528,6 +1654,11 @@ app.get('/api/internships/:id/activity', (req, res) => {
   res.json(selectActivity.all(Number(id)));
 });
 
+app.get('/api/internships/:id/mail-drafts', (req, res) => {
+  const { id } = req.params;
+  res.json(selectMailDraftsByInternship.all(Number(id)).map(formatMailDraftRow));
+});
+
 app.get('/api/saved-views', (req, res) => {
   const rows = selectSavedViews.all().map((row) => ({
     ...row,
@@ -1869,16 +2000,23 @@ app.post('/api/application-agent/prepare', async (req, res) => {
       draftInput: researchResult.researchedDraft,
       includePortfolioLink: researchResult.recommendedAttachments.portfolioLink
     });
+    const draft = buildAgentFinalDraft({
+      researchedDraft: researchResult.researchedDraft,
+      polishedDraft: polishResult.polishedDraft,
+      company,
+      website,
+      profile: polishResult.profile,
+      recommendedAttachments: researchResult.recommendedAttachments
+    });
+    const draftId = createMailDraftRecord({
+      internshipId: Number(req.body?.internshipId || 0) || 0,
+      company: draft.companyName || company,
+      draft
+    });
 
     return res.json({
-      draft: buildAgentFinalDraft({
-        researchedDraft: researchResult.researchedDraft,
-        polishedDraft: polishResult.polishedDraft,
-        company,
-        website,
-        profile: polishResult.profile,
-        recommendedAttachments: researchResult.recommendedAttachments
-      }),
+      draftId,
+      draft,
       assets: researchResult.assets,
       smtpConfigured: researchResult.smtpConfigured,
       sources: researchResult.sources,
@@ -2126,6 +2264,11 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
       profile,
       recommendedAttachments: researchResult.recommendedAttachments
     });
+    const draftId = createMailDraftRecord({
+      internshipId: Number(req.body?.internshipId || 0) || 0,
+      company: draft.companyName || company,
+      draft
+    });
 
     currentStage = {
       step: 'ready',
@@ -2135,6 +2278,7 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
     send('stage', currentStage);
     send('draft', {
       type: 'draft',
+      draftId,
       draft,
       sources: researchResult.sources,
       assets: researchResult.assets,
@@ -2163,8 +2307,48 @@ app.post('/api/application-agent/log-action', async (req, res) => {
     return res.status(400).json({ error: 'action is required.' });
   }
 
+  if (action === 'gmail-sent-confirmed') {
+    addActivity(internshipId, 'email sent', null, {
+      ...meta,
+      source: 'gmail_manual_confirmation'
+    });
+    return res.json({ ok: true });
+  }
+
   addActivity(internshipId, `agent ${action}`, null, meta);
   return res.json({ ok: true });
+});
+
+app.put('/api/application-agent/drafts/:id', async (req, res) => {
+  const draftId = Number(req.params.id || 0) || null;
+  const draft = req.body?.draft && typeof req.body?.draft === 'object' ? req.body.draft : null;
+  const status = normalizeString(req.body?.status);
+
+  if (!draftId) {
+    return res.status(400).json({ error: 'draft id is required.' });
+  }
+  if (!draft) {
+    return res.status(400).json({ error: 'draft payload is required.' });
+  }
+
+  const ok = updateMailDraftRecord({ draftId, draft, status });
+  if (!ok) {
+    return res.status(404).json({ error: 'Draft not found.' });
+  }
+
+  return res.json({ ok: true, draftId });
+});
+
+app.delete('/api/application-agent/drafts/:id', async (req, res) => {
+  const draftId = Number(req.params.id || 0) || null;
+  if (!draftId) {
+    return res.status(400).json({ error: 'draft id is required.' });
+  }
+  const info = deleteMailDraft.run(draftId);
+  if (!info.changes) {
+    return res.status(404).json({ error: 'Draft not found.' });
+  }
+  return res.json({ ok: true, draftId });
 });
 
 app.post('/api/application-agent/send', async (req, res) => {
