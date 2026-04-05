@@ -10,6 +10,14 @@ const PREP_STAGES = [
   { key: 'ready', label: 'Ready for review', copy: 'The email is ready for editing, opening, or sending.' }
 ];
 
+const STALL_LIMITS_MS = {
+  queued: 30000,
+  research: 180000,
+  shape: 30000,
+  polish: 180000,
+  ready: Infinity
+};
+
 const routeForm = document.getElementById('agentRouteForm');
 const routeComposePlaceholder = document.getElementById('agentComposePlaceholder');
 const routeEmpty = document.getElementById('agentRouteEmpty');
@@ -39,7 +47,11 @@ const routeStageList = document.getElementById('agentStageList');
 const routeStageSummary = document.getElementById('agentStageSummary');
 const routeStageElapsed = document.getElementById('agentStageElapsed');
 const routeRetryBtn = document.getElementById('agentRetryBtn');
+const routeStreamLog = document.getElementById('agentStreamLog');
+const routeStreamStatus = document.getElementById('agentStreamStatus');
 const routeEmptyCopy = document.getElementById('agentEmptyCopy');
+
+const MAX_STREAM_LOG_ITEMS = 24;
 
 let reviewState = null;
 let elapsedTimer = null;
@@ -92,9 +104,11 @@ function buildStuckMessage() {
   const stageState = reviewState?.stageState || {};
   const currentLabel = getStageLabel(stageState.currentStep);
   const { elapsedMs, idleMs } = getStageTiming();
-  const lastUpdate = stageState.summary || 'No progress update arrived before the flow stalled.';
+  const stallLimit = STALL_LIMITS_MS[stageState.currentStep] ?? 30000;
+  const lastUpdate = String(stageState.summary || 'No progress update arrived before the flow stalled.')
+    .replace(/[.\s]+$/, '');
 
-  return `Preparation stalled on ${currentLabel} after ${formatDuration(elapsedMs)}. No new events arrived for ${formatDuration(idleMs)}. Last update: ${lastUpdate}. Retry will restart the flow from the beginning.`;
+  return `Preparation stalled during ${currentLabel} after ${formatDuration(elapsedMs)}. No new stage events arrived for ${formatDuration(idleMs)} even though the wait limit is ${formatDuration(stallLimit)}, so the flow could not move forward. Last successful update: ${lastUpdate}. Retry will restart the flow from the beginning.`;
 }
 
 function getRouteIssueMessage() {
@@ -104,10 +118,104 @@ function getRouteIssueMessage() {
   return stageState.error || '';
 }
 
+function normalizeStreamPayload(data) {
+  if (data == null) return '';
+  if (typeof data === 'string') return data;
+  if (typeof data !== 'object') return String(data);
+  try {
+    return JSON.stringify(data);
+  } catch {
+    return '[unserializable payload]';
+  }
+}
+
+function summarizeStreamEvent(eventType, data) {
+  switch (eventType) {
+    case 'stage':
+      return {
+        label: `stage · ${data?.step || 'unknown'} · ${data?.status || 'unknown'}`,
+        copy: data?.summary || normalizeStreamPayload(data)
+      };
+    case 'search':
+      return {
+        label: `search · ${data?.status || 'unknown'}`,
+        copy: data?.query ? `Query: ${data.query}` : normalizeStreamPayload(data)
+      };
+    case 'heartbeat':
+      return {
+        label: `heartbeat · ${data?.step || 'unknown'}`,
+        copy: data?.summary ? `${data.summary} · ${formatClock(data.at)}` : normalizeStreamPayload(data)
+      };
+    case 'text_delta':
+      return {
+        label: 'text_delta',
+        copy: String(data?.delta || '').trim() || '[empty delta]'
+      };
+    case 'draft':
+      return {
+        label: 'draft',
+        copy: `Draft received for ${data?.draft?.companyName || reviewState?.company || 'company'}`
+      };
+    case 'error':
+      return {
+        label: 'error',
+        copy: data?.message || normalizeStreamPayload(data)
+      };
+    default:
+      return {
+        label: eventType || 'event',
+        copy: normalizeStreamPayload(data)
+      };
+  }
+}
+
+function appendStreamLog(eventType, data) {
+  if (!reviewState) return;
+  if (!Array.isArray(reviewState.streamLog)) {
+    reviewState.streamLog = [];
+  }
+  const { label, copy } = summarizeStreamEvent(eventType, data);
+  reviewState.streamLog.push({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    at: new Date().toISOString(),
+    label,
+    copy
+  });
+  if (reviewState.streamLog.length > MAX_STREAM_LOG_ITEMS) {
+    reviewState.streamLog = reviewState.streamLog.slice(-MAX_STREAM_LOG_ITEMS);
+  }
+  persistState();
+}
+
+function renderStreamLog() {
+  if (!routeStreamLog) return;
+  const items = Array.isArray(reviewState?.streamLog) ? reviewState.streamLog : [];
+  if (!items.length) {
+    routeStreamLog.innerHTML = '<div class="agent-stream-empty">Waiting for events...</div>';
+    return;
+  }
+  routeStreamLog.innerHTML = items.map((item) => `
+    <div class="agent-stream-row">
+      <div class="agent-stream-row-head">
+        <span class="agent-stream-label">${escapeHtml(item.label || 'event')}</span>
+        <span class="agent-stream-time">${escapeHtml(formatClock(item.at) || '')}</span>
+      </div>
+      <div class="agent-stream-copy-text">${escapeHtml(item.copy || '')}</div>
+    </div>
+  `).join('');
+  routeStreamLog.scrollTop = routeStreamLog.scrollHeight;
+}
+
 function setError(message = '') {
   if (!routeError) return;
   routeError.hidden = !message;
   routeError.textContent = message;
+}
+
+function touchStageActivity() {
+  if (!reviewState?.stageState) return;
+  reviewState.stageState.lastEventAt = new Date().toISOString();
+  persistState();
 }
 
 function readState() {
@@ -193,6 +301,10 @@ function normalizeReviewState(state) {
     }
   }
 
+  if (!Array.isArray(normalized.streamLog)) {
+    normalized.streamLog = [];
+  }
+
   return normalized;
 }
 
@@ -222,6 +334,7 @@ function mergeQueryState(baseState) {
     nextState.sources = [];
     nextState.smtpConfigured = false;
     nextState.searchFeed = [];
+    nextState.streamLog = [];
     nextState.stageState = {
       status: 'queued',
       currentStep: 'queued',
@@ -378,7 +491,8 @@ function refreshElapsedLabel() {
     routeStageElapsed.textContent = `Completed in ${formatDuration(completedElapsed)}`;
     return;
   }
-  if (staleFor > 20000 && status === 'running') {
+  const stallLimit = STALL_LIMITS_MS[reviewState.stageState.currentStep] ?? 30000;
+  if (status === 'running' && Number.isFinite(stallLimit) && staleFor > stallLimit) {
     reviewState.stageState.status = 'stuck';
     reviewState.stageState.error = buildStuckMessage();
     reviewState.stageState.lastEventAt = new Date().toISOString();
@@ -511,9 +625,13 @@ function renderState() {
   if (routeStageSummary) {
     routeStageSummary.textContent = issueMessage || reviewState?.stageState?.summary || 'The route will show real preparation stages here.';
   }
+  if (routeStreamStatus) {
+    routeStreamStatus.textContent = hasDraft ? 'Live / complete' : 'Live';
+  }
 
   renderStageList();
   renderTimeline();
+  renderStreamLog();
   startElapsedTicker();
 
   if (!hasDraft) {
@@ -541,6 +659,7 @@ function renderState() {
   renderAssetList();
   updateSafetyUi();
   syncActionUi();
+  renderStreamLog();
 }
 
 function scheduleDraftSync() {
@@ -762,6 +881,7 @@ async function runPreparationPipeline({ retry = false } = {}) {
     reviewState.draft = null;
     reviewState.researchedDraft = null;
     reviewState.searchFeed = [];
+    reviewState.streamLog = [];
     appendTimeline('Retry requested', `Restarting the preparation flow for ${reviewState.company}.`);
   } else if (reviewState.draft || reviewState.stageState?.status === 'running') {
     return;
@@ -770,6 +890,7 @@ async function runPreparationPipeline({ retry = false } = {}) {
   ensureStageState();
   reviewState.stageState.startedAt = new Date().toISOString();
   reviewState.searchFeed = [];
+  reviewState.streamLog = [];
   setStage('queued', 'queued', `Opening the workspace for ${reviewState.company}.`, { clearError: true });
   appendTimeline('Workspace ready', `Loaded ${reviewState.company} into the agent review route.`);
   renderState();
@@ -806,6 +927,8 @@ async function runPreparationPipeline({ retry = false } = {}) {
 
     const processEvent = (eventType, data) => {
       if (!isCurrentFlowRun(flowRunId)) return;
+      appendStreamLog(eventType, data);
+      renderStreamLog();
       switch (eventType) {
         case 'stage': {
           const step = data.step || 'research';
@@ -826,9 +949,18 @@ async function runPreparationPipeline({ retry = false } = {}) {
         }
         case 'search':
           handleSearchEvent({ status: data.status, query: data.query || '' });
+          touchStageActivity();
+          break;
+        case 'heartbeat':
+          touchStageActivity();
+          if (data?.step && data?.summary && ['queued', 'running'].includes(data?.status || 'running')) {
+            setStage(data.step, data.status || 'running', data.summary, { clearError: true });
+            renderState();
+          }
           break;
         case 'text_delta':
           // Accumulate silently — no UI needed for raw text
+          touchStageActivity();
           break;
         case 'draft':
           reviewState.draft = data.draft || null;
@@ -836,6 +968,7 @@ async function runPreparationPipeline({ retry = false } = {}) {
           reviewState.assets = data.assets || {};
           reviewState.smtpConfigured = Boolean(data.smtpConfigured);
           reviewState.profileContext = data.profileContext || {};
+          touchStageActivity();
           persistState();
           if (composeEl) composeEl.classList.remove('is-researching');
           renderSearchFeed();

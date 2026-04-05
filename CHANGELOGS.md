@@ -262,3 +262,31 @@
 0.0.63
 - Made `stuck` and `error` states in `/agent-review` explain themselves with a visible diagnostic message instead of leaving only the Retry button on screen.
 - Added timeout-based stall detection details, including the current stage, idle time, and last successful update, so the UI now tells the user what actually went wrong. This is the real benefit because it turns a vague recovery state into a debuggable one.
+
+0.0.64
+- Tightened the stalled-preparation message so it removes duplicated phrasing and reads more cleanly when the research stream stops updating.
+- Kept the same diagnostic depth while making the failure copy easier to scan in the route error banner, which is the real UX win here.
+
+0.0.65
+- Fixed the false `stuck` trigger in `/agent-review` by counting `search`, `text_delta`, and `draft` stream events as real activity instead of only `stage` updates.
+- This matters because the research step can stay productive for longer than 20 seconds without emitting a new stage change, so the UI was misreading live work as a stall.
+
+0.0.66
+- Added server-side heartbeat events to the streamed agent review pipeline so long OpenAI web-search and polish calls keep the route alive while work is still in progress.
+- Wired the route to treat heartbeat events as real activity, which stops the 20-second stall detector from firing when the API is busy but still working. This is the real fix for the false pause.
+
+0.0.67
+- Added a raw stream log to `/agent-review` so the user can see live agent events instead of only the final draft or a stalled state.
+- The panel shows stage, search, heartbeat, text delta, and draft events in monospace form, which makes it obvious that the pipeline is actively working even before the final output lands.
+
+0.0.68
+- Fixed agent mail preparation when the OpenAI key is missing by persisting the pending draft state and resuming the agent review flow automatically after the key is saved.
+- This removes the dead-end where the key modal opened but the outreach preparation never restarted, which is the real user-visible failure.
+
+0.0.69
+- Relaxed the `/agent-review` stall detector so `research` and `polish` can stay active for longer before the UI labels them stuck.
+- This matches the real behavior of web-search-heavy preparation, which can take a few minutes without meaning the flow is broken.
+
+0.0.70
+- Fixed the streamed agent research route so it no longer treats a finished POST request body as a disconnected client and cancels the OpenAI stream before search events start.
+- This is the real fix for the zero-token prep failure: the review page can now stay attached to the live SSE response long enough for research and draft events to arrive. 🙂

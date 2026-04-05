@@ -121,6 +121,7 @@ const viewModeKey = 'staj-viewmode';
 const apiKeyStorageKey = 'staj-apikey';
 // Purpose: after saving key on /api-key, resume analyze on main app load
 const PENDING_ANALYZE_KEY = 'staj-pending-analyze';
+const PENDING_AGENT_REVIEW_KEY = 'staj-pending-agent-review';
 const analysisCacheKey = 'staj-analysis-cache-v1';
 const agentReviewStateKey = 'staj-agent-review-state-v1';
 const STATUS_FLOW = ['Researching', 'Ready to Apply', 'Applied', 'Interview', 'Offer', 'Rejected', 'Paused'];
@@ -292,7 +293,10 @@ async function saveApiKey(event) {
   event.preventDefault();
   setStoredApiKey(apiKeyInput?.value || '');
   dismissApiKeyModal();
-  await resumePendingAnalysisAfterKey();
+  const resumedAgentReview = await resumePendingAgentReviewAfterKey();
+  if (!resumedAgentReview) {
+    await resumePendingAnalysisAfterKey();
+  }
 }
 
 function getEntryById(id) {
@@ -1128,6 +1132,26 @@ async function prepareAgentMail(entry) {
   if (!entry) return;
   const apiKey = getStoredApiKey();
   if (!apiKey) {
+    try {
+      sessionStorage.setItem(
+        PENDING_AGENT_REVIEW_KEY,
+        JSON.stringify({
+          entryId: entry.id,
+          company: entry.company || '',
+          location: entry.tag || '',
+          notes: entry.notes || '',
+          website: entry.website || '',
+          startedAt: new Date().toISOString(),
+          stageState: {
+            status: 'queued',
+            currentStep: 'queued',
+            timeline: []
+          }
+        })
+      );
+    } catch {
+      // If storage is blocked, the user can retry after saving the key.
+    }
     openApiKeyModal();
     return;
   }
@@ -1362,6 +1386,21 @@ async function resumePendingAnalysisAfterKey() {
   if (!entry) return;
   openDrawer(entry);
   await runAnalysisForEntry(entry, { force });
+}
+
+async function resumePendingAgentReviewAfterKey() {
+  const raw = sessionStorage.getItem(PENDING_AGENT_REVIEW_KEY);
+  if (!raw || !getStoredApiKey()) return false;
+  sessionStorage.removeItem(PENDING_AGENT_REVIEW_KEY);
+  let payload = null;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  if (!payload?.company) return false;
+  navigateToAgentReview(payload);
+  return true;
 }
 
 /* ============================================================ RENDERING */

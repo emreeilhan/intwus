@@ -1962,15 +1962,31 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
   res.flushHeaders();
 
   let aborted = false;
-  req.on('close', () => { aborted = true; });
+  // For SSE we must track the response lifecycle, not the request body lifecycle.
+  // `req.close` can fire as soon as the POST body is fully received, which would
+  // incorrectly cancel the OpenAI stream before any research events arrive.
+  res.on('close', () => { aborted = true; });
 
   function send(eventType, data) {
     if (aborted) return;
     res.write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
   }
 
+  let currentStage = {
+    step: 'research',
+    status: 'running',
+    summary: `Researching ${company} across public web sources.`
+  };
+  const heartbeatTimer = setInterval(() => {
+    send('heartbeat', {
+      type: 'heartbeat',
+      ...currentStage,
+      at: new Date().toISOString()
+    });
+  }, 8000);
+
   try {
-    send('stage', { type: 'stage', step: 'research', status: 'running', summary: `Researching ${company} across public web sources.` });
+    send('stage', currentStage);
 
     const profile = readProfile();
     const streamParams = {
@@ -2034,7 +2050,12 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
       }
     }
 
-    send('stage', { type: 'stage', step: 'shape', status: 'running', summary: 'Structuring the raw research into a usable first-pass draft.' });
+    currentStage = {
+      step: 'shape',
+      status: 'running',
+      summary: 'Structuring the raw research into a usable first-pass draft.'
+    };
+    send('stage', currentStage);
 
     const researchedDraft = parseAgentResearchText(finalText || accumulatedText);
 
@@ -2052,7 +2073,12 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
       researchPayload: completedResponse || {}
     });
 
-    send('stage', { type: 'stage', step: 'polish', status: 'running', summary: 'Polishing the message into a cleaner final outreach email.' });
+    currentStage = {
+      step: 'polish',
+      status: 'running',
+      summary: 'Polishing the message into a cleaner final outreach email.'
+    };
+    send('stage', currentStage);
 
     const polishResult = await runApplicationAgentPolish({
       apiKey,
@@ -2071,7 +2097,12 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
       recommendedAttachments: researchResult.recommendedAttachments
     });
 
-    send('stage', { type: 'stage', step: 'ready', status: 'ready', summary: `Draft ready for ${draft.companyName || company}.` });
+    currentStage = {
+      step: 'ready',
+      status: 'ready',
+      summary: `Draft ready for ${draft.companyName || company}.`
+    };
+    send('stage', currentStage);
     send('draft', {
       type: 'draft',
       draft,
@@ -2085,6 +2116,8 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
   } catch (err) {
     send('error', { type: 'error', message: err instanceof Error ? err.message : 'Streaming preparation failed.' });
     res.end();
+  } finally {
+    clearInterval(heartbeatTimer);
   }
 });
 
