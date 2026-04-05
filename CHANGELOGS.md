@@ -307,6 +307,6 @@
 - Added a mail draft history section to the internship drawer so saved drafts for the same company can be reviewed without leaving the main pipeline view.
 - The new UI surfaces subject, status, tone, confidence, timestamps, recipient metadata, and the full saved body, which gives a real comparison benefit when you generate multiple outreach variants for one target.
 
-0.0.74
+0.0.76
 - Tightened the outreach prompts so the mail agent now prefers plain, modest wording and explicitly avoids praise-heavy hooks like "your work stands out for" or over-crafted closing lines.
 - Trimmed the profile context sent into mail generation by removing strategy-heavy and raw source-document framing, which should materially reduce the AI-ish "manifesto" tone in first-pass emails. 🙂
