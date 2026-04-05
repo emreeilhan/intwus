@@ -1842,12 +1842,18 @@ function syncFromExcel() {
   importInternshipRows(rows, { replace: false });
 }
 
-function excelIsNewer() {
-  if (!fs.existsSync(excelPath)) return false;
-  if (!fs.existsSync(dbPath)) return true;
-  const excelStat = fs.statSync(excelPath);
-  const dbStat = fs.statSync(dbPath);
-  return excelStat.mtimeMs > dbStat.mtimeMs;
+async function excelIsNewer() {
+  try {
+    const [excelStat, dbStat] = await Promise.all([
+      fs.promises.stat(excelPath).catch(() => null),
+      fs.promises.stat(dbPath).catch(() => null)
+    ]);
+    if (!excelStat) return false;
+    if (!dbStat) return true;
+    return excelStat.mtimeMs > dbStat.mtimeMs;
+  } catch {
+    return false;
+  }
 }
 
 app.get('/api/profile', (req, res) => {
@@ -2841,9 +2847,9 @@ app.post('/api/import', (req, res, next) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
+app.listen(port, async () => {
   ensureProfileFile();
-  if (excelIsNewer()) {
+  if (await excelIsNewer()) {
     syncFromExcel();
   }
   backfillFitScores();
