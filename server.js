@@ -731,6 +731,20 @@ function buildDraftBody({ introLines, bodyLines, signatureLines }) {
     .trim();
 }
 
+let syncExcelTimeout = null;
+function debouncedSyncExcel() {
+  if (syncExcelTimeout) {
+    clearTimeout(syncExcelTimeout);
+  }
+  syncExcelTimeout = setTimeout(() => {
+    try {
+      syncExcel();
+    } catch (error) {
+      console.error('Error during debounced syncExcel:', error);
+    }
+  }, 1000);
+}
+
 function syncExcel() {
   const rows = selectAll.all();
   const header = [[
@@ -1966,7 +1980,7 @@ app.post('/api/internships', (req, res) => {
     reply_outcome: reply_outcome ? String(reply_outcome) : '',
     focus_tags: focus_tags ? String(focus_tags) : ''
   }));
-  syncExcel();
+  debouncedSyncExcel();
   res.status(201).json({ id: info.lastInsertRowid });
 });
 
@@ -2033,7 +2047,7 @@ app.put('/api/internships/:id', (req, res) => {
       });
     }
   }
-  syncExcel();
+  debouncedSyncExcel();
   res.json({ ok: true });
 });
 
@@ -2048,7 +2062,7 @@ app.delete('/api/internships/:id', (req, res) => {
     return res.status(404).json({ error: 'Not found.' });
   }
   addActivity(Number(id), 'deleted', getBaseChangePayload(existing), null);
-  syncExcel();
+  debouncedSyncExcel();
   res.json({ ok: true });
 });
 
@@ -2093,7 +2107,7 @@ app.post('/api/internships/bulk-update', (req, res) => {
   });
 
   applyUpdate(rows);
-  syncExcel();
+  debouncedSyncExcel();
   res.json({ ok: true, updated: rows.length });
 });
 
@@ -2114,7 +2128,7 @@ app.post('/api/internships/bulk-delete', (req, res) => {
     });
   });
   deleteMany(rows);
-  syncExcel();
+  debouncedSyncExcel();
   res.json({ ok: true, deleted: rows.length });
 });
 
@@ -2147,7 +2161,7 @@ app.patch('/api/internships/:id/fit-score', (req, res) => {
     });
   }
 
-  syncExcel();
+  debouncedSyncExcel();
   res.json({ ok: true, fit_score: fitScore });
 });
 
@@ -2833,7 +2847,7 @@ app.post('/api/import', (req, res, next) => {
       return res.status(400).json({ error: 'Sheet is empty.' });
     }
     const result = importInternshipRows(rawRows, { replace });
-    syncExcel();
+    debouncedSyncExcel();
     res.json({ ok: true, ...result });
   } catch (e) {
     res.status(400).json({ error: e instanceof Error ? e.message : 'Import failed.' });
