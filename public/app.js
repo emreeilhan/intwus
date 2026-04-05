@@ -58,6 +58,8 @@ const analysisError = el('analysisError');
 const analysisResult = el('analysisResult');
 const drawerActivityList = el('activityList');
 const activityCount = el('activityCount');
+const mailDraftList = el('mailDraftList');
+const mailDraftCount = el('mailDraftCount');
 const savedViewSelect = el('savedViewSelect');
 const savedViewNav = el('savedViewNav');
 const saveViewBtn = el('saveViewBtn');
@@ -206,6 +208,7 @@ let followupOnly = false;
 let lastFiltered = [];
 let activeEntryId = null;
 let activityCache = new Map();
+let mailDraftCache = new Map();
 let analysisErrors = new Map();
 let rowMenuId = null;
 let activeViewId = null;
@@ -386,6 +389,18 @@ function formatDateLabel(value) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function formatDateTimeLabel(value) {
+  if (!value) return 'Unknown time';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
 function formatDistanceInDays(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -495,7 +510,9 @@ function openDrawer(entry) {
   applyFocusTagsToFieldset(document.querySelector('#drawerTags'), String(entry.focus_tags || '').split(',').map((t) => t.trim()).filter(Boolean));
   renderAnalysisState(entry.id);
   renderActivity(activityCache.get(String(entry.id)) || []);
+  renderMailDraftHistory(mailDraftCache.get(String(entry.id)) || []);
   loadActivity(entry.id);
+  loadMailDrafts(entry.id);
 }
 
 function closeDrawer() {
@@ -764,6 +781,79 @@ async function loadActivity(id) {
   const items = await res.json();
   activityCache.set(String(id), items);
   if (String(activeEntryId) === String(id)) renderActivity(items);
+}
+
+function draftStatusLabel(status) {
+  const normalized = String(status || 'draft').toLowerCase();
+  if (normalized === 'sent') return 'Sent';
+  if (normalized === 'saved_draft') return 'Saved draft';
+  if (normalized === 'pending_gmail_confirmation') return 'Awaiting Gmail confirmation';
+  return 'Draft';
+}
+
+function previewDraftBody(body) {
+  return String(body || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function renderMailDraftHistory(items) {
+  if (!mailDraftList) return;
+  mailDraftList.innerHTML = '';
+  if (mailDraftCount) mailDraftCount.textContent = `${items.length} drafts`;
+  if (!items.length) {
+    const empty = document.createElement('div');
+    empty.className = 'timeline-empty';
+    empty.textContent = 'No saved drafts yet';
+    mailDraftList.appendChild(empty);
+    return;
+  }
+  items.forEach((item) => {
+    const row = document.createElement('details');
+    const preview = previewDraftBody(item.body);
+    const toLine = item.to ? `To ${item.to}` : 'No recipient saved';
+    const ccLine = item.cc ? `CC ${item.cc}` : '';
+    row.className = 'draft-history-card';
+    row.innerHTML = `
+      <summary class="draft-history-summary">
+        <div class="draft-history-top">
+          <strong>${escapeHtml(item.subject || 'Untitled draft')}</strong>
+          <span class="draft-status-chip draft-status-${escapeHtml(String(item.status || 'draft').toLowerCase())}">${escapeHtml(draftStatusLabel(item.status))}</span>
+        </div>
+        <div class="draft-history-meta">
+          <span>${escapeHtml(formatDateTimeLabel(item.updatedAt || item.createdAt))}</span>
+          <span>${escapeHtml(item.tonePreset || 'balanced')} tone</span>
+          <span>${escapeHtml(item.confidence || 'low')} confidence</span>
+        </div>
+        <div class="draft-history-preview">${escapeHtml(preview || 'Draft body is empty.')}</div>
+      </summary>
+      <div class="draft-history-body">
+        <div class="draft-history-fields">
+          <span>${escapeHtml(toLine)}</span>
+          ${ccLine ? `<span>${escapeHtml(ccLine)}</span>` : ''}
+          <span>${escapeHtml(item.contactReason || 'No contact reason saved')}</span>
+          <span>${escapeHtml(item.hookType || 'general')} hook</span>
+        </div>
+        <pre class="draft-history-text">${escapeHtml(item.body || '')}</pre>
+      </div>
+    `;
+    mailDraftList.appendChild(row);
+  });
+}
+
+async function loadMailDrafts(id) {
+  if (!id) return;
+  try {
+    const res = await fetch(`/api/internships/${id}/mail-drafts`);
+    const text = await res.text();
+    const items = safeJsonParse(text, []);
+    const normalized = Array.isArray(items) ? items : [];
+    mailDraftCache.set(String(id), normalized);
+    if (String(activeEntryId) === String(id)) renderMailDraftHistory(normalized);
+  } catch {
+    mailDraftCache.set(String(id), []);
+    if (String(activeEntryId) === String(id)) renderMailDraftHistory([]);
+  }
 }
 
 /* ============================================================ AI ANALYSIS */

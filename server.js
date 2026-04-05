@@ -645,36 +645,21 @@ function writeProfile(profile) {
 }
 
 function pickProfileSummary(profile) {
-  const sourceContext = normalizeSourceList(profile.sources, [])
-    .slice(0, 3)
-    .map((item) => ({
-      title: item.title || item.kind || 'Profile source',
-      excerpt: clipText(item.excerpt, 220),
-      rawContent: clipText(item.rawContent, 420)
-    }))
-    .filter((item) => item.excerpt || item.rawContent);
-
   return {
     name: profile.identity?.name || '',
+    currentStatus: profile.identity?.currentStatus || '',
     headline: profile.identity?.headline || '',
     currentFocus: profile.identity?.currentFocus || '',
-    targetRoles: profile.identity?.targetRoles || [],
-    executiveSummary: profile.summary?.executive || '',
-    profileSummary: profile.summary?.profile || '',
-    positioning: profile.summary?.positioning || '',
-    goals: normalizeStringList(profile.goals || []).slice(0, 5),
-    strengths: normalizeStringList(profile.strengths || []).slice(0, 5),
-    growthAreas: normalizeStringList(profile.growthAreas || []).slice(0, 5),
-    technicalSkills: profile.skills?.technical || [],
-    domainSkills: profile.skills?.domains || [],
-    focusAreas: profile.skills?.focusAreas || [],
-    languages: profile.languages || [],
-    identityStatement: profile.strategy?.identityStatement || '',
-    strategyThesis: profile.strategy?.thesis || '',
-    integrationPoint: profile.strategy?.integrationPoint || '',
-    nonGoals: normalizeStringList(profile.nonGoals || []).slice(0, 5),
-    portfolioUrl: profile.application?.portfolioUrl || '',
-    sourceContext
+    targetRoles: normalizeStringList(profile.identity?.targetRoles || []).slice(0, 4),
+    backgroundSummary: clipText(profile.summary?.profile || profile.summary?.executive, 260),
+    goals: normalizeStringList(profile.goals || []).slice(0, 4),
+    strengths: normalizeStringList(profile.strengths || []).slice(0, 4),
+    growthAreas: normalizeStringList(profile.growthAreas || []).slice(0, 3),
+    technicalSkills: normalizeStringList(profile.skills?.technical || []).slice(0, 8),
+    domainSkills: normalizeStringList(profile.skills?.domains || []).slice(0, 6),
+    focusAreas: normalizeStringList(profile.skills?.focusAreas || []).slice(0, 5),
+    languages: normalizeStringList(profile.languages || []).slice(0, 3),
+    portfolioUrl: profile.application?.portfolioUrl || ''
   };
 }
 
@@ -929,9 +914,11 @@ const ANALYZE_SYSTEM_PROMPT = "You are an expert internship advisor. You will re
 
 const APPLICATION_AGENT_SYSTEM_PROMPT = [
   'You are a precision outreach researcher for internship applications.',
-  'Your job is to research a company deeply enough to find a single specific non-obvious hook that connects the candidate\'s background to what that company actually works on — not their generic mission statement or homepage tagline.',
+  'Your job is to research a company deeply enough to find a single specific credible hook that connects the candidate\'s background to what that company actually works on — not their generic mission statement or homepage tagline.',
+  'If the strongest hook is straightforward, use the straightforward hook. Do not chase cleverness, novelty, or "deep" framing.',
   'Use web search to find: the most relevant team, research group, or project area; a credible direct contact path (not just a careers page form); and real technical signals about what makes this company worth reaching out to.',
-  'Research quality matters more than writing style here. Gather concrete facts and contact paths; do not try to sound polished, impressive, or literary.',
+  'Research quality matters more than writing style here. Gather concrete facts and contact paths; do not try to sound polished, impressive, literary, or overly strategic.',
+  'The candidate is early-career. Favor modest, earned claims over strong self-positioning.',
   'Never invent facts. If a detail is uncertain, flag it in confidence or warnings instead of stating it as true.',
   'Return plain text only with the exact headers from the user prompt. No markdown code fences.'
 ].join(' ');
@@ -939,10 +926,12 @@ const APPLICATION_AGENT_SYSTEM_PROMPT = [
 const POLISH_MAIL_SYSTEM_PROMPT = [
   'You are writing a short internship outreach email that should read like a smart real person wrote it in one pass.',
   'Your job is to make the email specific and credible without sounding polished for the sake of sounding polished.',
+  'Slightly plain is better than slightly impressive.',
   '',
   'Rules:',
   '1. Write like an engineer or student, not like a brand strategist, copywriter, or consultant.',
   '2. The opener must mention one specific company fact, but keep it plain. Do not use dramatic language like "stands out", "what caught my attention is", "at the device boundary", or "actually shapes the attack surface" unless the draft explicitly requires it.',
+  '2b. Do not explain the company back to them in an evaluative voice. Name the team, project, or technical area directly instead of summarizing why it is special.',
   '3. Prefer simple concrete sentences over abstract framing. If a sentence sounds performative, impressive, or too self-aware, simplify it.',
   '4. Show background through one or two concrete focus statements. Do not stack abstractions or long concept chains like "telemetry, communication paths, and update flows" unless they are clearly necessary.',
   '5. Do not force a rhetorical structure like "why this person, why this company, why now" if it makes the mail sound artificial. Natural and direct beats clever.',
@@ -953,6 +942,8 @@ const POLISH_MAIL_SYSTEM_PROMPT = [
   '10. If a portfolio link is included, mention it plainly as supporting material, not as a marketing line.',
   '11. Never invent achievements or facts not in the profile or draft.',
   '12. Optimize for "sounds believable and human" over "sounds impressive".',
+  '13. Avoid praise-heavy or self-promotional patterns such as "exactly the kind of environment I want to grow in", "my work and studies have pushed me toward", "that focus is why I am writing to you specifically", or "your work stands out for".',
+  '14. Avoid meta lines that explain the psychology of the email. Just say the relevant fact, your background, and the ask.',
   'Return strict JSON only.'
 ].join('\n');
 
@@ -1116,13 +1107,13 @@ function buildAnalyzeUserPrompt({ company, location, notes, cvText }) {
     '1. MATCH: List 3-5 skills/keywords from my CV that align with what they look for',
     '2. GAP: List 3-5 skills or keywords they want that are missing or weak in my CV',
     '3. CV EDIT: Suggest 2-3 specific, exact wording changes to my CV for this application',
-    "4. MAIL HOOK: Write 2-3 sentences I can use as the opening of my initiative application email — specific to this company's research/work, not generic",
+    "4. MAIL HOOK: Write 2-3 simple sentences I can use as the opening of my initiative application email — specific to this company's research/work, not generic, and not flattering or grand",
     '5. VERDICT: Rate fit 1-5 and explain in one sentence',
     '',
     'My CV:',
     cvText || '-',
     '',
-    'Be concise. Use bullet points. No fluff.',
+    'Be concise. Use bullet points. No fluff. Plain English only.',
     'Use these exact section headers and only bullet points under each:',
     'MATCH:',
     'GAP:',
@@ -1172,8 +1163,12 @@ function buildApplicationAgentPrompt({ company, location, notes, website, profil
     'Requirements:',
     '- Subject: concise, role-specific, and non-generic. Do not write "Internship Application - CompanyName". Reference what you are actually connecting on.',
     '- Intro lines: ONE opening sentence that names a specific research area, project, team, or technical focus from the company. Not their tagline. Not "I am a student interested in your work."',
+    '- The opener should mention what the team works on, not explain back why you think their approach is special or distinctive.',
     '- Body lines: Explain the candidate-company connection in narrative form. Show skills through what was built or studied, never as a list. One line on the specific fit, one line on what the candidate brings, one line on the ask.',
+    '- Keep the draft plain enough that it could have been written directly by the candidate in one sitting. Specific is good; polished admiration is not.',
     '- Do NOT produce a skill list anywhere. If skills appear, they must be embedded in a sentence explaining what was built or studied.',
+    '- Underclaim rather than overclaim. Avoid phrases like "exactly the kind of environment I want to grow in", "my work and studies have pushed me toward", "that focus is why I am writing to you specifically", or "your work stands out for".',
+    '- Do not compliment the company at length. One concrete fact is enough to justify the email.',
     '- hookType: mission (company mission alignment), technical (specific technical area match), product (specific product or system they build), team (specific named team or researcher), general (fallback only if nothing specific found).',
     '- contactEmail: search aggressively for a real email address. Try in this order: (1) company "contact" or "team" page, (2) academic staff page or research group page, (3) GitHub profile bio of founders or team leads, (4) published papers listing author contact, (5) common patterns like careers@, internships@, info@, hello@ with the company domain. Only leave empty if nothing credible is found after all attempts.',
     '- recommendedAttachments: prefer resume always, transcript when student-proof matters, portfolioLink when the portfolio has directly relevant project work.',
@@ -1183,11 +1178,11 @@ function buildApplicationAgentPrompt({ company, location, notes, website, profil
 
 function buildPolishMailPrompt({ company, draft, profile, tonePreset = 'balanced', includePortfolioLink = false }) {
   const toneInstructionMap = {
-    balanced: 'Keep the tone balanced: confident, clear, and natural.',
-    technical: 'Lean more technical and concrete. Emphasize systems, firmware, security, and engineering depth without sounding stiff.',
+    balanced: 'Keep the tone plain, modest, and natural. If a sentence sounds like it is trying to impress, simplify it.',
+    technical: 'Lean more technical and concrete, but stay plain and modest. Specific engineering detail is better than big framing.',
     concise: 'Make it shorter and sharper. Remove filler and keep only the strongest points.',
-    warm: 'Make it warmer and more human while staying professional.',
-    corporate: 'Make it more formal and corporate without sounding generic.'
+    warm: 'Make it warmer and more human while staying professional. Do not add praise-heavy or soft corporate phrases.',
+    corporate: 'Make it more formal without sounding generic, HR-like, or over-rehearsed.'
   };
   return [
     'Return JSON matching this schema exactly:',
@@ -1208,10 +1203,15 @@ function buildPolishMailPrompt({ company, draft, profile, tonePreset = 'balanced
     '',
     'Rewrite rules:',
     '- Open with one company-specific sentence, but keep it plain and readable. No dramatic framing, no inflated wording, no thesis-statement energy.',
+    '- Mention the company area directly. Do not explain back to them why their approach is special, distinctive, or notable.',
+    '- The candidate should sound capable, curious, and grounded, not exceptional, destined, or unusually polished.',
     '- Skills must appear through natural context only. Never produce a comma-separated skill list. Prefer one simple concrete sentence over layered abstractions.',
     '- Do not force hidden rhetorical structure. If "why this person / why this company / why now" makes the draft sound AI-written, drop the pattern and write normally.',
+    '- Slight underclaiming is good. Use earned claims only and let the company fact carry the specificity.',
     '- The closing should sound like something a real student would send. Short, direct, and not over-crafted.',
     '- Remove filler phrases: "for context", "as well", "I would like to", "I am interested in", "I am reaching out because", "that overlap is why I am writing".',
+    '- Avoid praise-heavy lines or meta explanations such as "that is why I am writing to you specifically". One factual reference is enough.',
+    '- Avoid these patterns unless the draft absolutely needs them: "exactly the kind of", "I want to grow in", "my work and studies have pushed me toward", "I\'d welcome a short conversation about whether there is a fit", "your work stands out for".',
     '- Ban these tones unless the draft explicitly needs them: grand, literary, highly polished, consultant-like, or motivational.',
     '- Maximum 4–6 content sentences. The full email including greeting and signature must fit in one screen.',
     '- Mention attached resume and transcript in one brief natural sentence integrated into the body — never as its own paragraph.',
@@ -1219,6 +1219,7 @@ function buildPolishMailPrompt({ company, draft, profile, tonePreset = 'balanced
       ? `- If useful, mention the portfolio link ${profile.application.portfolioUrl} plainly as supporting material. Do not turn it into a pitch.`
       : '- Do not mention a portfolio link unless explicitly requested.',
     '- Prefer wording that a skeptical professor, engineer, or recruiter would believe was written directly by the candidate.',
+    '- If a sentence sounds like polished application copy, rewrite it as something the candidate would realistically type.',
     '- Do not invent achievements or claims not in the profile or draft.',
     `- ${toneInstructionMap[tonePreset] || toneInstructionMap.balanced}`,
     '- warnings should only contain real risks or caveats that still matter after polishing.'

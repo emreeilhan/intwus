@@ -1522,6 +1522,94 @@ label {
 .timeline-field { color: var(--ink-2); font-weight: 600; }
 .timeline-old, .timeline-new { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .timeline-empty { color: var(--muted); font-size: 0.8125rem; }
+.draft-history-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-2) 76%, transparent);
+  overflow: hidden;
+}
+.draft-history-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+.draft-history-summary::-webkit-details-marker { display: none; }
+.draft-history-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.draft-history-top strong {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--ink);
+}
+.draft-history-meta,
+.draft-history-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.draft-history-preview {
+  font-size: 0.79rem;
+  line-height: 1.45;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.draft-history-body {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+  display: grid;
+  gap: 10px;
+}
+.draft-history-text {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: 0.78rem/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.draft-status-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.draft-status-sent {
+  background: color-mix(in srgb, #10b981 15%, var(--surface));
+  border-color: color-mix(in srgb, #10b981 40%, var(--line));
+  color: #065f46;
+}
+.draft-status-saved_draft,
+.draft-status-draft {
+  background: color-mix(in srgb, var(--accent-blue) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent-blue) 32%, var(--line));
+}
+.draft-status-pending_gmail_confirmation {
+  background: color-mix(in srgb, #f59e0b 14%, var(--surface));
+  border-color: color-mix(in srgb, #f59e0b 36%, var(--line));
+  color: #92400e;
+}
 
 @keyframes analysis-spin {
   to { transform: rotate(360deg); }
