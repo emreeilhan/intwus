@@ -351,12 +351,6 @@ function populateCountryFilterOptions() {
   else countryFilter.value = '';
 }
 
-function countBy(list, getter) {
-  const map = new Map();
-  list.forEach((item) => { const key = getter(item); if (!key) return; map.set(key, (map.get(key) || 0) + 1); });
-  return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
-}
-
 function getFocusTagsFromFieldset(fieldset) {
   if (!fieldset) return [];
   return Array.from(fieldset.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value);
