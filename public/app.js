@@ -813,6 +813,7 @@ function renderMailDraftHistory(items) {
     const preview = previewDraftBody(item.body);
     const toLine = item.to ? `To ${item.to}` : 'No recipient saved';
     const ccLine = item.cc ? `CC ${item.cc}` : '';
+    const versionLabel = item.versionLabel || item.draft?.versionLabel || '';
     row.className = 'draft-history-card';
     row.innerHTML = `
       <summary class="draft-history-summary">
@@ -822,6 +823,7 @@ function renderMailDraftHistory(items) {
         </div>
         <div class="draft-history-meta">
           <span>${escapeHtml(formatDateTimeLabel(item.updatedAt || item.createdAt))}</span>
+          ${versionLabel ? `<span>${escapeHtml(versionLabel)}</span>` : ''}
           <span>${escapeHtml(item.tonePreset || 'balanced')} tone</span>
           <span>${escapeHtml(item.confidence || 'low')} confidence</span>
         </div>

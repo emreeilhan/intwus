@@ -21,17 +21,23 @@ const STALL_LIMITS_MS = {
 const routeForm = document.getElementById('agentRouteForm');
 const routeComposePlaceholder = document.getElementById('agentComposePlaceholder');
 const routePlaceholderTitle = document.getElementById('agentPlaceholderTitle');
+const routePrestartSummary = document.getElementById('agentPrestartSummary');
 const routeEmpty = document.getElementById('agentRouteEmpty');
 const routeError = document.getElementById('agentRouteError');
 const routeSubmit = null; // removed — actions handled by dedicated buttons
 const routeCancel = document.getElementById('agentRouteCancel');
+const routeBackLink = document.getElementById('agentBackLink');
+const routeBackBtn = document.getElementById('agentRouteBackBtn');
+const routeBackToTrackerBtn = document.getElementById('agentBackToTrackerBtn');
 const routeStartBtn = document.getElementById('agentStartBtn');
+const routeStartNote = document.getElementById('agentStartNote');
 const routeGmailBtn = document.getElementById('agentRouteGmailBtn');
 const routeSendBtn = document.getElementById('agentRouteSendBtn');
 const routeTo = document.getElementById('agentRouteTo');
 const routeCc = document.getElementById('agentRouteCc');
 const routeSubject = document.getElementById('agentRouteSubject');
 const routeBody = document.getElementById('agentRouteBody');
+const routeDraftMeta = document.getElementById('agentDraftMeta');
 const routeFlowStatus = document.getElementById('agentFlowStatus');
 const routeHeroTitle = document.getElementById('agentHeroTitle');
 const routeHeroSub = document.getElementById('agentHeroSub');
@@ -52,13 +58,30 @@ const routeRetryBtn = document.getElementById('agentRetryBtn');
 const routeStreamLog = document.getElementById('agentStreamLog');
 const routeStreamStatus = document.getElementById('agentStreamStatus');
 const routeEmptyCopy = document.getElementById('agentEmptyCopy');
+const routeConfigEta = document.getElementById('agentConfigEta');
+const routeConfigHelper = document.getElementById('agentConfigHelper');
+const routeStartExplain = document.getElementById('agentStartExplain');
+const routeDeliveryGmail = document.getElementById('agentDeliveryGmail');
+const routeDeliveryDirect = document.getElementById('agentDeliveryDirect');
 
 const MAX_STREAM_LOG_ITEMS = 24;
+const ESTIMATED_PREP_TIME = '30-90s';
 
 let reviewState = null;
 let elapsedTimer = null;
 let draftSyncTimer = null;
 let activeFlowRunId = '';
+let suppressLeaveWarning = false;
+
+function defaultRunConfig() {
+  return {
+    tonePreset: 'balanced',
+    includeResume: true,
+    includeTranscript: false,
+    includePortfolioLink: false,
+    preferredDelivery: 'gmail'
+  };
+}
 
 function escapeHtml(value) {
   return String(value || '')
@@ -87,6 +110,78 @@ function formatDuration(ms) {
   const seconds = totalSeconds % 60;
   if (!minutes) return `${seconds}s`;
   return `${minutes}m ${seconds}s`;
+}
+
+function getPreferredDeliveryLabel(value = reviewState?.runConfig?.preferredDelivery) {
+  return value === 'direct' ? 'Direct if safe' : 'Gmail draft';
+}
+
+function getCurrentVersionLabel(draft = reviewState?.draft) {
+  const versionLabel = String(draft?.versionLabel || '').trim();
+  if (versionLabel) return versionLabel;
+  const versionNumber = Number(draft?.versionNumber || 0) || null;
+  return versionNumber ? `v${versionNumber}` : 'Draft';
+}
+
+function getStartBlockers() {
+  const blockers = [];
+  if (!reviewState?.company) blockers.push('Choose a company from the tracker first.');
+  if (!getStoredApiKey()) blockers.push('OpenAI API key required before the agent can start.');
+  if (['queued', 'running'].includes(reviewState?.stageState?.status)) blockers.push('Agent review is already running.');
+  return blockers;
+}
+
+function hasActiveRun() {
+  return ['queued', 'running'].includes(reviewState?.stageState?.status);
+}
+
+function renderPrestartSummary() {
+  if (!routePrestartSummary || !reviewState) return;
+  const config = reviewState.runConfig || defaultRunConfig();
+  const attachments = [];
+  if (config.includeResume) attachments.push('Resume');
+  if (config.includeTranscript) attachments.push('Transcript');
+  if (config.includePortfolioLink) attachments.push('Portfolio link');
+
+  const rows = [
+    { label: 'Company', value: reviewState.company || 'Not selected' },
+    { label: 'Location', value: reviewState.location || 'No location added' },
+    { label: 'Website', value: reviewState.website || 'No website added' },
+    { label: 'Tone', value: config.tonePreset || 'balanced' },
+    { label: 'Attachments', value: attachments.join(' + ') || 'Resume only' },
+    { label: 'Delivery', value: getPreferredDeliveryLabel(config.preferredDelivery) }
+  ];
+
+  routePrestartSummary.innerHTML = rows.map((row) => `
+    <div class="agent-summary-row">
+      <span>${escapeHtml(row.label)}</span>
+      <strong>${escapeHtml(row.value)}</strong>
+    </div>
+  `).join('');
+}
+
+function syncConfigControls() {
+  const config = reviewState?.runConfig || defaultRunConfig();
+  if (!reviewState?.draft) {
+    if (routeIncludeResume) routeIncludeResume.checked = config.includeResume;
+    if (routeIncludeTranscript) routeIncludeTranscript.checked = config.includeTranscript;
+    if (routeIncludePortfolioLink) routeIncludePortfolioLink.checked = config.includePortfolioLink;
+    if (routeToneStatus) routeToneStatus.textContent = `Selected tone: ${config.tonePreset}`;
+    updateToneButtons(config.tonePreset);
+  }
+  if (routeDeliveryGmail) routeDeliveryGmail.checked = config.preferredDelivery !== 'direct';
+  if (routeDeliveryDirect) routeDeliveryDirect.checked = config.preferredDelivery === 'direct';
+}
+
+function goToTrackerPreservingState() {
+  persistState();
+  suppressLeaveWarning = true;
+  window.location.href = '/';
+}
+
+function confirmLeaveWhileRunning() {
+  if (!hasActiveRun()) return true;
+  return window.confirm('Agent review is still running. Leave this page and keep the current state for later?');
 }
 
 function getStageLabel(stepKey) {
@@ -249,6 +344,7 @@ function hydrateStateFromQuery() {
     location: params.get('location') || '',
     notes: params.get('notes') || '',
     website: params.get('website') || '',
+    runConfig: defaultRunConfig(),
     startedAt: new Date().toISOString(),
     stageState: {
       status: 'idle',
@@ -268,6 +364,10 @@ function normalizeReviewState(state) {
     location: String(state.location || ''),
     notes: String(state.notes || ''),
     website: String(state.website || ''),
+    runConfig: {
+      ...defaultRunConfig(),
+      ...(state.runConfig && typeof state.runConfig === 'object' ? state.runConfig : {})
+    },
     startedAt: state.startedAt || new Date().toISOString(),
     stageState: {
       ...(state.stageState && typeof state.stageState === 'object' ? state.stageState : {}),
@@ -309,6 +409,18 @@ function normalizeReviewState(state) {
   }
   normalized.gmailConfirmationPending = Boolean(normalized.gmailConfirmationPending);
   normalized.gmailPromptOpen = Boolean(normalized.gmailPromptOpen);
+  normalized.runConfig.tonePreset = String(normalized.runConfig.tonePreset || 'balanced');
+  normalized.runConfig.includeResume = normalized.runConfig.includeResume !== false;
+  normalized.runConfig.includeTranscript = Boolean(normalized.runConfig.includeTranscript);
+  normalized.runConfig.includePortfolioLink = Boolean(normalized.runConfig.includePortfolioLink);
+  normalized.runConfig.preferredDelivery = normalized.runConfig.preferredDelivery === 'direct' ? 'direct' : 'gmail';
+
+  if (normalized.draft) {
+    normalized.runConfig.tonePreset = normalized.draft.tonePreset || normalized.runConfig.tonePreset;
+    normalized.runConfig.includeResume = normalized.draft.recommendedAttachments?.resume !== false;
+    normalized.runConfig.includeTranscript = Boolean(normalized.draft.recommendedAttachments?.transcript);
+    normalized.runConfig.includePortfolioLink = Boolean(normalized.draft.recommendedAttachments?.portfolioLink);
+  }
 
   return normalized;
 }
@@ -340,6 +452,10 @@ function mergeQueryState(baseState) {
     nextState.smtpConfigured = false;
     nextState.searchFeed = [];
     nextState.streamLog = [];
+    nextState.runConfig = {
+      ...defaultRunConfig(),
+      ...(nextState.runConfig && typeof nextState.runConfig === 'object' ? nextState.runConfig : {})
+    };
     nextState.stageState = {
       status: 'idle',
       currentStep: 'queued',
@@ -576,9 +692,10 @@ function buildListMarkup(items, emptyText) {
 function renderAssetList() {
   if (!routeAssetList || !reviewState) return;
   const assets = reviewState.assets || {};
+  const config = reviewState.runConfig || defaultRunConfig();
   const rows = [
-    { label: 'Resume', item: assets.resume, checked: routeIncludeResume?.checked !== false },
-    { label: 'Transcript', item: assets.transcript, checked: Boolean(routeIncludeTranscript?.checked) },
+    { label: 'Resume', item: assets.resume, checked: reviewState.draft ? routeIncludeResume?.checked !== false : config.includeResume },
+    { label: 'Transcript', item: assets.transcript, checked: reviewState.draft ? Boolean(routeIncludeTranscript?.checked) : config.includeTranscript },
     {
       label: 'Portfolio',
       item: {
@@ -586,12 +703,16 @@ function renderAssetList() {
         name: reviewState?.profileContext?.portfolioUrl || '',
         error: 'Missing portfolio URL'
       },
-      checked: Boolean(routeIncludePortfolioLink?.checked)
+      checked: reviewState.draft ? Boolean(routeIncludePortfolioLink?.checked) : config.includePortfolioLink
     }
   ];
 
   routeAssetList.innerHTML = rows.map((row) => {
-    const status = row.item?.exists ? (row.checked ? 'Included' : 'Ready') : row.item?.error || 'Missing';
+    const status = !reviewState?.draft && !row.item?.exists
+      ? (row.checked ? 'Will check on run' : 'Optional')
+      : row.item?.exists
+      ? (row.checked ? (reviewState?.draft ? 'Included' : 'Requested') : 'Ready')
+      : row.item?.error || 'Missing';
     const tone = row.item?.exists ? 'ok' : 'warn';
     return `
       <div class="agent-asset-row ${tone}">
@@ -605,6 +726,12 @@ function renderAssetList() {
 
 function updateSafetyUi() {
   if (!routeSafetyNote || !reviewState) return;
+  if (!reviewState.draft) {
+    routeSafetyNote.textContent = reviewState.runConfig?.preferredDelivery === 'direct'
+      ? 'Direct send is preferred, but the final choice still depends on safety checks and SMTP readiness after drafting.'
+      : 'Gmail draft is preferred. Direct send can still appear later if the draft passes safety checks.';
+    return;
+  }
   const safety = reviewState?.draft?.safety || { allowDirectSend: false, reasons: [] };
   const reasons = Array.isArray(safety.reasons) ? safety.reasons.filter(Boolean) : [];
   if (safety.allowDirectSend) {
@@ -621,6 +748,16 @@ function syncActionUi() {
   const allowDirectSend = Boolean(reviewState?.draft?.safety?.allowDirectSend) && Boolean(reviewState?.smtpConfigured);
   if (routeSendBtn) routeSendBtn.hidden = !allowDirectSend;
   if (routeManualAttachmentNote) routeManualAttachmentNote.hidden = false;
+  if (routeGmailBtn) {
+    routeGmailBtn.textContent = reviewState.runConfig?.preferredDelivery === 'direct'
+      ? 'Open in Gmail'
+      : 'Open in Gmail →';
+  }
+  if (routeSendBtn && allowDirectSend) {
+    routeSendBtn.textContent = reviewState.runConfig?.preferredDelivery === 'direct'
+      ? 'Send directly (preferred)'
+      : 'Send directly';
+  }
 }
 
 function renderState() {
@@ -628,6 +765,8 @@ function renderState() {
   const hasContext = Boolean(reviewState?.company || reviewState?.draft);
   const hasDraft = Boolean(reviewState?.draft);
   const issueMessage = getRouteIssueMessage();
+  const isIdle = reviewState?.stageState?.status === 'idle';
+  const blockers = getStartBlockers();
   if (routeForm) routeForm.hidden = !hasDraft;
   if (routeComposePlaceholder) routeComposePlaceholder.hidden = hasDraft || !hasContext;
   if (routeEmpty) routeEmpty.hidden = hasContext;
@@ -639,7 +778,6 @@ function renderState() {
     return;
   }
 
-  const isIdle = reviewState?.stageState?.status === 'idle';
   if (routeFlowStatus) {
     routeFlowStatus.textContent = hasDraft
       ? (reviewState.smtpConfigured ? 'Review and send' : 'Review and open')
@@ -657,7 +795,7 @@ function renderState() {
     routeHeroSub.textContent = hasDraft
       ? 'Edit the draft below, then open it in Gmail or send directly.'
       : (isIdle
-          ? 'Open the company context here first, then start the agent when you are ready. Search queries will appear below after the run begins.'
+          ? 'Open the company context here first, tune the run config, then start the agent when you are ready. Search queries will appear below after the run begins.'
           : 'Watching the agent research and write. Search queries appear below as they run.');
   }
   if (routeFlowSummary) {
@@ -680,8 +818,28 @@ function renderState() {
   }
   if (routeStartBtn) {
     routeStartBtn.hidden = hasDraft || !hasContext || !isIdle;
-    routeStartBtn.disabled = !isIdle;
+    routeStartBtn.disabled = !isIdle || blockers.length > 0;
   }
+  if (routeStartNote) {
+    routeStartNote.textContent = blockers.length
+      ? blockers[0]
+      : `Expected prep time: ${ESTIMATED_PREP_TIME}. You can go back to the tracker without losing this setup.`;
+  }
+  if (routeStartExplain) {
+    routeStartExplain.textContent = blockers.length
+      ? blockers.join(' ')
+      : `Ready to start. Estimated prep time is ${ESTIMATED_PREP_TIME}.`;
+  }
+  if (routeConfigEta) {
+    routeConfigEta.textContent = ESTIMATED_PREP_TIME;
+  }
+  if (routeConfigHelper) {
+    routeConfigHelper.textContent = hasDraft
+      ? 'Versioned draft is active. Tone changes now create a new draft version instead of overwriting the old one.'
+      : 'These settings shape the first draft before the agent starts.';
+  }
+  renderPrestartSummary();
+  syncConfigControls();
 
   renderStageList();
   renderTimeline();
@@ -693,6 +851,10 @@ function renderState() {
     if (routeEmptyCopy) {
       routeEmptyCopy.innerHTML = `Preparing outreach for <strong>${escapeHtml(reviewState.company || 'this company')}</strong>. You can already see where the flow is, whether it is still moving, and if it fails, the exact error.`;
     }
+    if (routeDraftMeta) routeDraftMeta.textContent = '';
+    if (routeAttachmentReason) routeAttachmentReason.textContent = 'Selected attachment preferences will be applied to the first draft.';
+    renderAssetList();
+    updateSafetyUi();
     return;
   }
 
@@ -708,6 +870,9 @@ function renderState() {
   if (routeIncludeTranscript) routeIncludeTranscript.checked = Boolean(draft.recommendedAttachments?.transcript) && Boolean(assets?.transcript?.exists);
   if (routeIncludePortfolioLink) routeIncludePortfolioLink.checked = Boolean(draft.recommendedAttachments?.portfolioLink) && Boolean(reviewState?.profileContext?.portfolioUrl);
   if (routeToneStatus) routeToneStatus.textContent = `Active tone: ${draft.tonePreset || 'balanced'}`;
+  if (routeDraftMeta) {
+    routeDraftMeta.textContent = `${getCurrentVersionLabel(draft)} · Preferred exit: ${getPreferredDeliveryLabel()}`;
+  }
 
   updateToneButtons(draft.tonePreset || 'balanced');
   renderAssetList();
@@ -738,33 +903,42 @@ function syncDraftFieldsFromUi() {
 }
 
 function syncAttachmentChoices() {
-  if (!reviewState?.draft) return;
-  reviewState.draft.recommendedAttachments = {
-    ...(reviewState.draft.recommendedAttachments || {}),
-    resume: Boolean(routeIncludeResume?.checked),
-    transcript: Boolean(routeIncludeTranscript?.checked),
-    portfolioLink: Boolean(routeIncludePortfolioLink?.checked)
+  if (!reviewState) return;
+  reviewState.runConfig = {
+    ...(reviewState.runConfig || defaultRunConfig()),
+    includeResume: Boolean(routeIncludeResume?.checked),
+    includeTranscript: Boolean(routeIncludeTranscript?.checked),
+    includePortfolioLink: Boolean(routeIncludePortfolioLink?.checked)
   };
+  if (reviewState?.draft) {
+    reviewState.draft.recommendedAttachments = {
+      ...(reviewState.draft.recommendedAttachments || {}),
+      resume: Boolean(routeIncludeResume?.checked),
+      transcript: Boolean(routeIncludeTranscript?.checked),
+      portfolioLink: Boolean(routeIncludePortfolioLink?.checked)
+    };
+  }
   persistState();
+  renderPrestartSummary();
 }
 
 function clearDraftUi() {
+  const config = reviewState?.runConfig || defaultRunConfig();
   if (routeTo) routeTo.value = '';
   if (routeCc) routeCc.value = '';
   if (routeSubject) routeSubject.value = '';
   if (routeBody) routeBody.value = '';
   if (routeAttachmentReason) routeAttachmentReason.textContent = '-';
   if (routeAssetList) routeAssetList.innerHTML = '';
-  if (routeIncludeResume) routeIncludeResume.checked = false;
-  if (routeIncludeTranscript) routeIncludeTranscript.checked = false;
-  if (routeIncludePortfolioLink) routeIncludePortfolioLink.checked = false;
-  if (routeToneStatus) routeToneStatus.textContent = 'Balanced';
+  if (routeIncludeResume) routeIncludeResume.checked = config.includeResume;
+  if (routeIncludeTranscript) routeIncludeTranscript.checked = config.includeTranscript;
+  if (routeIncludePortfolioLink) routeIncludePortfolioLink.checked = config.includePortfolioLink;
+  if (routeToneStatus) routeToneStatus.textContent = `Selected tone: ${config.tonePreset}`;
   if (routeSafetyNote) routeSafetyNote.textContent = '-';
   if (routeManualAttachmentNote) routeManualAttachmentNote.hidden = true;
   if (routeSendBtn) routeSendBtn.hidden = true;
-  routeToneGrid?.querySelectorAll('[data-tone-preset]').forEach((button) => {
-    button.classList.remove('active');
-  });
+  if (routeDraftMeta) routeDraftMeta.textContent = '';
+  updateToneButtons(config.tonePreset);
 }
 
 function shouldAutoResume() {
@@ -815,6 +989,7 @@ async function handleGmailReturn() {
     stopTimers();
     reviewState = null;
     activeFlowRunId = '';
+    suppressLeaveWarning = true;
     window.location.href = '/';
     return;
   }
@@ -830,6 +1005,7 @@ async function handleGmailReturn() {
     stopTimers();
     reviewState = null;
     activeFlowRunId = '';
+    suppressLeaveWarning = true;
     window.location.href = '/';
     return;
   }
@@ -857,8 +1033,40 @@ async function logAction(action, meta = {}) {
   }
 }
 
+async function createDraftVersionOnServer(draft, status = 'draft') {
+  if (!reviewState?.entryId || !draft) return null;
+  const res = await fetch('/api/application-agent/drafts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      internshipId: reviewState.entryId,
+      company: draft.companyName || reviewState.company || '',
+      draft,
+      status
+    })
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload?.error || 'Could not create a draft version.');
+  }
+  return payload;
+}
+
 async function applyTonePreset(tonePreset) {
-  if (!reviewState?.draft) return;
+  if (!reviewState) return;
+  reviewState.runConfig = {
+    ...(reviewState.runConfig || defaultRunConfig()),
+    tonePreset
+  };
+  persistState();
+  renderPrestartSummary();
+
+  if (!reviewState?.draft) {
+    if (routeToneStatus) routeToneStatus.textContent = `Selected tone: ${tonePreset}`;
+    updateToneButtons(tonePreset);
+    renderState();
+    return;
+  }
   const apiKey = getStoredApiKey();
   if (!apiKey) {
     setError('OpenAI API key is missing. Add it from the tracker before polishing again.');
@@ -894,9 +1102,19 @@ async function applyTonePreset(tonePreset) {
       tonePreset: payload.tonePreset || tonePreset,
       signatureLines: Array.isArray(payload.signatureLines) ? payload.signatureLines : reviewState.draft.signatureLines
     };
+    const createdVersion = await createDraftVersionOnServer(reviewState.draft, 'draft');
+    if (createdVersion?.draftId) {
+      reviewState.draftId = Number(createdVersion.draftId || 0) || reviewState.draftId;
+    }
+    if (createdVersion?.draft && typeof createdVersion.draft === 'object') {
+      reviewState.draft = {
+        ...reviewState.draft,
+        ...createdVersion.draft
+      };
+    }
     if (routeSubject) routeSubject.value = reviewState.draft.subject || '';
     if (routeBody) routeBody.value = reviewState.draft.body || '';
-    appendTimeline('Tone updated', `The draft was repolished with the ${tonePreset} tone.`);
+    appendTimeline('Tone updated', `The draft was repolished with the ${tonePreset} tone and saved as ${getCurrentVersionLabel(reviewState.draft)}.`);
     persistState();
     await persistDraftToServer('draft');
     renderState();
@@ -969,6 +1187,12 @@ function renderSearchFeed() {
 
 async function runPreparationPipeline({ retry = false } = {}) {
   if (!reviewState?.company) return;
+  const blockers = getStartBlockers();
+  if (blockers.length && !retry) {
+    setError(blockers[0]);
+    renderState();
+    return;
+  }
   const apiKey = getStoredApiKey();
   if (!apiKey) {
     setStage('queued', 'error', 'The route cannot start without an OpenAI API key.', { error: 'OpenAI API key is missing.' });
@@ -1019,7 +1243,13 @@ async function runPreparationPipeline({ retry = false } = {}) {
         company: reviewState.company || '',
         location: reviewState.location || '',
         notes: reviewState.notes || '',
-        website: reviewState.website || ''
+        website: reviewState.website || '',
+        tonePreset: reviewState.runConfig?.tonePreset || 'balanced',
+        attachmentPreferences: {
+          resume: reviewState.runConfig?.includeResume !== false,
+          transcript: Boolean(reviewState.runConfig?.includeTranscript),
+          portfolioLink: Boolean(reviewState.runConfig?.includePortfolioLink)
+        }
       })
     });
 
@@ -1076,6 +1306,15 @@ async function runPreparationPipeline({ retry = false } = {}) {
           reviewState.assets = data.assets || {};
           reviewState.smtpConfigured = Boolean(data.smtpConfigured);
           reviewState.profileContext = data.profileContext || {};
+          if (reviewState.draft) {
+            reviewState.runConfig = {
+              ...(reviewState.runConfig || defaultRunConfig()),
+              tonePreset: reviewState.draft.tonePreset || reviewState.runConfig?.tonePreset || 'balanced',
+              includeResume: reviewState.draft.recommendedAttachments?.resume !== false,
+              includeTranscript: Boolean(reviewState.draft.recommendedAttachments?.transcript),
+              includePortfolioLink: Boolean(reviewState.draft.recommendedAttachments?.portfolioLink)
+            };
+          }
           touchStageActivity();
           persistState();
           if (composeEl) composeEl.classList.remove('is-researching');
@@ -1239,6 +1478,7 @@ async function sendDirectly() {
     stopTimers();
     reviewState = null;
     activeFlowRunId = '';
+    suppressLeaveWarning = true;
     window.alert(`Message sent. Message ID: ${payload.messageId || 'n/a'}`);
     window.location.href = '/';
   } catch (error) {
@@ -1255,11 +1495,21 @@ function initTheme() {
 }
 
 function bindEvents() {
+  const handlePreservedBack = (event) => {
+    event?.preventDefault();
+    if (!confirmLeaveWhileRunning()) return;
+    goToTrackerPreservingState();
+  };
+
+  routeBackLink?.addEventListener('click', handlePreservedBack);
+  routeBackBtn?.addEventListener('click', handlePreservedBack);
+  routeBackToTrackerBtn?.addEventListener('click', handlePreservedBack);
   routeCancel?.addEventListener('click', () => {
     clearPersistedState();
     stopTimers();
     reviewState = null;
     activeFlowRunId = '';
+    suppressLeaveWarning = true;
     window.location.href = '/';
   });
   routeStartBtn?.addEventListener('click', () => {
@@ -1271,6 +1521,18 @@ function bindEvents() {
     const button = event.target.closest('[data-tone-preset]');
     if (!button) return;
     applyTonePreset(button.getAttribute('data-tone-preset') || 'balanced');
+  });
+  [routeDeliveryGmail, routeDeliveryDirect].forEach((input) => {
+    input?.addEventListener('change', () => {
+      if (!reviewState) return;
+      reviewState.runConfig = {
+        ...(reviewState.runConfig || defaultRunConfig()),
+        preferredDelivery: routeDeliveryDirect?.checked ? 'direct' : 'gmail'
+      };
+      persistState();
+      renderPrestartSummary();
+      renderState();
+    });
   });
   [routeIncludeResume, routeIncludeTranscript, routeIncludePortfolioLink].forEach((input) => {
     input?.addEventListener('change', () => {
@@ -1289,7 +1551,13 @@ function bindEvents() {
   routeRetryBtn?.addEventListener('click', () => {
     runPreparationPipeline({ retry: true });
   });
-  window.addEventListener('beforeunload', persistState);
+  window.addEventListener('beforeunload', (event) => {
+    persistState();
+    if (suppressLeaveWarning) return;
+    if (!hasActiveRun()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
   window.addEventListener('pagehide', persistState);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') persistState();

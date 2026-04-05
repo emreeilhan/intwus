@@ -326,3 +326,8 @@
 0.0.80
 - Changed `Prepare Agent Mail` so it now opens `/agent-review` without auto-starting the research pipeline; the review page waits for an explicit `Start agent review` click before any agent work begins.
 - This gives a real control benefit: accidental clicks no longer spend time or tokens immediately, and the user sees the review workspace before committing the run.
+
+0.0.81
+- Expanded `/agent-review` into a real preflight workspace with a start summary, run config controls, explicit start blockers, ETA guidance, and a back-to-tracker path that preserves state instead of forcing a discard.
+- Added active-run leave warnings plus persisted return behavior, so leaving mid-run now protects work and returning can resume intentionally instead of feeling lossy.
+- Added draft versioning for agent mail variants: new prepared drafts and tone repolish actions now create versioned draft records (`v1`, `v2`, ...) instead of silently overwriting prior variants, which gives a real comparison and rollback benefit. 🙂

@@ -357,6 +357,12 @@ const selectMailDraftById = db.prepare(`
   WHERE id = ?
 `);
 
+const selectMailDraftCountByInternship = db.prepare(`
+  SELECT COUNT(*) AS count
+  FROM application_mail_drafts
+  WHERE internship_id = ?
+`);
+
 const deleteMailDraft = db.prepare(`
   DELETE FROM application_mail_drafts
   WHERE id = ?
@@ -417,6 +423,9 @@ function addActivity(internshipId, eventType, oldValue, newValue) {
 
 function createMailDraftRecord({ internshipId, company, draft, status = 'draft' }) {
   const payload = draft && typeof draft === 'object' ? { ...draft } : {};
+  const versionNumber = Number(payload.versionNumber || 0) || (Number(selectMailDraftCountByInternship.get(Number(internshipId) || 0)?.count || 0) + 1);
+  payload.versionNumber = versionNumber;
+  payload.versionLabel = normalizeString(payload.versionLabel, `v${versionNumber}`);
   const info = insertMailDraft.run(
     internshipId,
     normalizeString(company, normalizeString(payload.companyName)),
@@ -441,6 +450,8 @@ function updateMailDraftRecord({ draftId, draft, status }) {
   const payload = draft && typeof draft === 'object'
     ? { ...previousPayload, ...draft }
     : previousPayload;
+  if (!payload.versionNumber && previousPayload.versionNumber) payload.versionNumber = previousPayload.versionNumber;
+  if (!payload.versionLabel && previousPayload.versionLabel) payload.versionLabel = previousPayload.versionLabel;
   updateMailDraft.run(
     normalizeString(payload.contactEmail),
     normalizeString(payload.cc),
@@ -474,6 +485,8 @@ function formatMailDraftRow(row) {
     status: normalizeString(row?.status, 'draft'),
     createdAt: normalizeString(row?.created_at),
     updatedAt: normalizeString(row?.updated_at),
+    versionNumber: Number(payload?.versionNumber || 0) || null,
+    versionLabel: normalizeString(payload?.versionLabel),
     draft: payload && typeof payload === 'object' ? payload : {}
   };
 }
@@ -1253,6 +1266,14 @@ function normalizeAttachmentPlan(value, profile) {
     combinationLabel: normalizeString(plan.combinationLabel, enabled.join(' + ') || 'No attachments'),
     rationale: normalizeString(plan.rationale, 'No recommendation reason returned.')
   };
+}
+
+function mergeAttachmentPreferences(basePlan, preferences, profile) {
+  const merged = {
+    ...(basePlan && typeof basePlan === 'object' ? basePlan : {}),
+    ...(preferences && typeof preferences === 'object' ? preferences : {})
+  };
+  return normalizeAttachmentPlan(merged, profile);
 }
 
 function buildAgentResearchResult({ researchedDraft, company, website, profile, researchContent, researchPayload }) {
@@ -2211,10 +2232,11 @@ app.post('/api/application-agent/prepare', async (req, res) => {
       company: draft.companyName || company,
       draft
     });
+    const savedDraft = formatMailDraftRow(selectMailDraftById.get(draftId))?.draft || draft;
 
     return res.json({
       draftId,
-      draft,
+      draft: savedDraft,
       assets: researchResult.assets,
       smtpConfigured: researchResult.smtpConfigured,
       sources: researchResult.sources,
@@ -2324,6 +2346,10 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
   const location = normalizeString(req.body?.location, '-');
   const notes = typeof req.body?.notes === 'string' ? req.body.notes.trim() : '-';
   const website = normalizeString(req.body?.website, '-');
+  const tonePreset = normalizeString(req.body?.tonePreset, 'balanced').toLowerCase();
+  const attachmentPreferences = req.body?.attachmentPreferences && typeof req.body?.attachmentPreferences === 'object'
+    ? req.body.attachmentPreferences
+    : {};
 
   if (!apiKey) {
     return res.status(400).json({ error: 'OpenAI API key is required.' });
@@ -2448,6 +2474,11 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
       researchContent: { sources: researchSources },
       researchPayload: completedResponse || {}
     });
+    const selectedAttachments = mergeAttachmentPreferences(
+      researchResult.recommendedAttachments,
+      attachmentPreferences,
+      profile
+    );
 
     currentStage = {
       step: 'polish',
@@ -2460,8 +2491,8 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
       apiKey,
       company: researchedDraft?.companyName || company,
       draftInput: researchedDraft,
-      tonePreset: 'balanced',
-      includePortfolioLink: Boolean(researchResult.recommendedAttachments?.portfolioLink)
+      tonePreset,
+      includePortfolioLink: Boolean(selectedAttachments?.portfolioLink)
     });
 
     const draft = buildAgentFinalDraft({
@@ -2470,13 +2501,15 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
       company,
       website,
       profile,
-      recommendedAttachments: researchResult.recommendedAttachments
+      recommendedAttachments: selectedAttachments,
+      tonePreset
     });
     const draftId = createMailDraftRecord({
       internshipId: Number(req.body?.internshipId || 0) || 0,
       company: draft.companyName || company,
       draft
     });
+    const savedDraft = formatMailDraftRow(selectMailDraftById.get(draftId))?.draft || draft;
 
     currentStage = {
       step: 'ready',
@@ -2487,7 +2520,7 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
     send('draft', {
       type: 'draft',
       draftId,
-      draft,
+      draft: savedDraft,
       sources: researchResult.sources,
       assets: researchResult.assets,
       smtpConfigured: researchResult.smtpConfigured,
@@ -2525,6 +2558,33 @@ app.post('/api/application-agent/log-action', async (req, res) => {
 
   addActivity(internshipId, `agent ${action}`, null, meta);
   return res.json({ ok: true });
+});
+
+app.post('/api/application-agent/drafts', async (req, res) => {
+  const internshipId = Number(req.body?.internshipId || 0) || null;
+  const company = normalizeString(req.body?.company);
+  const draft = req.body?.draft && typeof req.body?.draft === 'object' ? req.body.draft : null;
+  const status = normalizeString(req.body?.status, 'draft');
+
+  if (!internshipId) {
+    return res.status(400).json({ error: 'internshipId is required.' });
+  }
+  if (!draft) {
+    return res.status(400).json({ error: 'draft payload is required.' });
+  }
+
+  const draftId = createMailDraftRecord({
+    internshipId,
+    company: company || normalizeString(draft.companyName),
+    draft,
+    status
+  });
+  const row = selectMailDraftById.get(draftId);
+  return res.json({
+    ok: true,
+    draftId,
+    draft: formatMailDraftRow(row)?.draft || draft
+  });
 });
 
 app.put('/api/application-agent/drafts/:id', async (req, res) => {

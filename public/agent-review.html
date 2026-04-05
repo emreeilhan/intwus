@@ -14,9 +14,9 @@
     <div class="agent-route-shell">
 
       <header class="agent-route-topbar agent-stage" style="--enter-delay: 40ms;">
-        <a class="agent-back-link" href="/">
+        <a class="agent-back-link" href="/" id="agentBackLink">
           <span class="agent-back-icon" aria-hidden="true">←</span>
-          <span>Tracker</span>
+          <span>Back to tracker</span>
         </a>
         <div class="agent-topbar-center">
           <span class="agent-topbar-company" id="agentHeroTitle">Outreach review</span>
@@ -38,12 +38,30 @@
               <p class="agent-eyebrow">Live preparation</p>
               <h2 id="agentPlaceholderTitle">Review workspace ready.</h2>
               <p id="agentHeroSub">Open the company context here first, then start the agent when you are ready. Search queries will appear below after the run begins.</p>
+              <div class="agent-prestart-summary" id="agentPrestartSummary"></div>
               <div class="agent-placeholder-actions">
                 <button class="ghost-btn agent-btn-start" id="agentStartBtn" type="button">Start agent review</button>
+                <button class="agent-btn-back" id="agentBackToTrackerBtn" type="button">Back to tracker</button>
+              </div>
+              <div class="agent-start-note" id="agentStartNote">Expected prep time: 30-90s.</div>
+              <div class="agent-pixel-eq" id="agentPixelEq" aria-hidden="true">
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
+                <div class="agent-pixel-bar"></div>
               </div>
               <div class="agent-search-feed" id="agentSearchFeed"></div>
             </div>
             <form id="agentRouteForm" class="agent-compose-form">
+              <div class="agent-draft-meta" id="agentDraftMeta"></div>
               <div class="agent-field-grid">
                 <label class="agent-field">
                   <span>To</span>
@@ -66,7 +84,10 @@
               </label>
 
               <div class="agent-action-bar">
-                <button class="agent-btn-discard" id="agentRouteCancel" type="button">Discard</button>
+                <div class="agent-action-left">
+                  <button class="agent-btn-back" id="agentRouteBackBtn" type="button">Back to tracker</button>
+                  <button class="agent-btn-discard" id="agentRouteCancel" type="button">Discard review</button>
+                </div>
                 <div class="agent-action-right">
                   <button class="ghost-btn agent-btn-send" id="agentRouteSendBtn" type="button" hidden>Send directly</button>
                   <button class="agent-btn-gmail" id="agentRouteGmailBtn" type="button">Open in Gmail →</button>
@@ -82,6 +103,19 @@
           <aside class="agent-stage agent-sidebar" style="--enter-delay: 200ms;">
 
             <div class="agent-sidebar-card">
+
+              <div class="agent-section" id="agentRunConfigSection">
+                <div class="agent-section-head">
+                  <span class="agent-section-label">Run config</span>
+                  <span class="agent-inline-status" id="agentConfigEta">30-90s</span>
+                </div>
+                <div class="agent-inline-copy" id="agentConfigHelper">These settings shape the first draft before the agent starts.</div>
+                <div class="agent-delivery-prefs" id="agentDeliveryPrefs">
+                  <label class="tag-option"><input id="agentDeliveryGmail" name="agentDeliveryPreference" type="radio" value="gmail" checked /> Prefer Gmail draft</label>
+                  <label class="tag-option"><input id="agentDeliveryDirect" name="agentDeliveryPreference" type="radio" value="direct" /> Prefer direct send if safe</label>
+                </div>
+                <div class="agent-inline-note" id="agentStartExplain">Agent start requirements will appear here.</div>
+              </div>
 
               <!-- Live flow -->
               <div class="agent-section">
