@@ -328,7 +328,7 @@ function cloneProfileSeed() {
   return JSON.parse(JSON.stringify(PROFILE_SEED));
 }
 
-function safeJsonParse(value, fallback) {
+export function safeJsonParse(value, fallback) {
   try {
     return value ? JSON.parse(value) : fallback;
   } catch {
@@ -2326,13 +2326,15 @@ app.post('/api/import', (req, res, next) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  ensureProfileFile();
-  if (excelIsNewer()) {
-    syncFromExcel();
-  }
-  backfillFitScores();
-  backfillPriority();
-  syncExcel();
-  console.log(`Server running on http://localhost:${port}`);
-});
+if (process.argv[1] === __filename) {
+  app.listen(port, () => {
+    ensureProfileFile();
+    if (excelIsNewer()) {
+      syncFromExcel();
+    }
+    backfillFitScores();
+    backfillPriority();
+    syncExcel();
+    console.log(`Server running on http://localhost:${port}`);
+  });
+}
