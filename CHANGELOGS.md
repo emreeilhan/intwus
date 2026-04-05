@@ -290,3 +290,7 @@
 0.0.70
 - Fixed the streamed agent research route so it no longer treats a finished POST request body as a disconnected client and cancels the OpenAI stream before search events start.
 - This is the real fix for the zero-token prep failure: the review page can now stay attached to the live SSE response long enough for research and draft events to arrive. 🙂
+
+0.0.71
+- Expanded the profile summary sent to the mail agent so it now includes goals, strengths, growth areas, strategy context, and clipped excerpts/raw content from the saved profile source documents.
+- This gives the agent more of the real `Whoami` material instead of only a shallow profile stub, which should make the outreach sound closer to your actual positioning.

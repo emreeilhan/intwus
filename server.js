@@ -431,6 +431,13 @@ function normalizeSourceList(value, fallback = []) {
     .filter((item) => item.title || item.url || item.rawContent);
 }
 
+function clipText(value, maxLength = 320) {
+  const text = normalizeString(value);
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
+}
+
 function normalizeProfileInput(input, fallback = PROFILE_SEED) {
   const source = input && typeof input === 'object' ? input : {};
   const identityFallback = fallback.identity || {};
@@ -512,19 +519,36 @@ function writeProfile(profile) {
 }
 
 function pickProfileSummary(profile) {
+  const sourceContext = normalizeSourceList(profile.sources, [])
+    .slice(0, 3)
+    .map((item) => ({
+      title: item.title || item.kind || 'Profile source',
+      excerpt: clipText(item.excerpt, 220),
+      rawContent: clipText(item.rawContent, 420)
+    }))
+    .filter((item) => item.excerpt || item.rawContent);
+
   return {
     name: profile.identity?.name || '',
     headline: profile.identity?.headline || '',
     currentFocus: profile.identity?.currentFocus || '',
     targetRoles: profile.identity?.targetRoles || [],
     executiveSummary: profile.summary?.executive || '',
+    profileSummary: profile.summary?.profile || '',
     positioning: profile.summary?.positioning || '',
+    goals: normalizeStringList(profile.goals || []).slice(0, 5),
+    strengths: normalizeStringList(profile.strengths || []).slice(0, 5),
+    growthAreas: normalizeStringList(profile.growthAreas || []).slice(0, 5),
     technicalSkills: profile.skills?.technical || [],
     domainSkills: profile.skills?.domains || [],
     focusAreas: profile.skills?.focusAreas || [],
     languages: profile.languages || [],
     identityStatement: profile.strategy?.identityStatement || '',
-    portfolioUrl: profile.application?.portfolioUrl || ''
+    strategyThesis: profile.strategy?.thesis || '',
+    integrationPoint: profile.strategy?.integrationPoint || '',
+    nonGoals: normalizeStringList(profile.nonGoals || []).slice(0, 5),
+    portfolioUrl: profile.application?.portfolioUrl || '',
+    sourceContext
   };
 }
 
@@ -781,24 +805,28 @@ const APPLICATION_AGENT_SYSTEM_PROMPT = [
   'You are a precision outreach researcher for internship applications.',
   'Your job is to research a company deeply enough to find a single specific non-obvious hook that connects the candidate\'s background to what that company actually works on — not their generic mission statement or homepage tagline.',
   'Use web search to find: the most relevant team, research group, or project area; a credible direct contact path (not just a careers page form); and real technical signals about what makes this company worth reaching out to.',
+  'Research quality matters more than writing style here. Gather concrete facts and contact paths; do not try to sound polished, impressive, or literary.',
   'Never invent facts. If a detail is uncertain, flag it in confidence or warnings instead of stating it as true.',
   'Return plain text only with the exact headers from the user prompt. No markdown code fences.'
 ].join(' ');
 
 const POLISH_MAIL_SYSTEM_PROMPT = [
-  'You are an elite internship outreach writer.',
-  'Your job is to make this email feel like it was written by someone who actually knows this company\'s work and has a specific reason to reach out — not a candidate sending a template.',
+  'You are writing a short internship outreach email that should read like a smart real person wrote it in one pass.',
+  'Your job is to make the email specific and credible without sounding polished for the sake of sounding polished.',
   '',
-  'Rules for world-class outreach:',
-  '1. Open with ONE specific company-rooted sentence that proves real research. Reference their actual research area, named project, or specific technical focus — never their tagline or "I am reaching out because".',
-  '2. Show skills through narrative context, never as a list. Instead of "I know C and Python", write what you built or studied with them. One concrete sentence beats five skill names.',
-  '3. The body must implicitly answer three questions: why this person, why this company, why now. Be concrete on all three without making them sound like checklist items.',
-  '4. The closing ask must be direct and confident — one sentence. Never "I would be glad to follow any available path." Instead: "I\'d welcome a short conversation about whether there\'s a fit."',
-  '5. Remove all filler: "for context", "as well", "I would like to", "I am interested in". Every sentence starts with a fact or action.',
-  '6. Total content: 4–6 sentences maximum. The whole email including greeting and signature must fit in one screen.',
-  '7. Mention resume and transcript in one brief natural sentence — not a standalone paragraph.',
-  '8. If a portfolio link is included, weave it into a sentence as proof of work, not appended at the end.',
-  '9. Never invent achievements or facts not in the profile or draft.',
+  'Rules:',
+  '1. Write like an engineer or student, not like a brand strategist, copywriter, or consultant.',
+  '2. The opener must mention one specific company fact, but keep it plain. Do not use dramatic language like "stands out", "what caught my attention is", "at the device boundary", or "actually shapes the attack surface" unless the draft explicitly requires it.',
+  '3. Prefer simple concrete sentences over abstract framing. If a sentence sounds performative, impressive, or too self-aware, simplify it.',
+  '4. Show background through one or two concrete focus statements. Do not stack abstractions or long concept chains like "telemetry, communication paths, and update flows" unless they are clearly necessary.',
+  '5. Do not force a rhetorical structure like "why this person, why this company, why now" if it makes the mail sound artificial. Natural and direct beats clever.',
+  '6. The closing ask should be short and normal. Avoid overly polished lines like "I\'d welcome a short conversation about whether there\'s a fit" unless nothing more natural fits.',
+  '7. Remove filler: "for context", "as well", "I would like to", "I am interested in", "I am reaching out because", "that overlap is why I am writing".',
+  '8. Total content: 4–6 short paragraphs or sentences maximum. The whole email including greeting and signature must fit in one screen.',
+  '9. Mention attached resume and transcript in one brief natural sentence only if relevant.',
+  '10. If a portfolio link is included, mention it plainly as supporting material, not as a marketing line.',
+  '11. Never invent achievements or facts not in the profile or draft.',
+  '12. Optimize for "sounds believable and human" over "sounds impressive".',
   'Return strict JSON only.'
 ].join('\n');
 
@@ -1053,16 +1081,18 @@ function buildPolishMailPrompt({ company, draft, profile, tonePreset = 'balanced
     JSON.stringify(draft, null, 2),
     '',
     'Rewrite rules:',
-    '- Open with ONE company-specific hook sentence that proves you know their actual work — not a generic opener like "I am reaching out because...".',
-    '- Skills must appear through narrative context only. Never produce a comma-separated skill list. Show what was built or studied, not what tools were used.',
-    '- Answer three questions implicitly and concretely: why this person, why this company, why now.',
-    '- The closing must be one direct confident sentence. Reject any phrasing like "I would be glad to follow any available path" or "I would welcome the opportunity". Use something like: "I\'d welcome a short conversation about whether there\'s a fit."',
-    '- Remove all filler phrases: "for context", "as well", "I would like to", "I am interested in", "I am reaching out because". Every sentence starts with a fact or action.',
+    '- Open with one company-specific sentence, but keep it plain and readable. No dramatic framing, no inflated wording, no thesis-statement energy.',
+    '- Skills must appear through natural context only. Never produce a comma-separated skill list. Prefer one simple concrete sentence over layered abstractions.',
+    '- Do not force hidden rhetorical structure. If "why this person / why this company / why now" makes the draft sound AI-written, drop the pattern and write normally.',
+    '- The closing should sound like something a real student would send. Short, direct, and not over-crafted.',
+    '- Remove filler phrases: "for context", "as well", "I would like to", "I am interested in", "I am reaching out because", "that overlap is why I am writing".',
+    '- Ban these tones unless the draft explicitly needs them: grand, literary, highly polished, consultant-like, or motivational.',
     '- Maximum 4–6 content sentences. The full email including greeting and signature must fit in one screen.',
     '- Mention attached resume and transcript in one brief natural sentence integrated into the body — never as its own paragraph.',
     includePortfolioLink && profile.application?.portfolioUrl
-      ? `- Include the portfolio link ${profile.application.portfolioUrl} woven into a sentence as proof of work, not appended at the end.`
+      ? `- If useful, mention the portfolio link ${profile.application.portfolioUrl} plainly as supporting material. Do not turn it into a pitch.`
       : '- Do not mention a portfolio link unless explicitly requested.',
+    '- Prefer wording that a skeptical professor, engineer, or recruiter would believe was written directly by the candidate.',
     '- Do not invent achievements or claims not in the profile or draft.',
     `- ${toneInstructionMap[tonePreset] || toneInstructionMap.balanced}`,
     '- warnings should only contain real risks or caveats that still matter after polishing.'
