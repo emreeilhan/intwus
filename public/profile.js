@@ -289,18 +289,25 @@ async function handleSave(event) {
 
 async function init() {
   initTheme();
-  saveStatus.textContent = 'Loading profile...';
+  if (saveStatus) saveStatus.textContent = 'Loading profile...';
 
   try {
     await loadProfile();
-    saveStatus.textContent = 'Local profile store';
+    if (saveStatus) saveStatus.textContent = 'Local profile store';
   } catch (error) {
     console.error(error);
-    saveStatus.textContent = 'Profile failed to load';
+    if (saveStatus) saveStatus.textContent = 'Profile failed to load';
   }
 }
 
 themeToggleBtn?.addEventListener('click', toggleTheme);
 profileForm?.addEventListener('submit', handleSave);
 
-init();
+// Only initialize if we are in a real browser environment and not in a test
+if (typeof window !== 'undefined' && typeof process === 'undefined') {
+  init();
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { formatDate };
+}
