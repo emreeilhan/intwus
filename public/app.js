@@ -224,19 +224,6 @@ function escapeHtml(value) {
   return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function normalizeUrl(url) {
-  if (!url) return '';
-  const candidate = url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
-  try {
-    const parsed = new URL(candidate);
-    const hostname = parsed.hostname || '';
-    const looksValidHost = hostname === 'localhost' || hostname.includes('.') || hostname.startsWith('xn--');
-    return looksValidHost ? parsed.toString() : '';
-  } catch {
-    return '';
-  }
-}
-
 function safeJsonParse(value, fallback) {
   try {
     return value ? JSON.parse(value) : fallback;
