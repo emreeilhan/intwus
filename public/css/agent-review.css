@@ -242,6 +242,17 @@
   max-width: 44ch;
 }
 
+.agent-placeholder-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.agent-btn-start {
+  min-width: 180px;
+}
+
 /* Search feed */
 .agent-search-feed {
   display: flex;

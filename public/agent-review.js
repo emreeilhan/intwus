@@ -20,10 +20,12 @@ const STALL_LIMITS_MS = {
 
 const routeForm = document.getElementById('agentRouteForm');
 const routeComposePlaceholder = document.getElementById('agentComposePlaceholder');
+const routePlaceholderTitle = document.getElementById('agentPlaceholderTitle');
 const routeEmpty = document.getElementById('agentRouteEmpty');
 const routeError = document.getElementById('agentRouteError');
 const routeSubmit = null; // removed — actions handled by dedicated buttons
 const routeCancel = document.getElementById('agentRouteCancel');
+const routeStartBtn = document.getElementById('agentStartBtn');
 const routeGmailBtn = document.getElementById('agentRouteGmailBtn');
 const routeSendBtn = document.getElementById('agentRouteSendBtn');
 const routeTo = document.getElementById('agentRouteTo');
@@ -249,7 +251,7 @@ function hydrateStateFromQuery() {
     website: params.get('website') || '',
     startedAt: new Date().toISOString(),
     stageState: {
-      status: 'queued',
+      status: 'idle',
       currentStep: 'queued',
       timeline: []
     }
@@ -339,7 +341,7 @@ function mergeQueryState(baseState) {
     nextState.searchFeed = [];
     nextState.streamLog = [];
     nextState.stageState = {
-      status: 'queued',
+      status: 'idle',
       currentStep: 'queued',
       timeline: [],
       summary: ''
@@ -496,6 +498,10 @@ function renderTimeline() {
 
 function refreshElapsedLabel() {
   if (!routeStageElapsed || !reviewState?.stageState?.startedAt) return;
+  if (reviewState?.stageState?.status === 'idle') {
+    routeStageElapsed.textContent = 'Waiting to start';
+    return;
+  }
   const startedAt = new Date(reviewState.stageState.startedAt).getTime();
   if (Number.isNaN(startedAt)) {
     routeStageElapsed.textContent = 'Waiting to start';
@@ -633,16 +639,26 @@ function renderState() {
     return;
   }
 
-  if (routeFlowStatus) routeFlowStatus.textContent = hasDraft ? (reviewState.smtpConfigured ? 'Review and send' : 'Review and open') : 'Preparing draft';
+  const isIdle = reviewState?.stageState?.status === 'idle';
+  if (routeFlowStatus) {
+    routeFlowStatus.textContent = hasDraft
+      ? (reviewState.smtpConfigured ? 'Review and send' : 'Review and open')
+      : (isIdle ? 'Ready to start' : 'Preparing draft');
+  }
   if (routeHeroTitle) {
     routeHeroTitle.textContent = hasDraft
       ? (reviewState.draft.companyName || reviewState.company)
       : (reviewState.company || 'Outreach review');
   }
+  if (routePlaceholderTitle) {
+    routePlaceholderTitle.textContent = isIdle ? 'Review workspace ready.' : 'Building draft.';
+  }
   if (routeHeroSub) {
     routeHeroSub.textContent = hasDraft
       ? 'Edit the draft below, then open it in Gmail or send directly.'
-      : 'Watching the agent research and write. Search queries appear below as they run.';
+      : (isIdle
+          ? 'Open the company context here first, then start the agent when you are ready. Search queries will appear below after the run begins.'
+          : 'Watching the agent research and write. Search queries appear below as they run.');
   }
   if (routeFlowSummary) {
     routeFlowSummary.textContent = reviewState?.stageState?.summary || 'Research, polish, then decide.';
@@ -653,10 +669,18 @@ function renderState() {
   }
 
   if (routeStageSummary) {
-    routeStageSummary.textContent = issueMessage || reviewState?.stageState?.summary || 'The route will show real preparation stages here.';
+    routeStageSummary.textContent = issueMessage
+      || reviewState?.stageState?.summary
+      || (isIdle
+        ? 'The page is ready. Start the review flow when you want the agent to research and draft.'
+        : 'The route will show real preparation stages here.');
   }
   if (routeStreamStatus) {
-    routeStreamStatus.textContent = hasDraft ? 'Live / complete' : 'Live';
+    routeStreamStatus.textContent = hasDraft ? 'Live / complete' : (isIdle ? 'Standby' : 'Live');
+  }
+  if (routeStartBtn) {
+    routeStartBtn.hidden = hasDraft || !hasContext || !isIdle;
+    routeStartBtn.disabled = !isIdle;
   }
 
   renderStageList();
@@ -746,7 +770,7 @@ function clearDraftUi() {
 function shouldAutoResume() {
   if (!reviewState?.company || reviewState?.draft) return false;
   const status = reviewState?.stageState?.status;
-  return ['queued', 'running'].includes(status);
+  return status === 'running';
 }
 
 function startNewFlowRun() {
@@ -969,6 +993,10 @@ async function runPreparationPipeline({ retry = false } = {}) {
   reviewState.stageState.startedAt = new Date().toISOString();
   reviewState.searchFeed = [];
   reviewState.streamLog = [];
+  if (routeStartBtn) {
+    routeStartBtn.disabled = true;
+    routeStartBtn.textContent = 'Starting...';
+  }
   setStage('queued', 'queued', `Opening the workspace for ${reviewState.company}.`, { clearError: true });
   appendTimeline('Workspace ready', `Loaded ${reviewState.company} into the agent review route.`);
   renderState();
@@ -1108,6 +1136,11 @@ async function runPreparationPipeline({ retry = false } = {}) {
     appendTimeline('Preparation failed', message, 'error');
     setError(message);
     renderState();
+  } finally {
+    if (routeStartBtn) {
+      routeStartBtn.disabled = reviewState?.stageState?.status !== 'idle';
+      routeStartBtn.textContent = 'Start agent review';
+    }
   }
 }
 
@@ -1228,6 +1261,9 @@ function bindEvents() {
     reviewState = null;
     activeFlowRunId = '';
     window.location.href = '/';
+  });
+  routeStartBtn?.addEventListener('click', () => {
+    runPreparationPipeline();
   });
   routeGmailBtn?.addEventListener('click', openInGmail);
   routeSendBtn?.addEventListener('click', sendDirectly);

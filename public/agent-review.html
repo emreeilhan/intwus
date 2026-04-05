@@ -36,8 +36,11 @@
           <section class="agent-stage agent-compose" style="--enter-delay: 140ms;">
             <div class="agent-compose-placeholder" id="agentComposePlaceholder">
               <p class="agent-eyebrow">Live preparation</p>
-              <h2>Building draft.</h2>
-              <p id="agentHeroSub">Watching the agent research and write. Search queries appear below as they run.</p>
+              <h2 id="agentPlaceholderTitle">Review workspace ready.</h2>
+              <p id="agentHeroSub">Open the company context here first, then start the agent when you are ready. Search queries will appear below after the run begins.</p>
+              <div class="agent-placeholder-actions">
+                <button class="ghost-btn agent-btn-start" id="agentStartBtn" type="button">Start agent review</button>
+              </div>
               <div class="agent-search-feed" id="agentSearchFeed"></div>
             </div>
             <form id="agentRouteForm" class="agent-compose-form">

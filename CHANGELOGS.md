@@ -322,3 +322,7 @@
 0.0.79
 - Bumped the persisted agent-review state key so stale local/session drafts from the older mail flow no longer bleed into the new review route.
 - This matters because even after fixing the server prompts, an old saved draft could still make the UI look broken until the stored state was cleared.
+
+0.0.80
+- Changed `Prepare Agent Mail` so it now opens `/agent-review` without auto-starting the research pipeline; the review page waits for an explicit `Start agent review` click before any agent work begins.
+- This gives a real control benefit: accidental clicks no longer spend time or tokens immediately, and the user sees the review workspace before committing the run.
