@@ -1037,13 +1037,6 @@ function renderAgentReview() {
   renderAgentAssets(assets);
 }
 
-function openAgentReview() {
-  if (!agentReviewModal) return;
-  renderAgentReview();
-  agentReviewModal.classList.add('open');
-  agentReviewModal.setAttribute('aria-hidden', 'false');
-}
-
 function closeAgentReview() {
   agentReviewModal?.classList.remove('open');
   agentReviewModal?.setAttribute('aria-hidden', 'true');
