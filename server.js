@@ -2326,13 +2326,18 @@ app.post('/api/import', (req, res, next) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  ensureProfileFile();
-  if (excelIsNewer()) {
-    syncFromExcel();
-  }
-  backfillFitScores();
-  backfillPriority();
-  syncExcel();
-  console.log(`Server running on http://localhost:${port}`);
-});
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    ensureProfileFile();
+    if (excelIsNewer()) {
+      syncFromExcel();
+    }
+    backfillFitScores();
+    backfillPriority();
+    syncExcel();
+    console.log(`Server running on http://localhost:${port}`);
+  });
+}
+
+export { serializeValue };
