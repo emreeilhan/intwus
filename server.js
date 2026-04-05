@@ -387,6 +387,7 @@ function compareFieldChanges(before, after) {
   return changes;
 }
 
+export { compareFieldChanges };
 function normalizeString(value, fallback = '') {
   return typeof value === 'string' ? value.trim() : fallback;
 }
@@ -2326,13 +2327,16 @@ app.post('/api/import', (req, res, next) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  ensureProfileFile();
-  if (excelIsNewer()) {
-    syncFromExcel();
-  }
-  backfillFitScores();
-  backfillPriority();
-  syncExcel();
-  console.log(`Server running on http://localhost:${port}`);
-});
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    ensureProfileFile();
+    if (excelIsNewer()) {
+      syncFromExcel();
+    }
+    backfillFitScores();
+    backfillPriority();
+    syncExcel();
+    console.log(`Server running on http://localhost:${port}`);
+  });
+}
