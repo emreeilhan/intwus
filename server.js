@@ -499,6 +499,16 @@ function getInternship(id) {
   `).get(id);
 }
 
+function getInternships(ids) {
+  if (!ids || !ids.length) return [];
+  const placeholders = ids.map(() => '?').join(',');
+  return db.prepare(`
+    SELECT id, company, status, notes, website, tag, fit_score, applied_at, followup_at, reply_received_at, reply_outcome, priority, focus_tags, created_at, updated_at
+    FROM internships
+    WHERE id IN (${placeholders})
+  `).all(...ids);
+}
+
 function getBaseChangePayload(row) {
   return {
     company: row.company,
@@ -2128,7 +2138,7 @@ app.post('/api/internships/bulk-update', (req, res) => {
   if (!idList.length) {
     return res.status(400).json({ error: 'At least one id is required.' });
   }
-  const rows = idList.map((id) => getInternship(id)).filter(Boolean);
+  const rows = getInternships(idList);
   if (!rows.length) {
     return res.status(404).json({ error: 'Not found.' });
   }
@@ -2173,7 +2183,7 @@ app.post('/api/internships/bulk-delete', (req, res) => {
   if (!idList.length) {
     return res.status(400).json({ error: 'At least one id is required.' });
   }
-  const rows = idList.map((id) => getInternship(id)).filter(Boolean);
+  const rows = getInternships(idList);
   if (!rows.length) {
     return res.status(404).json({ error: 'Not found.' });
   }
