@@ -1150,7 +1150,7 @@ async function runAnalysisForEntry(entry, options = {}) {
         JSON.stringify({ entryId: entry.id, force: force || Boolean(cached) })
       );
     } catch {
-      // TODO: sessionStorage blocked (private mode) — user must re-run analyze after saving key
+      window.alert('Browser storage is blocked. You will need to click Analyze again after saving your API key.');
     }
     openApiKeyModal();
     return null;
