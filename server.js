@@ -862,10 +862,12 @@ function backfillFitScores() {
     WHERE fit_score IS NULL OR fit_score = 0
   `).all();
   const updateScore = db.prepare(`UPDATE internships SET fit_score = ? WHERE id = ?`);
-  rows.forEach((row) => {
-    const score = computeFitScore(row);
-    updateScore.run(score, row.id);
-  });
+  db.transaction(() => {
+    rows.forEach((row) => {
+      const score = computeFitScore(row);
+      updateScore.run(score, row.id);
+    });
+  })();
 }
 
 function backfillPriority() {
