@@ -2188,8 +2188,13 @@ app.post('/api/internships/bulk-delete', (req, res) => {
     return res.status(404).json({ error: 'Not found.' });
   }
   const deleteMany = db.transaction((items) => {
+    const chunkSize = 500;
+    for (let i = 0; i < items.length; i += chunkSize) {
+      const chunk = items.slice(i, i + chunkSize);
+      const placeholders = chunk.map(() => '?').join(',');
+      db.prepare(`DELETE FROM internships WHERE id IN (${placeholders})`).run(...chunk.map((r) => r.id));
+    }
     items.forEach((row) => {
-      deleteOne.run(row.id);
       addActivity(row.id, 'deleted', getBaseChangePayload(row), null);
     });
   });
