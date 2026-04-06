@@ -631,30 +631,57 @@ function normalizeProfileInput(input, fallback = PROFILE_SEED) {
   };
 }
 
-function ensureProfileFile() {
-  if (fs.existsSync(profilePath)) {
-    return;
+let profileCache = null;
+let profileWriteLock = Promise.resolve();
+
+async function ensureProfileFile() {
+  try {
+    await fs.promises.access(profilePath);
+  } catch {
+    await fs.promises.writeFile(profilePath, JSON.stringify(cloneProfileSeed(), null, 2));
   }
-  fs.writeFileSync(profilePath, JSON.stringify(cloneProfileSeed(), null, 2));
 }
 
-function readProfile() {
-  ensureProfileFile();
-  const raw = fs.readFileSync(profilePath, 'utf8');
+async function readProfile() {
+  if (profileCache) return profileCache;
+  await ensureProfileFile();
+  const raw = await fs.promises.readFile(profilePath, 'utf8');
   const parsed = safeJsonParse(raw, null);
   if (!parsed) {
     const fallback = normalizeProfileInput(cloneProfileSeed(), PROFILE_SEED);
-    fs.writeFileSync(profilePath, JSON.stringify(fallback, null, 2));
+    await fs.promises.writeFile(profilePath, JSON.stringify(fallback, null, 2));
+    profileCache = fallback;
     return fallback;
   }
-  return normalizeProfileInput(parsed, PROFILE_SEED);
+  profileCache = normalizeProfileInput(parsed, PROFILE_SEED);
+  return profileCache;
 }
 
-function writeProfile(profile) {
-  const normalized = normalizeProfileInput(profile, readProfile());
-  normalized.updatedAt = nowIso();
-  fs.writeFileSync(profilePath, JSON.stringify(normalized, null, 2));
-  return normalized;
+async function writeProfile(profile) {
+  // Use a promise to track the result of the current operation
+  let resolveOp, rejectOp;
+  const opPromise = new Promise((res, rej) => {
+    resolveOp = res;
+    rejectOp = rej;
+  });
+
+  profileWriteLock = profileWriteLock.then(async () => {
+    try {
+      // Re-read inside the lock to prevent lost updates
+      const current = profileCache || await readProfile();
+      const normalized = normalizeProfileInput(profile, current);
+      normalized.updatedAt = nowIso();
+      await fs.promises.writeFile(profilePath, JSON.stringify(normalized, null, 2));
+      profileCache = normalized;
+      resolveOp(normalized);
+    } catch (e) {
+      rejectOp(e);
+    }
+  }).catch(() => {
+    // Prevent broken chain
+  });
+
+  return opPromise;
 }
 
 function pickProfileSummary(profile) {
@@ -1546,7 +1573,7 @@ function buildAgentFinalDraft({ researchedDraft, polishedDraft, company, website
 }
 
 async function runApplicationAgentResearch({ apiKey, company, location, notes, website }) {
-  const profile = readProfile();
+  const profile = await readProfile();
   const researchPayload = await callOpenAIResponses({
     apiKey,
     model: OPENAI_RESEARCH_MODEL,
@@ -1569,7 +1596,7 @@ async function runApplicationAgentResearch({ apiKey, company, location, notes, w
 }
 
 async function runApplicationAgentPolish({ apiKey, company, draftInput, tonePreset = 'balanced', includePortfolioLink = false }) {
-  const profile = readProfile();
+  const profile = await readProfile();
   const polishPayload = await callOpenAIResponses({
     apiKey,
     model: OPENAI_POLISH_MODEL,
@@ -1870,18 +1897,41 @@ function excelIsNewer() {
   return excelStat.mtimeMs > dbStat.mtimeMs;
 }
 
-app.get('/api/profile', (req, res) => {
-  res.json(readProfile());
+app.get('/api/profile', async (req, res) => {
+  res.json(await readProfile());
 });
 
-app.put('/api/profile', (req, res) => {
-  const existing = readProfile();
-  const merged = {
-    ...existing,
-    ...(req.body && typeof req.body === 'object' ? req.body : {}),
-    sources: Array.isArray(req.body?.sources) ? req.body.sources : existing.sources
-  };
-  res.json(writeProfile(merged));
+app.put('/api/profile', async (req, res) => {
+  let resolveOp, rejectOp;
+  const opPromise = new Promise((res, rej) => {
+    resolveOp = res;
+    rejectOp = rej;
+  });
+
+  profileWriteLock = profileWriteLock.then(async () => {
+    try {
+      const existing = profileCache || await readProfile();
+      const merged = {
+        ...existing,
+        ...(req.body && typeof req.body === 'object' ? req.body : {}),
+        sources: Array.isArray(req.body?.sources) ? req.body.sources : existing.sources
+      };
+
+      const normalized = normalizeProfileInput(merged, existing);
+      normalized.updatedAt = nowIso();
+      await fs.promises.writeFile(profilePath, JSON.stringify(normalized, null, 2));
+      profileCache = normalized;
+      resolveOp(normalized);
+    } catch (e) {
+      rejectOp(e);
+    }
+  }).catch(() => {});
+
+  try {
+    res.json(await opPromise);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.get('/api/internships', (req, res) => {
@@ -2410,7 +2460,7 @@ app.post('/api/application-agent/stream-research', async (req, res) => {
   try {
     send('stage', currentStage);
 
-    const profile = readProfile();
+    const profile = await readProfile();
     const streamParams = {
       apiKey,
       model: OPENAI_RESEARCH_MODEL,
@@ -2640,7 +2690,7 @@ app.delete('/api/application-agent/drafts/:id', async (req, res) => {
 });
 
 app.post('/api/application-agent/send', async (req, res) => {
-  const profile = readProfile();
+  const profile = await readProfile();
   const smtpConfig = getSmtpConfig();
   if (!smtpConfig) {
     return res.status(400).json({
@@ -2861,8 +2911,8 @@ app.post('/api/import', (req, res, next) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  ensureProfileFile();
+app.listen(port, async () => {
+  await ensureProfileFile();
   if (excelIsNewer()) {
     syncFromExcel();
   }
