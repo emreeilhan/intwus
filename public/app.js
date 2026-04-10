@@ -1728,11 +1728,6 @@ async function saveDrawer(event) {
   await Promise.all([loadEntries(), loadActivity(id)]);
 }
 
-async function bulkUpdate(ids, payload) {
-  await fetch('/api/internships/bulk-update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, ...payload }) });
-  await loadEntries();
-}
-
 async function bulkDelete(ids) {
   await fetch('/api/internships/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
   activeEntryId = null;
